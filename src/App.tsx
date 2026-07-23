@@ -77,6 +77,11 @@ const DEFAULT_SETTINGS: FigureSettings = {
   elementPositions: structuredClone(DEFAULT_ELEMENT_POSITIONS),
 }
 
+const FRAME_ASPECTS = {
+  landscape: 1650 / 1275,
+  portrait: 1275 / 1650,
+} as const
+
 const ANCHORS: { value: Anchor; label: string }[] = [
   { value: 'tl', label: 'Top left' },
   { value: 'tc', label: 'Top center' },
@@ -122,7 +127,12 @@ function App() {
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
   const [leftOpen, setLeftOpen] = useState(false)
   const [rightOpen, setRightOpen] = useState(false)
+  const [canvasDisplaySize, setCanvasDisplaySize] = useState({
+    width: 0,
+    height: 0,
+  })
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const canvasFrameRef = useRef<HTMLDivElement>(null)
   const projectInputRef = useRef<HTMLInputElement>(null)
   const renderSequence = useRef(0)
 
@@ -237,6 +247,31 @@ function App() {
         if (renderSequence.current === sequence) setBusy(false)
       })
   }, [appendNotices, engine, overlays, scene, settings])
+
+  useEffect(() => {
+    const frame = canvasFrameRef.current
+    if (!frame) return
+
+    const fitCanvas = () => {
+      const { width, height } = frame.getBoundingClientRect()
+      const aspect = FRAME_ASPECTS[settings.orientation]
+      const fittedWidth = Math.min(width, height * aspect)
+      const fittedHeight = fittedWidth / aspect
+
+      setCanvasDisplaySize((current) =>
+        Math.abs(current.width - fittedWidth) < 0.5 &&
+        Math.abs(current.height - fittedHeight) < 0.5
+          ? current
+          : { width: fittedWidth, height: fittedHeight },
+      )
+    }
+
+    const observer = new ResizeObserver(fitCanvas)
+    observer.observe(frame)
+    fitCanvas()
+
+    return () => observer.disconnect()
+  }, [settings.orientation])
 
   const updateOverlay = (id: string, patch: Partial<MapOverlay>) => {
     setOverlays((current) =>
@@ -659,11 +694,17 @@ function App() {
                 </button>
               </div>
             ) : null}
-            <canvas
-              ref={canvasRef}
-              className={scene ? 'map-canvas is-visible' : 'map-canvas'}
-              aria-label="Generated WSE difference figure"
-            />
+            <div className="map-canvas-frame" ref={canvasFrameRef}>
+              <canvas
+                ref={canvasRef}
+                className={scene ? 'map-canvas is-visible' : 'map-canvas'}
+                aria-label="Generated WSE difference figure"
+                style={{
+                  width: canvasDisplaySize.width || undefined,
+                  height: canvasDisplaySize.height || undefined,
+                }}
+              />
+            </div>
             {busy ? (
               <div className="map-busy" role="status">
                 <span className="spinner" />
