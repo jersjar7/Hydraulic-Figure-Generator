@@ -638,6 +638,20 @@ function annotationScreenPoint(point: MapCoordinate, view: View) {
   return { x, y }
 }
 
+function annotationRotationRadians(annotation: MapAnnotation) {
+  return (((annotation.rotation ?? 0) % 360) * Math.PI) / 180
+}
+
+function rotateAnnotationContext(
+  context: CanvasRenderingContext2D,
+  annotation: MapAnnotation,
+  point: { x: number; y: number },
+) {
+  context.translate(point.x, point.y)
+  context.rotate(annotationRotationRadians(annotation))
+  context.translate(-point.x, -point.y)
+}
+
 function annotationTextBox(
   context: CanvasRenderingContext2D,
   annotation: MapAnnotation,
@@ -646,6 +660,7 @@ function annotationTextBox(
   const layout = annotationTextLayout(context, annotation, point)
   const { lines, lineHeight, paddingY, width, height, x, y } = layout
   context.save()
+  rotateAnnotationContext(context, annotation, point)
 
   if (annotation.background) {
     roundedRectangle(context, x, y, width, height, 6)
@@ -816,6 +831,8 @@ function drawAnnotationSelection(
     points[1]
   ) {
     const layout = annotationTextLayout(context, annotation, points[1])
+    context.save()
+    rotateAnnotationContext(context, annotation, points[1])
     roundedRectangle(
       context,
       layout.x - 5,
@@ -825,11 +842,14 @@ function drawAnnotationSelection(
       7,
     )
     context.stroke()
+    context.restore()
     if (!annotation.hydraulicExtremum) {
       drawSelectionHandle(context, points[0])
     }
   } else if (annotation.kind === 'text') {
     const layout = annotationTextLayout(context, annotation, points[0])
+    context.save()
+    rotateAnnotationContext(context, annotation, points[0])
     roundedRectangle(
       context,
       layout.x - 5,
@@ -839,6 +859,7 @@ function drawAnnotationSelection(
       7,
     )
     context.stroke()
+    context.restore()
   } else {
     drawSelectionHandle(context, points[0])
     if (points[1]) drawSelectionHandle(context, points[1])
@@ -935,6 +956,24 @@ export function moveAnnotationPoints(
   return points
 }
 
+export function duplicateAnnotation(
+  annotation: MapAnnotation,
+  id: string,
+  dx: number,
+  dy: number,
+): MapAnnotation {
+  const { hydraulicExtremum: _hydraulicExtremum, ...copy } = annotation
+  return {
+    ...copy,
+    id,
+    rotation: annotation.rotation ?? 0,
+    points: annotation.points.map((point) => ({
+      x: point.x + dx,
+      y: point.y + dy,
+    })),
+  }
+}
+
 function estimatedTextBox(annotation: MapAnnotation, point: MapCoordinate) {
   const lines = (annotation.text || 'Note').split(/\r?\n/)
   const width =
@@ -949,6 +988,27 @@ function estimatedTextBox(annotation: MapAnnotation, point: MapCoordinate) {
     top: point.y - height / 2,
     bottom: point.y + height / 2,
   }
+}
+
+function pointInAnnotationTextBox(
+  annotation: MapAnnotation,
+  point: { x: number; y: number },
+  labelPoint: { x: number; y: number },
+) {
+  const angle = -annotationRotationRadians(annotation)
+  const dx = point.x - labelPoint.x
+  const dy = point.y - labelPoint.y
+  const localPoint = {
+    x: labelPoint.x + dx * Math.cos(angle) - dy * Math.sin(angle),
+    y: labelPoint.y + dx * Math.sin(angle) + dy * Math.cos(angle),
+  }
+  const box = estimatedTextBox(annotation, labelPoint)
+  return (
+    localPoint.x >= box.left &&
+    localPoint.x <= box.right &&
+    localPoint.y >= box.top &&
+    localPoint.y <= box.bottom
+  )
 }
 
 export function hitTestAnnotation(
@@ -969,13 +1029,7 @@ export function hitTestAnnotation(
     if (points.length === 0) continue
 
     if (annotation.kind === 'text') {
-      const box = estimatedTextBox(annotation, points[0])
-      if (
-        x >= box.left &&
-        x <= box.right &&
-        y >= box.top &&
-        y <= box.bottom
-      ) {
+      if (pointInAnnotationTextBox(annotation, pointer, points[0])) {
         return { id: annotation.id, part: 'body' }
       }
       continue
@@ -987,13 +1041,7 @@ export function hitTestAnnotation(
       if (Math.hypot(x - points[0].x, y - points[0].y) <= 16) {
         return { id: annotation.id, part: 'start' }
       }
-      const box = estimatedTextBox(annotation, points[1])
-      if (
-        x >= box.left &&
-        x <= box.right &&
-        y >= box.top &&
-        y <= box.bottom
-      ) {
+      if (pointInAnnotationTextBox(annotation, pointer, points[1])) {
         return { id: annotation.id, part: 'body' }
       }
     }

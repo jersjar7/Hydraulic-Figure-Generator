@@ -245,6 +245,7 @@ export type MapAnnotation = {
   fillColor: string
   lineWidth: number
   fontSize: number
+  rotation: number
   dashed: boolean
   background: boolean
   resultField?: ResultLabelField
@@ -257,6 +258,7 @@ export type AnnotationDefaults = {
   fillColor: string
   lineWidth: number
   fontSize: number
+  rotation: number
   dashed: boolean
   background: boolean
   resultField: ResultLabelField

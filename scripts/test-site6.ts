@@ -12,6 +12,7 @@ import {
 import {
   canvasPointToMap,
   DEFAULT_ELEMENT_POSITIONS,
+  duplicateAnnotation,
   formatHydraulicResultLabel,
   hitTestAnnotation,
   mapPointToCanvas,
@@ -192,6 +193,7 @@ const annotationStyle = {
   fillColor: '#ffffff',
   lineWidth: 3,
   fontSize: 20,
+  rotation: 0,
   dashed: false,
   background: true,
 }
@@ -270,6 +272,7 @@ const annotations: MapAnnotation[] = [
     ],
     text: formatWseExtremumLabel('max-rise', extrema.rise.value),
     ...annotationStyle,
+    rotation: 12,
   },
   {
     id: 'max-reduction',
@@ -288,6 +291,7 @@ const annotations: MapAnnotation[] = [
     ),
     ...annotationStyle,
     color: '#175cd3',
+    rotation: -12,
   },
 ]
 const textScreenPoint = mapPointToCanvas(
@@ -353,6 +357,30 @@ const leaderWholeMoved = moveAnnotationPoints(
   8,
   12,
 )
+const rotatedText = {
+  ...annotations[0],
+  id: 'rotated-text',
+  rotation: 90,
+}
+const rotatedTextCenter = mapPointToCanvas(
+  rotatedText.points[0],
+  engine.commonBounds(),
+  renderSettings,
+)
+const rotatedTextHit = hitTestAnnotation(
+  [rotatedText],
+  engine.commonBounds(),
+  renderSettings,
+  rotatedTextCenter.x,
+  rotatedTextCenter.y + 35,
+)
+const unrotatedTextMiss = hitTestAnnotation(
+  [annotations[0]],
+  engine.commonBounds(),
+  renderSettings,
+  rotatedTextCenter.x,
+  rotatedTextCenter.y + 35,
+)
 const extremumLabelMoved = moveAnnotationPoints(
   annotations[5],
   'body',
@@ -366,6 +394,12 @@ const extremumTargetMoved = moveAnnotationPoints(
   annotations[5].points,
   15,
   -12,
+)
+const duplicatedExtremum = duplicateAnnotation(
+  annotations[5],
+  'duplicated-max-rise',
+  10,
+  14,
 )
 if (
   selectedAnnotationHit?.id !== 'text' ||
@@ -389,6 +423,17 @@ if (
     (point, index) =>
       point.x !== annotations[5].points[index].x ||
       point.y !== annotations[5].points[index].y,
+  ) ||
+  rotatedTextHit?.id !== 'rotated-text' ||
+  rotatedTextHit.part !== 'body' ||
+  unrotatedTextMiss !== null ||
+  duplicatedExtremum.id !== 'duplicated-max-rise' ||
+  duplicatedExtremum.rotation !== annotations[5].rotation ||
+  duplicatedExtremum.hydraulicExtremum !== undefined ||
+  duplicatedExtremum.points.some(
+    (point, index) =>
+      point.x !== annotations[5].points[index].x + 10 ||
+      point.y !== annotations[5].points[index].y + 14,
   ) ||
   Math.hypot(
     roundTripPoint.x - annotations[0].points[0].x,

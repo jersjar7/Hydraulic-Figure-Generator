@@ -732,6 +732,33 @@ input[type="color"] {
   padding-top: 2px;
 }
 
+.annotation-rotation-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 66px;
+  align-items: center;
+  gap: 8px;
+}
+
+.annotation-rotation-control input[type="range"] {
+  width: 100%;
+  min-width: 0;
+}
+
+.annotation-rotation-control input[type="number"] {
+  width: 100%;
+}
+
+.annotation-item-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.annotation-item-actions .button {
+  min-width: 0;
+}
+
 .button.danger-outline {
   color: #a33b3b;
   background: white;

@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   ArrowUp,
   Crosshair,
+  Copy,
   Download,
   FileJson,
   FolderOpen,
@@ -61,6 +62,7 @@ import {
 import {
   canvasPointToMap,
   DEFAULT_ELEMENT_POSITIONS,
+  duplicateAnnotation,
   formatHydraulicResultLabel,
   FRAMES,
   hitTestAnnotation,
@@ -127,6 +129,7 @@ const DEFAULT_ANNOTATION_SETTINGS: AnnotationDefaults = {
   fillColor: '#ffffff',
   lineWidth: 3,
   fontSize: 20,
+  rotation: 0,
   dashed: false,
   background: true,
   resultField: 'summary',
@@ -681,6 +684,7 @@ function App() {
       fillColor: annotationDefaults.fillColor,
       lineWidth: annotationDefaults.lineWidth,
       fontSize: annotationDefaults.fontSize,
+      rotation: annotationDefaults.rotation,
       dashed: annotationDefaults.dashed,
       background:
         kind === 'text'
@@ -776,6 +780,7 @@ function App() {
           fillColor: annotationDefaults.fillColor,
           lineWidth: annotationDefaults.lineWidth,
           fontSize: annotationDefaults.fontSize,
+          rotation: annotationDefaults.rotation,
           dashed: annotationDefaults.dashed,
           background: true,
         })
@@ -1152,6 +1157,46 @@ function App() {
     setSelectedAnnotationId(null)
   }
 
+  const duplicateSelectedAnnotation = () => {
+    if (!selectedAnnotation) return
+    const frame = FRAMES[settings.orientation]
+    const bounds = engine.commonBounds()
+    const origin = canvasPointToMap(
+      frame.width / 2,
+      frame.height / 2,
+      bounds,
+      settings,
+    )
+    const shifted = canvasPointToMap(
+      frame.width / 2 + 18,
+      frame.height / 2 + 18,
+      bounds,
+      settings,
+    )
+    const id = globalThis.crypto.randomUUID()
+    const copy = duplicateAnnotation(
+      selectedAnnotation,
+      id,
+      shifted.x - origin.x,
+      shifted.y - origin.y,
+    )
+    if (copy.kind === 'result' && copy.resultField && scene) {
+      const sample = sampleHydraulicResult(
+        scene,
+        bounds,
+        settings,
+        copy.points[0],
+      )
+      if (sample) {
+        copy.text = formatHydraulicResultLabel(copy.resultField, sample)
+      }
+    }
+    setAnnotations((current) => [...current, copy])
+    setSelectedAnnotationId(id)
+    setAnnotationTool('select')
+    setAnnotationStart(null)
+  }
+
   const nudgeSelectedAnnotation = (dx: number, dy: number) => {
     if (!selectedAnnotationId) return
     const frame = FRAMES[settings.orientation]
@@ -1336,7 +1381,7 @@ function App() {
 
   const saveProject = () => {
     const project = {
-      version: 6,
+      version: 7,
       figure: 'fra-wse-difference',
       settings,
       overlays,
@@ -1430,10 +1475,15 @@ function App() {
       if (Array.isArray(project.overlays)) setOverlays(project.overlays)
       if (Array.isArray(project.annotations)) {
         setAnnotations(
-          project.annotations.filter(
-            (annotation): annotation is MapAnnotation =>
-              annotation.kind !== 'marker',
-          ),
+          project.annotations
+            .filter(
+              (annotation): annotation is MapAnnotation =>
+                annotation.kind !== 'marker',
+            )
+            .map((annotation) => ({
+              ...annotation,
+              rotation: annotation.rotation ?? 0,
+            })),
         )
       }
       if (project.annotationDefaults) {
@@ -2322,6 +2372,46 @@ function App() {
                   />
                 </label>
               </div>
+              {selectedAnnotation?.kind !== 'line' &&
+              selectedAnnotation?.kind !== 'arrow' ? (
+                <label className="field">
+                  <span>Text rotation <small>degrees</small></span>
+                  <div className="annotation-rotation-control">
+                    <input
+                      type="range"
+                      min="-180"
+                      max="180"
+                      step="1"
+                      aria-label="Text rotation slider"
+                      value={annotationEditor.rotation ?? 0}
+                      onChange={(event) =>
+                        updateAnnotationAppearance({
+                          rotation: numeric(event.target.value, 0),
+                        })
+                      }
+                    />
+                    <input
+                      type="number"
+                      min="-180"
+                      max="180"
+                      step="1"
+                      aria-label="Text rotation degrees"
+                      value={annotationEditor.rotation ?? 0}
+                      onChange={(event) =>
+                        updateAnnotationAppearance({
+                          rotation: Math.max(
+                            -180,
+                            Math.min(
+                              180,
+                              numeric(event.target.value, 0),
+                            ),
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                </label>
+              ) : null}
               <Toggle
                 label="Dashed line"
                 checked={annotationEditor.dashed}
@@ -2364,14 +2454,24 @@ function App() {
                       />
                     </div>
                   </div>
-                  <button
-                    className="button danger-outline compact full"
-                    type="button"
-                    onClick={deleteSelectedAnnotation}
-                  >
-                    <Trash2 size={15} aria-hidden="true" />
-                    Delete selected
-                  </button>
+                  <div className="annotation-item-actions">
+                    <button
+                      className="button secondary compact"
+                      type="button"
+                      onClick={duplicateSelectedAnnotation}
+                    >
+                      <Copy size={15} aria-hidden="true" />
+                      Duplicate
+                    </button>
+                    <button
+                      className="button danger-outline compact"
+                      type="button"
+                      onClick={deleteSelectedAnnotation}
+                    >
+                      <Trash2 size={15} aria-hidden="true" />
+                      Delete
+                    </button>
+                  </div>
                 </div>
               ) : null}
 
