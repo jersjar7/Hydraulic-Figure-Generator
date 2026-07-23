@@ -825,7 +825,9 @@ function drawAnnotationSelection(
       7,
     )
     context.stroke()
-    drawSelectionHandle(context, points[0])
+    if (!annotation.hydraulicExtremum) {
+      drawSelectionHandle(context, points[0])
+    }
   } else if (annotation.kind === 'text') {
     const layout = annotationTextLayout(context, annotation, points[0])
     roundedRectangle(
@@ -901,6 +903,14 @@ export function moveAnnotationPoints(
   dy: number,
 ) {
   const points = originalPoints.map((point) => ({ ...point }))
+  if (annotation.hydraulicExtremum) {
+    if (part !== 'body' || !points[1]) return points
+    points[1] = {
+      x: points[1].x + dx,
+      y: points[1].y + dy,
+    }
+    return points
+  }
   const pointIndex =
     part === 'start'
       ? 0

@@ -234,6 +234,8 @@ export type ResultLabelField =
   | 'existingDepth'
   | 'proposedDepth'
 
+export type WseExtremumKind = 'max-rise' | 'max-reduction'
+
 export type MapAnnotation = {
   id: string
   kind: AnnotationKind
@@ -246,6 +248,7 @@ export type MapAnnotation = {
   dashed: boolean
   background: boolean
   resultField?: ResultLabelField
+  hydraulicExtremum?: WseExtremumKind
 }
 
 export type AnnotationDefaults = {

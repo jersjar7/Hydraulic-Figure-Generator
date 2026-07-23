@@ -544,6 +544,73 @@ input[type="color"] {
   background: white;
 }
 
+.extrema-callout-card {
+  display: grid;
+  gap: 8px;
+  margin: 9px 0 12px;
+  padding: 10px;
+  background: #f6f8fa;
+  border: 1px solid #d5dee7;
+  border-radius: 6px;
+}
+
+.extrema-callout-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #253b52;
+  font-size: 11px;
+}
+
+.extrema-callout-heading svg {
+  color: #176da8;
+}
+
+.extrema-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.extrema-value {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 2px 5px;
+  padding: 7px;
+  background: white;
+  border: 1px solid #d8e0e8;
+  border-radius: 5px;
+  font-size: 9px;
+}
+
+.extrema-value svg {
+  grid-row: 1 / span 2;
+}
+
+.extrema-value span {
+  color: #65778a;
+  line-height: 1;
+}
+
+.extrema-value strong {
+  overflow: hidden;
+  color: #273c52;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.extrema-value.rise svg {
+  color: #b42318;
+}
+
+.extrema-value.reduction svg {
+  color: #175cd3;
+}
+
 .annotation-tools {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

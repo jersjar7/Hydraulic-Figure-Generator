@@ -4,7 +4,11 @@ import { File } from 'node:buffer'
 import { tmpdir } from 'node:os'
 import { createCanvas, loadImage } from '@napi-rs/canvas'
 import { cloneDefaultElementStyles } from '../src/core/figureElements'
-import { HydraulicEngine } from '../src/core/hydraulicEngine'
+import {
+  findWseDifferenceExtrema,
+  formatWseExtremumLabel,
+  HydraulicEngine,
+} from '../src/core/hydraulicEngine'
 import {
   canvasPointToMap,
   DEFAULT_ELEMENT_POSITIONS,
@@ -84,6 +88,28 @@ if (existingIndex < 0 || proposedIndex < 0) {
 }
 
 const scene = engine.buildWseDifference(existingIndex, proposedIndex, 0)
+const extrema = findWseDifferenceExtrema(scene)
+const validDifferences = Array.from(scene.diff).filter(
+  (value) => Number.isFinite(value) && value > -900,
+)
+const expectedRise = Math.max(...validDifferences)
+const expectedReduction = Math.min(...validDifferences)
+if (
+  !extrema.rise ||
+  !extrema.reduction ||
+  extrema.rise.value !== expectedRise ||
+  extrema.reduction.value !== expectedReduction ||
+  extrema.rise.value <= 0 ||
+  extrema.reduction.value >= 0
+) {
+  throw new Error(
+    `WSE extrema were not identified correctly: ${JSON.stringify({
+      extrema,
+      expectedRise,
+      expectedReduction,
+    })}`,
+  )
+}
 const validProposedWetNodes = Array.from(scene.proposedWseWet).filter(
   (value) => Number.isFinite(value) && value > -900,
 ).length
@@ -231,6 +257,38 @@ const annotations: MapAnnotation[] = [
     resultField: 'summary',
     ...annotationStyle,
   },
+  {
+    id: 'max-rise',
+    kind: 'leader',
+    hydraulicExtremum: 'max-rise',
+    points: [
+      extrema.rise.point,
+      {
+        x: extrema.rise.point.x + annotationOffset,
+        y: extrema.rise.point.y + annotationOffset,
+      },
+    ],
+    text: formatWseExtremumLabel('max-rise', extrema.rise.value),
+    ...annotationStyle,
+  },
+  {
+    id: 'max-reduction',
+    kind: 'leader',
+    hydraulicExtremum: 'max-reduction',
+    points: [
+      extrema.reduction.point,
+      {
+        x: extrema.reduction.point.x - annotationOffset,
+        y: extrema.reduction.point.y - annotationOffset,
+      },
+    ],
+    text: formatWseExtremumLabel(
+      'max-reduction',
+      extrema.reduction.value,
+    ),
+    ...annotationStyle,
+    color: '#175cd3',
+  },
 ]
 const textScreenPoint = mapPointToCanvas(
   annotations[0].points[0],
@@ -295,6 +353,20 @@ const leaderWholeMoved = moveAnnotationPoints(
   8,
   12,
 )
+const extremumLabelMoved = moveAnnotationPoints(
+  annotations[5],
+  'body',
+  annotations[5].points,
+  15,
+  -12,
+)
+const extremumTargetMoved = moveAnnotationPoints(
+  annotations[5],
+  'start',
+  annotations[5].points,
+  15,
+  -12,
+)
 if (
   selectedAnnotationHit?.id !== 'text' ||
   selectedAnnotationHit.part !== 'body' ||
@@ -310,6 +382,13 @@ if (
     (point, index) =>
       point.x !== annotations[1].points[index].x + 8 ||
       point.y !== annotations[1].points[index].y + 12,
+  ) ||
+  extremumLabelMoved[0].x !== annotations[5].points[0].x ||
+  extremumLabelMoved[1].x !== annotations[5].points[1].x + 15 ||
+  extremumTargetMoved.some(
+    (point, index) =>
+      point.x !== annotations[5].points[index].x ||
+      point.y !== annotations[5].points[index].y,
   ) ||
   Math.hypot(
     roundTripPoint.x - annotations[0].points[0].x,
@@ -491,6 +570,8 @@ console.log(
         validDifferenceNodes: scene.validDifferenceNodes,
         validProposedWetNodes,
         automaticLegendBound: scene.maxAbs,
+        maxWseRise: extrema.rise.value,
+        maxWseReduction: extrema.reduction.value,
       },
       overlay: {
         layers: overlayResult.overlays.map((overlay) => overlay.name),
@@ -506,7 +587,9 @@ console.log(
         coloredPixelSamples: coloredPixels,
         annotations: annotations.length,
         selectedAnnotationId: 'leader',
-        sampledResultLabel: annotations.at(-1)?.text,
+        sampledResultLabel: annotations.find(
+          (annotation) => annotation.id === 'result',
+        )?.text,
         basemap: testBasemap,
         differenceOutlinePixels,
       },

@@ -34,6 +34,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -50,13 +51,20 @@ import {
   DEFAULT_ELEMENT_STYLES,
   mergeElementStyles,
 } from './core/figureElements'
-import { HydraulicEngine, runDisplayName } from './core/hydraulicEngine'
+import {
+  findWseDifferenceExtrema,
+  formatWseExtremumLabel,
+  HydraulicEngine,
+  runDisplayName,
+  type WseDifferenceExtremum,
+} from './core/hydraulicEngine'
 import {
   canvasPointToMap,
   DEFAULT_ELEMENT_POSITIONS,
   formatHydraulicResultLabel,
   FRAMES,
   hitTestAnnotation,
+  mapPointToCanvas,
   moveAnnotationPoints,
   renderWseDifferenceMap,
   sampleHydraulicResult,
@@ -66,6 +74,7 @@ import { readShapefileOverlays } from './core/shapefile'
 import type {
   AnnotationDefaults,
   AnnotationTool,
+  Bounds,
   ConditionKey,
   FigureSettings,
   IngestNotice,
@@ -76,6 +85,7 @@ import type {
   MapElementStyles,
   MapOverlay,
   ResultLabelField,
+  WseExtremumKind,
   WseDifferenceScene,
 } from './core/types'
 
@@ -273,6 +283,32 @@ function annotationGuidance(tool: AnnotationTool, hasStart: boolean) {
   return 'Choose result location'
 }
 
+function defaultExtremumLabelPoint(
+  extremum: WseDifferenceExtremum,
+  bounds: Bounds,
+  settings: FigureSettings,
+) {
+  const frame = FRAMES[settings.orientation]
+  const target = mapPointToCanvas(extremum.point, bounds, settings)
+  const horizontalOffset = target.x < frame.width / 2 ? 190 : -190
+  const verticalOffset = extremum.kind === 'max-rise' ? -90 : 90
+  const label = {
+    x: Math.max(
+      190,
+      Math.min(frame.width - 190, target.x + horizontalOffset),
+    ),
+    y: Math.max(
+      65,
+      Math.min(frame.height - 65, target.y + verticalOffset),
+    ),
+  }
+  return canvasPointToMap(label.x, label.y, bounds, settings)
+}
+
+function extremumDisplayName(kind: WseExtremumKind) {
+  return kind === 'max-rise' ? 'Max WSE rise' : 'Max WSE reduction'
+}
+
 function App() {
   const [engine] = useState(() => new HydraulicEngine())
   const [dataVersion, setDataVersion] = useState(0)
@@ -329,6 +365,13 @@ function App() {
     selectedAnnotation?.kind === 'result'
       ? (selectedAnnotation.resultField ?? annotationDefaults.resultField)
       : annotationDefaults.resultField
+  const wseExtrema = useMemo(
+    () => (scene ? findWseDifferenceExtrema(scene) : null),
+    [scene],
+  )
+  const extremaCalloutCount = annotations.filter(
+    (annotation) => annotation.hydraulicExtremum,
+  ).length
 
   const appendNotices = useCallback((incoming: IngestNotice[]) => {
     if (incoming.length === 0) return
@@ -552,6 +595,47 @@ function App() {
   }, [engine, scene, settings])
 
   useEffect(() => {
+    if (!wseExtrema) return
+    const byKind = new globalThis.Map(
+      [wseExtrema.rise, wseExtrema.reduction]
+        .filter(
+          (item): item is WseDifferenceExtremum => item !== null,
+        )
+        .map((extremum) => [extremum.kind, extremum]),
+    )
+    setAnnotations((current) =>
+      current.flatMap((annotation) => {
+        const kind = annotation.hydraulicExtremum
+        if (!kind) return [annotation]
+        const extremum = byKind.get(kind)
+        if (!extremum) return []
+        const previousTarget = annotation.points[0]
+        const previousLabel = annotation.points[1]
+        const labelPoint =
+          previousTarget && previousLabel
+            ? {
+                x:
+                  extremum.point.x +
+                  previousLabel.x -
+                  previousTarget.x,
+                y:
+                  extremum.point.y +
+                  previousLabel.y -
+                  previousTarget.y,
+              }
+            : extremum.point
+        return [
+          {
+            ...annotation,
+            points: [extremum.point, labelPoint],
+            text: formatWseExtremumLabel(kind, extremum.value),
+          },
+        ]
+      }),
+    )
+  }, [wseExtrema])
+
+  useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       const target = event.target
       if (
@@ -610,6 +694,120 @@ function App() {
     setSelectedAnnotationId(id)
     setAnnotationTool('select')
     return annotation
+  }
+
+  const addWseExtremaCallouts = () => {
+    if (!scene || !wseExtrema) return
+    const extrema = [wseExtrema.rise, wseExtrema.reduction].filter(
+      (item): item is WseDifferenceExtremum => item !== null,
+    )
+    if (extrema.length === 0) {
+      appendNotices([
+        {
+          level: 'warning',
+          text: 'No positive or negative WSE differences are available to label.',
+        },
+      ])
+      return
+    }
+
+    const bounds = engine.commonBounds()
+    const ids = new globalThis.Map<WseExtremumKind, string>()
+    for (const extremum of extrema) {
+      ids.set(
+        extremum.kind,
+        annotations.find(
+          (annotation) =>
+            annotation.hydraulicExtremum === extremum.kind,
+        )?.id ?? globalThis.crypto.randomUUID(),
+      )
+    }
+
+    setAnnotations((current) => {
+      const extremaByKind = new globalThis.Map(
+        extrema.map((extremum) => [extremum.kind, extremum]),
+      )
+      const seen = new Set<WseExtremumKind>()
+      const next = current.flatMap((annotation) => {
+        const kind = annotation.hydraulicExtremum
+        if (!kind) return [annotation]
+        const extremum = extremaByKind.get(kind)
+        if (!extremum || seen.has(kind)) return []
+        seen.add(kind)
+        const previousTarget = annotation.points[0]
+        const previousLabel = annotation.points[1]
+        const labelPoint =
+          previousTarget && previousLabel
+            ? {
+                x:
+                  extremum.point.x +
+                  previousLabel.x -
+                  previousTarget.x,
+                y:
+                  extremum.point.y +
+                  previousLabel.y -
+                  previousTarget.y,
+              }
+            : defaultExtremumLabelPoint(extremum, bounds, settings)
+        return [
+          {
+            ...annotation,
+            kind: 'leader' as const,
+            points: [extremum.point, labelPoint],
+            text: formatWseExtremumLabel(kind, extremum.value),
+            resultField: undefined,
+          },
+        ]
+      })
+
+      for (const extremum of extrema) {
+        if (seen.has(extremum.kind)) continue
+        next.push({
+          id: ids.get(extremum.kind) ?? globalThis.crypto.randomUUID(),
+          kind: 'leader',
+          hydraulicExtremum: extremum.kind,
+          points: [
+            extremum.point,
+            defaultExtremumLabelPoint(extremum, bounds, settings),
+          ],
+          text: formatWseExtremumLabel(extremum.kind, extremum.value),
+          color:
+            extremum.kind === 'max-rise' ? '#b42318' : '#175cd3',
+          fillColor: annotationDefaults.fillColor,
+          lineWidth: annotationDefaults.lineWidth,
+          fontSize: annotationDefaults.fontSize,
+          dashed: annotationDefaults.dashed,
+          background: true,
+        })
+      }
+      return next
+    })
+
+    setSelectedAnnotationId(ids.get(extrema[0].kind) ?? null)
+    setAnnotationTool('select')
+    setAnnotationStart(null)
+    const summary = extrema
+      .map((extremum) =>
+        formatWseExtremumLabel(extremum.kind, extremum.value),
+      )
+      .join('; ')
+    appendNotices([
+      {
+        level: 'success',
+        text: `${extremaCalloutCount > 0 ? 'Refreshed' : 'Added'} ${summary}.`,
+      },
+      ...(extrema.length < 2
+        ? [
+            {
+              level: 'warning' as const,
+              text:
+                wseExtrema.rise === null
+                  ? 'No positive WSE rise was found in the comparison.'
+                  : 'No negative WSE reduction was found in the comparison.',
+            },
+          ]
+        : []),
+    ])
   }
 
   const updateAnnotationAppearance = (
@@ -767,6 +965,9 @@ function App() {
       if (hit) {
         const annotation = annotations.find((item) => item.id === hit.id)
         if (annotation) {
+          if (annotation.hydraulicExtremum && hit.part !== 'body') {
+            return
+          }
           annotationDragRef.current = {
             id: hit.id,
             part: hit.part,
@@ -971,10 +1172,14 @@ function App() {
         annotation.id === selectedAnnotationId
           ? {
               ...annotation,
-              points: annotation.points.map((point) => ({
-                x: point.x + offset.x - center.x,
-                y: point.y + offset.y - center.y,
-              })),
+              points: annotation.points.map((point, index) =>
+                annotation.hydraulicExtremum && index === 0
+                  ? point
+                  : {
+                      x: point.x + offset.x - center.x,
+                      y: point.y + offset.y - center.y,
+                    },
+              ),
             }
           : annotation,
       ),
@@ -1131,7 +1336,7 @@ function App() {
 
   const saveProject = () => {
     const project = {
-      version: 5,
+      version: 6,
       figure: 'fra-wse-difference',
       settings,
       overlays,
@@ -1913,6 +2118,48 @@ function App() {
               icon={<MessageSquareText size={17} />}
               title="Annotations and callouts"
             >
+              <div className="extrema-callout-card">
+                <div className="extrema-callout-heading">
+                  <Crosshair size={17} aria-hidden="true" />
+                  <strong>Maximum WSE change</strong>
+                </div>
+                <div className="extrema-values">
+                  <div className="extrema-value rise">
+                    <ArrowUp size={15} aria-hidden="true" />
+                    <span>Rise</span>
+                    <strong>
+                      {wseExtrema?.rise
+                        ? `+${wseExtrema.rise.value.toFixed(2)} ft`
+                        : 'None'}
+                    </strong>
+                  </div>
+                  <div className="extrema-value reduction">
+                    <ArrowDown size={15} aria-hidden="true" />
+                    <span>Reduction</span>
+                    <strong>
+                      {wseExtrema?.reduction
+                        ? `${wseExtrema.reduction.value.toFixed(2)} ft`
+                        : 'None'}
+                    </strong>
+                  </div>
+                </div>
+                <button
+                  className="button secondary compact full"
+                  type="button"
+                  title="Place labels at the maximum positive and negative Proposed-minus-Existing WSE values"
+                  disabled={
+                    !scene ||
+                    (!wseExtrema?.rise && !wseExtrema?.reduction)
+                  }
+                  onClick={addWseExtremaCallouts}
+                >
+                  <Crosshair size={15} aria-hidden="true" />
+                  {extremaCalloutCount > 0
+                    ? 'Refresh max WSE callouts'
+                    : 'Add max WSE callouts'}
+                </button>
+              </div>
+
               <div
                 className="annotation-tools"
                 role="toolbar"
@@ -1942,7 +2189,13 @@ function App() {
                 className={`annotation-guidance${annotationStart ? ' awaiting-point' : ''}`}
                 aria-live="polite"
               >
-                {annotationGuidance(annotationTool, Boolean(annotationStart))}
+                {selectedAnnotation?.hydraulicExtremum &&
+                annotationTool === 'select'
+                  ? 'Drag the label to reposition it; its computed target stays fixed'
+                  : annotationGuidance(
+                      annotationTool,
+                      Boolean(annotationStart),
+                    )}
               </p>
 
               {annotationStart ? (
@@ -1959,6 +2212,7 @@ function App() {
               {(annotationTool === 'text' ||
                 annotationTool === 'leader' ||
                 (selectedAnnotation &&
+                  !selectedAnnotation.hydraulicExtremum &&
                   selectedAnnotation.kind !== 'line' &&
                   selectedAnnotation.kind !== 'arrow' &&
                   selectedAnnotation.kind !== 'result')) ? (
@@ -1978,7 +2232,8 @@ function App() {
               ) : null}
 
               {annotationTool === 'result' ||
-              selectedAnnotation?.kind === 'result' ? (
+              (selectedAnnotation?.kind === 'result' &&
+                !selectedAnnotation.hydraulicExtremum) ? (
                 <label className="field">
                   <span>Automatic result label</span>
                   <select
@@ -2002,7 +2257,11 @@ function App() {
                 <span>{selectedAnnotation ? 'Selected style' : 'New item style'}</span>
                 {selectedAnnotation ? (
                   <span className="annotation-selected-kind">
-                    {selectedAnnotation.kind}
+                    {selectedAnnotation.hydraulicExtremum
+                      ? extremumDisplayName(
+                          selectedAnnotation.hydraulicExtremum,
+                        )
+                      : selectedAnnotation.kind}
                   </span>
                 ) : null}
               </div>
@@ -2136,9 +2395,11 @@ function App() {
                       }}
                     >
                       <span>
-                        {annotation.kind.charAt(0).toUpperCase() +
-                          annotation.kind.slice(1)}{' '}
-                        {index + 1}
+                        {annotation.hydraulicExtremum
+                          ? extremumDisplayName(
+                              annotation.hydraulicExtremum,
+                            )
+                          : `${annotation.kind.charAt(0).toUpperCase()}${annotation.kind.slice(1)} ${index + 1}`}
                       </span>
                       <small>
                         {annotation.text.split(/\r?\n/)[0] || 'Untitled'}
