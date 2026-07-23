@@ -43,7 +43,7 @@ import {
 } from 'react'
 import './App.css'
 import { ControlSection } from './components/ControlSection'
-import { DiagnosticsDrawer } from './components/DiagnosticsDrawer'
+import { DiagnosticsWidget } from './components/DiagnosticsWidget'
 import { FileDrop } from './components/FileDrop'
 import { HydraulicEngine, runDisplayName } from './core/hydraulicEngine'
 import {
@@ -230,7 +230,6 @@ function App() {
   const [notices, setNotices] = useState<IngestNotice[]>([])
   const [scene, setScene] = useState<WseDifferenceScene | null>(null)
   const [busy, setBusy] = useState(false)
-  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
   const [leftOpen, setLeftOpen] = useState(false)
   const [rightOpen, setRightOpen] = useState(false)
   const [activeSettingsSection, setActiveSettingsSection] =
@@ -267,9 +266,6 @@ function App() {
   const appendNotices = useCallback((incoming: IngestNotice[]) => {
     if (incoming.length === 0) return
     setNotices((current) => [...current, ...incoming].slice(-40))
-    if (incoming.some((notice) => notice.level !== 'success')) {
-      setDiagnosticsOpen(true)
-    }
   }, [])
 
   const updateSettings = <Key extends keyof FigureSettings>(
@@ -1232,11 +1228,7 @@ function App() {
                 Processing figure
               </div>
             ) : null}
-            <DiagnosticsDrawer
-              notices={notices}
-              open={diagnosticsOpen}
-              onToggle={() => setDiagnosticsOpen((value) => !value)}
-            />
+            <DiagnosticsWidget notices={notices} />
           </div>
         </section>
 
