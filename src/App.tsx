@@ -74,9 +74,8 @@ import type {
 const DEFAULT_SETTINGS: FigureSettings = {
   orientation: 'landscape',
   dryDepth: 0.05,
-  contourInterval: 0.5,
-  contourColor: '#d92727',
-  showContours: true,
+  differenceOutlineColor: '#111111',
+  showDifferenceOutlines: true,
   showWetDry: true,
   showOverlays: true,
   showTitle: true,
@@ -348,7 +347,7 @@ function App() {
       appendNotices([
         {
           level: 'success',
-          text: `WSE difference ready from ${nextScene.validDifferenceNodes.toLocaleString()} comparable Existing nodes. Proposed contours use the full Proposed mesh.`,
+          text: `WSE difference ready from ${nextScene.validDifferenceNodes.toLocaleString()} comparable Existing nodes.`,
         },
       ])
       setLeftOpen(false)
@@ -847,7 +846,7 @@ function App() {
 
   const saveProject = () => {
     const project = {
-      version: 2,
+      version: 3,
       figure: 'fra-wse-difference',
       settings,
       overlays,
@@ -872,19 +871,35 @@ function App() {
     if (!file) return
     try {
       const project = JSON.parse(await file.text()) as {
-        settings?: Partial<FigureSettings>
+        settings?: Partial<FigureSettings> & {
+          contourColor?: string
+          showContours?: boolean
+        }
         overlays?: MapOverlay[]
         annotations?: MapAnnotation[]
         annotationDefaults?: Partial<AnnotationDefaults>
         selectedRuns?: { existingRun?: number; proposedRun?: number }
       }
       if (project.settings) {
+        const {
+          contourColor: legacyContourColor,
+          showContours: legacyShowContours,
+          ...projectSettings
+        } = project.settings
         setSettings((current) => ({
           ...current,
-          ...project.settings,
+          ...projectSettings,
+          differenceOutlineColor:
+            projectSettings.differenceOutlineColor ??
+            legacyContourColor ??
+            current.differenceOutlineColor,
+          showDifferenceOutlines:
+            projectSettings.showDifferenceOutlines ??
+            legacyShowContours ??
+            current.showDifferenceOutlines,
           elementPositions: {
             ...current.elementPositions,
-            ...(project.settings?.elementPositions ?? {}),
+            ...(projectSettings.elementPositions ?? {}),
           },
         }))
       }
@@ -1341,37 +1356,25 @@ function App() {
                 onChange={(checked) => updateSettings('showWetDry', checked)}
               />
               <Toggle
-                label="Proposed WSE contours"
-                checked={settings.showContours}
-                onChange={(checked) => updateSettings('showContours', checked)}
+                label="WSE difference outlines"
+                checked={settings.showDifferenceOutlines}
+                onChange={(checked) =>
+                  updateSettings('showDifferenceOutlines', checked)
+                }
               />
-              <div className="field-grid two">
-                <label className="field">
-                  <span>Contour interval <small>ft</small></span>
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.1"
-                    value={settings.contourInterval}
-                    onChange={(event) =>
-                      updateSettings(
-                        'contourInterval',
-                        numeric(event.target.value, 0.5),
-                      )
-                    }
-                  />
-                </label>
-                <label className="field color-field">
-                  <span>Contour color</span>
-                  <input
-                    type="color"
-                    value={settings.contourColor}
-                    onChange={(event) =>
-                      updateSettings('contourColor', event.target.value)
-                    }
-                  />
-                </label>
-              </div>
+              <label className="field color-field">
+                <span>Outline color</span>
+                <input
+                  type="color"
+                  value={settings.differenceOutlineColor}
+                  onChange={(event) =>
+                    updateSettings(
+                      'differenceOutlineColor',
+                      event.target.value,
+                    )
+                  }
+                />
+              </label>
             </ControlSection>
             ) : null}
 

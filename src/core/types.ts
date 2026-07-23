@@ -190,9 +190,8 @@ export type AnnotationDefaults = {
 export type FigureSettings = {
   orientation: 'landscape' | 'portrait'
   dryDepth: number
-  contourInterval: number
-  contourColor: string
-  showContours: boolean
+  differenceOutlineColor: string
+  showDifferenceOutlines: boolean
   showWetDry: boolean
   showOverlays: boolean
   showTitle: boolean

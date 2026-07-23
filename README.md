@@ -9,7 +9,7 @@ The first figure module is the FRA WSE Difference map:
 - Detects Existing and Proposed geometry and datasets H5 files by contents.
 - Pairs selectable hydraulic runs.
 - Calculates Proposed minus Existing WSE where both conditions have results.
-- Draws Proposed WSE contours across the full Proposed mesh.
+- Classifies WSE differences to match the legend and outlines each class boundary.
 - Classifies newly inundated and newly dry areas using a configurable dry-depth
   threshold.
 - Reads zipped shapefile overlays.

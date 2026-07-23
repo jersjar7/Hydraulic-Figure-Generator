@@ -70,7 +70,7 @@ if (existingIndex < 0 || proposedIndex < 0) {
 }
 
 const scene = engine.buildWseDifference(existingIndex, proposedIndex, 0.05)
-const validProposedContourNodes = Array.from(scene.proposedWseWet).filter(
+const validProposedWetNodes = Array.from(scene.proposedWseWet).filter(
   (value) => Number.isFinite(value) && value > -900,
 ).length
 const overlayPath = join(dataDirectory, 'Proposed_CL.zip')
@@ -86,20 +86,19 @@ const overlayFeatureCount = overlayResult.overlays.reduce(
 
 if (
   scene.validDifferenceNodes <= 0 ||
-  validProposedContourNodes <= 0 ||
+  validProposedWetNodes <= 0 ||
   overlayFeatureCount <= 0
 ) {
   throw new Error(
-    'The WSE comparison, proposed contour surface, or centerline overlay is empty.',
+    'The WSE comparison, Proposed wet surface, or centerline overlay is empty.',
   )
 }
 
 const renderSettings: FigureSettings = {
   orientation: 'landscape',
   dryDepth: 0.05,
-  contourInterval: 0.5,
-  contourColor: '#d92727',
-  showContours: true,
+  differenceOutlineColor: '#111111',
+  showDifferenceOutlines: true,
   showWetDry: true,
   showOverlays: true,
   showTitle: true,
@@ -282,6 +281,59 @@ if (testBasemap && coloredPixels < 100_000) {
     `Rendered basemap appears blank (${coloredPixels} colored samples).`,
   )
 }
+
+const outlineTestSettings: FigureSettings = {
+  ...renderSettings,
+  basemapOpacity: 0,
+  showWetDry: false,
+  showOverlays: false,
+  showTitle: false,
+  showLegend: false,
+  showNorth: false,
+  showScale: false,
+}
+const outlineCanvas = createCanvas(1650, 1275)
+const noOutlineCanvas = createCanvas(1650, 1275)
+await Promise.all([
+  renderWseDifferenceMap(
+    outlineCanvas as unknown as HTMLCanvasElement,
+    scene,
+    engine.commonBounds(),
+    outlineTestSettings,
+    [],
+  ),
+  renderWseDifferenceMap(
+    noOutlineCanvas as unknown as HTMLCanvasElement,
+    scene,
+    engine.commonBounds(),
+    { ...outlineTestSettings, showDifferenceOutlines: false },
+    [],
+  ),
+])
+const outlinePixels = outlineCanvas
+  .getContext('2d')
+  .getImageData(0, 0, outlineCanvas.width, outlineCanvas.height).data
+const noOutlinePixels = noOutlineCanvas
+  .getContext('2d')
+  .getImageData(0, 0, noOutlineCanvas.width, noOutlineCanvas.height).data
+let differenceOutlinePixels = 0
+for (let index = 0; index < outlinePixels.length; index += 4) {
+  const outlinedBrightness =
+    outlinePixels[index] + outlinePixels[index + 1] + outlinePixels[index + 2]
+  const plainBrightness =
+    noOutlinePixels[index] +
+    noOutlinePixels[index + 1] +
+    noOutlinePixels[index + 2]
+  if (outlinedBrightness < 240 && plainBrightness - outlinedBrightness > 90) {
+    differenceOutlinePixels += 1
+  }
+}
+if (differenceOutlinePixels < 1_000) {
+  throw new Error(
+    `WSE-difference class outlines appear missing (${differenceOutlinePixels} changed pixels).`,
+  )
+}
+
 const outputPath =
   process.env.HFG_TEST_OUTPUT || join(tmpdir(), 'hydraulic-site6-render.png')
 await writeFile(outputPath, canvas.toBuffer('image/png'))
@@ -302,7 +354,7 @@ console.log(
         existingRun: scene.existing.run.name,
         proposedRun: scene.proposed.run.name,
         validDifferenceNodes: scene.validDifferenceNodes,
-        validProposedContourNodes,
+        validProposedWetNodes,
         automaticLegendBound: scene.maxAbs,
       },
       overlay: {
@@ -318,6 +370,7 @@ console.log(
         selectedAnnotationId,
         sampledResultLabel: annotations.at(-1)?.text,
         basemap: testBasemap,
+        differenceOutlinePixels,
       },
     },
     null,

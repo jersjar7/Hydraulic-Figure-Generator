@@ -277,14 +277,78 @@ function differenceColor(value: number, maxAbsolute: number) {
   return `rgb(${color.join(',')})`
 }
 
-function fillMesh(
+function differenceBandCount(
+  maxAbsolute: number,
+  interval: number | null,
+) {
+  return interval && interval > 0
+    ? Math.max(1, Math.min(80, Math.round((2 * maxAbsolute) / interval)))
+    : 8
+}
+
+function differenceBreaks(
+  maxAbsolute: number,
+  interval: number | null,
+) {
+  const bandCount = differenceBandCount(maxAbsolute, interval)
+  return Array.from(
+    { length: Math.max(0, bandCount - 1) },
+    (_, index) =>
+      -maxAbsolute + ((index + 1) * 2 * maxAbsolute) / bandCount,
+  )
+}
+
+type ScalarVertex = {
+  x: number
+  y: number
+  value: number
+}
+
+function clipScalarPolygon(
+  polygon: ScalarVertex[],
+  threshold: number,
+  keepAbove: boolean,
+) {
+  if (!Number.isFinite(threshold) || polygon.length === 0) return polygon
+  const output: ScalarVertex[] = []
+
+  for (let index = 0; index < polygon.length; index += 1) {
+    const current = polygon[index]
+    const previous = polygon[(index + polygon.length - 1) % polygon.length]
+    const currentInside = keepAbove
+      ? current.value >= threshold
+      : current.value <= threshold
+    const previousInside = keepAbove
+      ? previous.value >= threshold
+      : previous.value <= threshold
+
+    if (currentInside !== previousInside) {
+      const fraction =
+        (threshold - previous.value) / (current.value - previous.value)
+      output.push({
+        x: previous.x + (current.x - previous.x) * fraction,
+        y: previous.y + (current.y - previous.y) * fraction,
+        value: threshold,
+      })
+    }
+    if (currentInside) output.push(current)
+  }
+
+  return output
+}
+
+function fillDifferenceBands(
   context: CanvasRenderingContext2D,
   localX: Float64Array,
   localY: Float64Array,
   triangles: Uint32Array,
   values: Float32Array,
-  colorForValue: (value: number) => string | null,
+  maxAbsolute: number,
+  interval: number | null,
 ) {
+  const bandCount = differenceBandCount(maxAbsolute, interval)
+  const step = (2 * maxAbsolute) / bandCount
+
   for (let triangle = 0; triangle < triangles.length; triangle += 3) {
     const first = triangles[triangle]
     const second = triangles[triangle + 1]
@@ -293,15 +357,32 @@ function fillMesh(
     const valueB = values[second]
     const valueC = values[third]
     if (!VALID(valueA) || !VALID(valueB) || !VALID(valueC)) continue
-    const color = colorForValue((valueA + valueB + valueC) / 3)
-    if (!color) continue
-    context.fillStyle = color
-    context.beginPath()
-    context.moveTo(localX[first], localY[first])
-    context.lineTo(localX[second], localY[second])
-    context.lineTo(localX[third], localY[third])
-    context.closePath()
-    context.fill()
+    const source: ScalarVertex[] = [
+      { x: localX[first], y: localY[first], value: valueA },
+      { x: localX[second], y: localY[second], value: valueB },
+      { x: localX[third], y: localY[third], value: valueC },
+    ]
+
+    for (let band = 0; band < bandCount; band += 1) {
+      const lower =
+        band === 0 ? Number.NEGATIVE_INFINITY : -maxAbsolute + band * step
+      const upper =
+        band === bandCount - 1
+          ? Number.POSITIVE_INFINITY
+          : -maxAbsolute + (band + 1) * step
+      let polygon = clipScalarPolygon(source, lower, true)
+      polygon = clipScalarPolygon(polygon, upper, false)
+      if (polygon.length < 3) continue
+      const middle = -maxAbsolute + (band + 0.5) * step
+      context.fillStyle = differenceColor(middle, maxAbsolute) ?? '#ffffff'
+      context.beginPath()
+      context.moveTo(polygon[0].x, polygon[0].y)
+      for (let index = 1; index < polygon.length; index += 1) {
+        context.lineTo(polygon[index].x, polygon[index].y)
+      }
+      context.closePath()
+      context.fill()
+    }
   }
 }
 
@@ -341,42 +422,24 @@ function fillWetDry(
   }
 }
 
-function valueStats(values: Float32Array) {
-  let minimum = Number.POSITIVE_INFINITY
-  let maximum = Number.NEGATIVE_INFINITY
-  let valid = 0
-  for (const value of values) {
-    if (!VALID(value)) continue
-    minimum = Math.min(minimum, value)
-    maximum = Math.max(maximum, value)
-    valid += 1
-  }
-  return { minimum, maximum, valid }
-}
-
-function drawContours(
+function drawContourLevels(
   context: CanvasRenderingContext2D,
   localX: Float64Array,
   localY: Float64Array,
   triangles: Uint32Array,
   values: Float32Array,
-  interval: number,
+  levels: number[],
   color: string,
 ) {
-  if (!Number.isFinite(interval) || interval <= 0) return
-  const stats = valueStats(values)
-  if (stats.valid === 0) return
-  const firstLevel = Math.ceil(stats.minimum / interval) * interval
+  if (levels.length === 0) return
   context.save()
   context.strokeStyle = color
-  context.lineWidth = 1.6
-  context.globalAlpha = 0.92
+  context.lineWidth = 1.5
+  context.globalAlpha = 0.9
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
 
-  for (
-    let level = firstLevel;
-    level <= stats.maximum + 1e-9;
-    level += interval
-  ) {
+  for (const level of levels) {
     context.beginPath()
     for (let triangle = 0; triangle < triangles.length; triangle += 3) {
       const ids = [
@@ -398,8 +461,8 @@ function drawContours(
           continue
         }
         if (
-          level >= Math.min(firstValue, secondValue) &&
-          level <= Math.max(firstValue, secondValue)
+          (firstValue <= level && secondValue > level) ||
+          (secondValue <= level && firstValue > level)
         ) {
           const fraction = (level - firstValue) / (secondValue - firstValue)
           intersections.push([
@@ -415,6 +478,53 @@ function drawContours(
     }
     context.stroke()
   }
+  context.restore()
+}
+
+function drawValidBoundary(
+  context: CanvasRenderingContext2D,
+  localX: Float64Array,
+  localY: Float64Array,
+  triangles: Uint32Array,
+  values: Float32Array,
+  color: string,
+) {
+  const edges = new Map<
+    string,
+    { first: number; second: number; count: number }
+  >()
+
+  for (let triangle = 0; triangle < triangles.length; triangle += 3) {
+    const ids = [
+      triangles[triangle],
+      triangles[triangle + 1],
+      triangles[triangle + 2],
+    ]
+    if (ids.some((id) => !VALID(values[id]))) continue
+    for (let edge = 0; edge < 3; edge += 1) {
+      const first = ids[edge]
+      const second = ids[(edge + 1) % 3]
+      const key =
+        first < second ? `${first}:${second}` : `${second}:${first}`
+      const current = edges.get(key)
+      if (current) current.count += 1
+      else edges.set(key, { first, second, count: 1 })
+    }
+  }
+
+  context.save()
+  context.strokeStyle = color
+  context.lineWidth = 1.5
+  context.globalAlpha = 0.9
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
+  context.beginPath()
+  for (const edge of edges.values()) {
+    if (edge.count !== 1) continue
+    context.moveTo(localX[edge.first], localY[edge.first])
+    context.lineTo(localX[edge.second], localY[edge.second])
+  }
+  context.stroke()
   context.restore()
 }
 
@@ -941,10 +1051,7 @@ function drawDifferenceLegend(
   frame: Frame,
   position: MapElementPositions['diffLegend'],
 ) {
-  const bandCount =
-    interval && interval > 0
-      ? Math.max(1, Math.min(80, Math.round((2 * maxAbsolute) / interval)))
-      : 8
+  const bandCount = differenceBandCount(maxAbsolute, interval)
   const blockHeight = Math.max(fontSize + 6, 20)
   const swatchWidth = Math.round(fontSize * 1.9)
   const padding = 12
@@ -1222,13 +1329,14 @@ export async function renderWseDifferenceMap(
   context.translate(view.originX, view.originY)
   context.rotate(view.rotationRadians)
   const existingCoordinates = localCoordinates(scene.projected, view)
-  fillMesh(
+  fillDifferenceBands(
     context,
     existingCoordinates.localX,
     existingCoordinates.localY,
     scene.projected.tris,
     scene.diff,
-    (value) => differenceColor(value, legendBound),
+    legendBound,
+    settings.legendInterval,
   )
 
   const proposedCoordinates = localCoordinates(scene.proposedProjected, view)
@@ -1250,15 +1358,23 @@ export async function renderWseDifferenceMap(
       settings,
     )
   }
-  if (settings.showContours) {
-    drawContours(
+  if (settings.showDifferenceOutlines) {
+    drawContourLevels(
       context,
-      proposedCoordinates.localX,
-      proposedCoordinates.localY,
-      scene.proposedProjected.tris,
-      scene.proposedWseWet,
-      settings.contourInterval,
-      settings.contourColor,
+      existingCoordinates.localX,
+      existingCoordinates.localY,
+      scene.projected.tris,
+      scene.diff,
+      differenceBreaks(legendBound, settings.legendInterval),
+      settings.differenceOutlineColor,
+    )
+    drawValidBoundary(
+      context,
+      existingCoordinates.localX,
+      existingCoordinates.localY,
+      scene.projected.tris,
+      scene.diff,
+      settings.differenceOutlineColor,
     )
   }
   if (settings.showOverlays) drawOverlays(context, overlays, view)
