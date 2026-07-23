@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { File } from 'node:buffer'
 import { tmpdir } from 'node:os'
-import { createCanvas } from '@napi-rs/canvas'
+import { createCanvas, loadImage } from '@napi-rs/canvas'
 import { HydraulicEngine } from '../src/core/hydraulicEngine'
 import {
   canvasPointToMap,
@@ -22,6 +22,16 @@ import type {
 const dataDirectory = process.env.HFG_SITE6_DATA
 if (!dataDirectory) {
   throw new Error('Set HFG_SITE6_DATA to the Site 6 H5 file directory.')
+}
+const testBasemap = process.env.HFG_TEST_BASEMAP === '1'
+if (testBasemap) {
+  globalThis.createImageBitmap = (async (source: ImageBitmapSource) => {
+    if (!(source instanceof Blob)) {
+      throw new Error('The basemap test expected a Blob image source.')
+    }
+    const image = await loadImage(Buffer.from(await source.arrayBuffer()))
+    return Object.assign(image, { close() {} }) as unknown as ImageBitmap
+  }) as typeof createImageBitmap
 }
 
 const fileNames = [
@@ -102,7 +112,7 @@ const renderSettings: FigureSettings = {
   legendFontSize: 19,
   newlyWetColor: '#2cc88b',
   newlyDryColor: '#e97768',
-  basemapOpacity: 0,
+  basemapOpacity: testBasemap ? 0.72 : 0,
   rotation: 0,
   zoom: 1,
   panX: 0,
@@ -267,6 +277,11 @@ for (let index = 0; index < imageData.length; index += 16) {
 if (coloredPixels < 10_000) {
   throw new Error(`Rendered map appears blank (${coloredPixels} colored samples).`)
 }
+if (testBasemap && coloredPixels < 100_000) {
+  throw new Error(
+    `Rendered basemap appears blank (${coloredPixels} colored samples).`,
+  )
+}
 const outputPath =
   process.env.HFG_TEST_OUTPUT || join(tmpdir(), 'hydraulic-site6-render.png')
 await writeFile(outputPath, canvas.toBuffer('image/png'))
@@ -302,6 +317,7 @@ console.log(
         annotations: annotations.length,
         selectedAnnotationId,
         sampledResultLabel: annotations.at(-1)?.text,
+        basemap: testBasemap,
       },
     },
     null,

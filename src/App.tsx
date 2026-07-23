@@ -373,16 +373,31 @@ function App() {
   useEffect(() => {
     if (!scene || !canvasRef.current) return
     const sequence = ++renderSequence.current
+    const renderCanvas = document.createElement('canvas')
+    const controller = new AbortController()
     setBusy(true)
     void renderWseDifferenceMap(
-      canvasRef.current,
+      renderCanvas,
       scene,
       engine.commonBounds(),
       settings,
       overlays,
       annotations,
+      controller.signal,
     )
+      .then(() => {
+        if (renderSequence.current !== sequence || !canvasRef.current) return
+        const visibleCanvas = canvasRef.current
+        visibleCanvas.width = renderCanvas.width
+        visibleCanvas.height = renderCanvas.height
+        const context = visibleCanvas.getContext('2d')
+        if (!context) {
+          throw new Error('This browser could not publish the rendered map.')
+        }
+        context.drawImage(renderCanvas, 0, 0)
+      })
       .catch((error) => {
+        if (renderSequence.current !== sequence) return
         appendNotices([
           {
             level: 'error',
@@ -393,6 +408,7 @@ function App() {
       .finally(() => {
         if (renderSequence.current === sequence) setBusy(false)
       })
+    return () => controller.abort()
   }, [annotations, appendNotices, engine, overlays, scene, settings])
 
   useEffect(() => {
