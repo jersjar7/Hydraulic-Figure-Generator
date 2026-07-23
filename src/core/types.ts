@@ -149,7 +149,6 @@ export type AnnotationTool =
   | 'leader'
   | 'arrow'
   | 'line'
-  | 'marker'
   | 'result'
 
 export type AnnotationKind = Exclude<AnnotationTool, 'select'>

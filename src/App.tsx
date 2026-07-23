@@ -5,7 +5,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   ArrowUp,
-  CircleDot,
   Crosshair,
   Download,
   FileJson,
@@ -52,8 +51,10 @@ import {
   formatHydraulicResultLabel,
   FRAMES,
   hitTestAnnotation,
+  moveAnnotationPoints,
   renderWseDifferenceMap,
   sampleHydraulicResult,
+  type AnnotationHitPart,
 } from './core/mapRenderer'
 import { readShapefileOverlays } from './core/shapefile'
 import type {
@@ -179,7 +180,6 @@ const ANNOTATION_TOOLS = [
   { key: 'leader', label: 'Leader callout', icon: MessageSquareText },
   { key: 'arrow', label: 'Arrow', icon: ArrowUpRight },
   { key: 'line', label: 'Line', icon: Minus },
-  { key: 'marker', label: 'Point marker', icon: CircleDot },
   { key: 'result', label: 'Automatic result label', icon: Crosshair },
 ] as const satisfies ReadonlyArray<{
   key: AnnotationTool
@@ -208,6 +208,74 @@ function cloneDefaultSettings() {
   }
 }
 
+type AnnotationDrag = {
+  id: string
+  part: AnnotationHitPart
+  start: MapCoordinate
+  end: MapCoordinate
+  originalPoints: MapCoordinate[]
+}
+
+function draggedAnnotationPoints(
+  annotation: MapAnnotation,
+  drag: AnnotationDrag,
+) {
+  const dx = drag.end.x - drag.start.x
+  const dy = drag.end.y - drag.start.y
+  return moveAnnotationPoints(
+    annotation,
+    drag.part,
+    drag.originalPoints,
+    dx,
+    dy,
+  )
+}
+
+function updateDraggedResultAnnotation(
+  annotation: MapAnnotation,
+  dragPart: AnnotationHitPart,
+  scene: WseDifferenceScene | null,
+  engine: HydraulicEngine,
+  settings: FigureSettings,
+) {
+  if (
+    annotation.kind !== 'result' ||
+    !annotation.resultField ||
+    !scene ||
+    (dragPart !== 'start' && dragPart !== 'segment')
+  ) {
+    return annotation
+  }
+  const sample = sampleHydraulicResult(
+    scene,
+    engine.commonBounds(),
+    settings,
+    annotation.points[0],
+  )
+  return sample
+    ? {
+        ...annotation,
+        text: formatHydraulicResultLabel(annotation.resultField, sample),
+      }
+    : annotation
+}
+
+function annotationGuidance(tool: AnnotationTool, hasStart: boolean) {
+  if (hasStart) {
+    if (tool === 'leader') return 'Choose label position'
+    if (tool === 'arrow') return 'Choose arrowhead'
+    return 'Choose endpoint'
+  }
+  if (tool === 'select') {
+    return 'Drag a label to move it, its endpoint to retarget, or its line to move the whole item'
+  }
+  if (tool === 'text') return 'Place text'
+  if (tool === 'leader') return 'Choose callout target'
+  if (tool === 'arrow') return 'Choose arrow tail'
+  if (tool === 'line') return 'Choose line start'
+  return 'Choose result location'
+}
+
 function App() {
   const [engine] = useState(() => new HydraulicEngine())
   const [dataVersion, setDataVersion] = useState(0)
@@ -226,6 +294,7 @@ function App() {
   const [annotationStart, setAnnotationStart] = useState<MapCoordinate | null>(
     null,
   )
+  const [annotationDragging, setAnnotationDragging] = useState(false)
   const [notices, setNotices] = useState<IngestNotice[]>([])
   const [scene, setScene] = useState<WseDifferenceScene | null>(null)
   const [busy, setBusy] = useState(false)
@@ -241,12 +310,7 @@ function App() {
   const canvasFrameRef = useRef<HTMLDivElement>(null)
   const projectInputRef = useRef<HTMLInputElement>(null)
   const renderSequence = useRef(0)
-  const annotationDragRef = useRef<{
-    id: string
-    start: MapCoordinate
-    end: MapCoordinate
-    originalPoints: MapCoordinate[]
-  } | null>(null)
+  const annotationDragRef = useRef<AnnotationDrag | null>(null)
 
   const existingCondition = engine.condition('EX')
   const proposedCondition = engine.condition('PR')
@@ -374,7 +438,7 @@ function App() {
     const sequence = ++renderSequence.current
     const renderCanvas = document.createElement('canvas')
     const controller = new AbortController()
-    setBusy(true)
+    if (!annotationDragging) setBusy(true)
     void renderWseDifferenceMap(
       renderCanvas,
       scene,
@@ -382,6 +446,7 @@ function App() {
       settings,
       overlays,
       annotations,
+      selectedAnnotationId,
       controller.signal,
     )
       .then(() => {
@@ -405,10 +470,21 @@ function App() {
         ])
       })
       .finally(() => {
-        if (renderSequence.current === sequence) setBusy(false)
+        if (renderSequence.current === sequence && !annotationDragging) {
+          setBusy(false)
+        }
       })
     return () => controller.abort()
-  }, [annotations, appendNotices, engine, overlays, scene, settings])
+  }, [
+    annotations,
+    annotationDragging,
+    appendNotices,
+    engine,
+    overlays,
+    scene,
+    selectedAnnotationId,
+    settings,
+  ])
 
   useEffect(() => {
     const frame = canvasFrameRef.current
@@ -519,6 +595,7 @@ function App() {
     }
     setAnnotations((current) => [...current, annotation])
     setSelectedAnnotationId(id)
+    setAnnotationTool('select')
     return annotation
   }
 
@@ -576,9 +653,11 @@ function App() {
   ) => {
     const canvas = event.currentTarget
     const rect = canvas.getBoundingClientRect()
+    const x = ((event.clientX - rect.left) * canvas.width) / rect.width
+    const y = ((event.clientY - rect.top) * canvas.height) / rect.height
     return {
-      x: ((event.clientX - rect.left) * canvas.width) / rect.width,
-      y: ((event.clientY - rect.top) * canvas.height) / rect.height,
+      x: Math.max(0, Math.min(canvas.width, x)),
+      y: Math.max(0, Math.min(canvas.height, y)),
     }
   }
 
@@ -603,23 +682,25 @@ function App() {
     )
 
     if (annotationTool === 'select') {
-      const id = hitTestAnnotation(
+      const hit = hitTestAnnotation(
         annotations,
         bounds,
         settings,
         screenPoint.x,
         screenPoint.y,
       )
-      setSelectedAnnotationId(id)
-      if (id) {
-        const annotation = annotations.find((item) => item.id === id)
+      setSelectedAnnotationId(hit?.id ?? null)
+      if (hit) {
+        const annotation = annotations.find((item) => item.id === hit.id)
         if (annotation) {
           annotationDragRef.current = {
-            id,
+            id: hit.id,
+            part: hit.part,
             start: mapPoint,
             end: mapPoint,
             originalPoints: annotation.points.map((point) => ({ ...point })),
           }
+          setAnnotationDragging(true)
           event.currentTarget.setPointerCapture(event.pointerId)
         }
       }
@@ -628,19 +709,6 @@ function App() {
 
     if (annotationTool === 'text') {
       createAnnotation('text', [mapPoint])
-      return
-    }
-
-    if (annotationTool === 'marker') {
-      const markerCount =
-        annotations.filter((annotation) => annotation.kind === 'marker').length +
-        1
-      const markerText =
-        annotationDefaults.text.trim() &&
-        annotationDefaults.text.trim().toLowerCase() !== 'note'
-          ? annotationDefaults.text.trim()
-          : String(markerCount)
-      createAnnotation('marker', [mapPoint], markerText)
       return
     }
 
@@ -692,13 +760,24 @@ function App() {
   const handleCanvasPointerMove = (
     event: ReactPointerEvent<HTMLCanvasElement>,
   ) => {
-    if (!annotationDragRef.current) return
+    const drag = annotationDragRef.current
+    if (!drag) return
     const point = pointerCanvasPoint(event)
-    annotationDragRef.current.end = canvasPointToMap(
+    drag.end = canvasPointToMap(
       point.x,
       point.y,
       engine.commonBounds(),
       settings,
+    )
+    setAnnotations((current) =>
+      current.map((annotation) =>
+        annotation.id === drag.id
+          ? {
+              ...annotation,
+              points: draggedAnnotationPoints(annotation, drag),
+            }
+          : annotation,
+      ),
     )
   }
 
@@ -714,22 +793,47 @@ function App() {
       engine.commonBounds(),
       settings,
     )
-    const dx = drag.end.x - drag.start.x
-    const dy = drag.end.y - drag.start.y
     setAnnotations((current) =>
       current.map((annotation) =>
         annotation.id === drag.id
-          ? {
-              ...annotation,
-              points: drag.originalPoints.map((point) => ({
-                x: point.x + dx,
-                y: point.y + dy,
-              })),
-            }
+          ? updateDraggedResultAnnotation(
+              {
+                ...annotation,
+                points: draggedAnnotationPoints(annotation, drag),
+              },
+              drag.part,
+              scene,
+              engine,
+              settings,
+            )
           : annotation,
       ),
     )
     annotationDragRef.current = null
+    setAnnotationDragging(false)
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  const cancelAnnotationDrag = (
+    event: ReactPointerEvent<HTMLCanvasElement>,
+  ) => {
+    const drag = annotationDragRef.current
+    if (drag) {
+      setAnnotations((current) =>
+        current.map((annotation) =>
+          annotation.id === drag.id
+            ? {
+                ...annotation,
+                points: drag.originalPoints.map((point) => ({ ...point })),
+              }
+            : annotation,
+        ),
+      )
+    }
+    annotationDragRef.current = null
+    setAnnotationDragging(false)
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
@@ -830,23 +934,43 @@ function App() {
     setSettings(cloneDefaultSettings())
   }
 
-  const downloadMap = () => {
-    const canvas = canvasRef.current
-    if (!canvas || !scene) return
-    canvas.toBlob((blob) => {
-      if (!blob) return
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = `FRA_WSE_Difference_${runDisplayName(scene.existing.run.name).replace(/\s+/g, '_')}_${runDisplayName(scene.proposed.run.name).replace(/\s+/g, '_')}.png`
-      anchor.click()
-      URL.revokeObjectURL(url)
-    }, 'image/png')
+  const downloadMap = async () => {
+    if (!scene) return
+    setBusy(true)
+    try {
+      const exportCanvas = document.createElement('canvas')
+      await renderWseDifferenceMap(
+        exportCanvas,
+        scene,
+        engine.commonBounds(),
+        settings,
+        overlays,
+        annotations,
+      )
+      exportCanvas.toBlob((blob) => {
+        if (!blob) return
+        const url = URL.createObjectURL(blob)
+        const anchor = document.createElement('a')
+        anchor.href = url
+        anchor.download = `FRA_WSE_Difference_${runDisplayName(scene.existing.run.name).replace(/\s+/g, '_')}_${runDisplayName(scene.proposed.run.name).replace(/\s+/g, '_')}.png`
+        anchor.click()
+        URL.revokeObjectURL(url)
+      }, 'image/png')
+    } catch (error) {
+      appendNotices([
+        {
+          level: 'error',
+          text: `Map export failed: ${error instanceof Error ? error.message : String(error)}`,
+        },
+      ])
+    } finally {
+      setBusy(false)
+    }
   }
 
   const saveProject = () => {
     const project = {
-      version: 3,
+      version: 4,
       figure: 'fra-wse-difference',
       settings,
       overlays,
@@ -876,7 +1000,10 @@ function App() {
           showContours?: boolean
         }
         overlays?: MapOverlay[]
-        annotations?: MapAnnotation[]
+        annotations?: Array<
+          | MapAnnotation
+          | (Omit<MapAnnotation, 'kind'> & { kind: 'marker' })
+        >
         annotationDefaults?: Partial<AnnotationDefaults>
         selectedRuns?: { existingRun?: number; proposedRun?: number }
       }
@@ -905,7 +1032,12 @@ function App() {
       }
       if (Array.isArray(project.overlays)) setOverlays(project.overlays)
       if (Array.isArray(project.annotations)) {
-        setAnnotations(project.annotations)
+        setAnnotations(
+          project.annotations.filter(
+            (annotation): annotation is MapAnnotation =>
+              annotation.kind !== 'marker',
+          ),
+        )
       }
       if (project.annotationDefaults) {
         setAnnotationDefaults((current) => ({
@@ -1238,15 +1370,13 @@ function App() {
                 className={scene ? 'map-canvas is-visible' : 'map-canvas'}
                 aria-label="Generated WSE difference figure"
                 data-annotation-tool={annotationTool}
+                data-annotation-dragging={
+                  annotationDragging ? 'true' : undefined
+                }
                 onPointerDown={handleCanvasPointerDown}
                 onPointerMove={handleCanvasPointerMove}
                 onPointerUp={finishAnnotationDrag}
-                onPointerCancel={(event) => {
-                  annotationDragRef.current = null
-                  if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-                    event.currentTarget.releasePointerCapture(event.pointerId)
-                  }
-                }}
+                onPointerCancel={cancelAnnotationDrag}
                 style={{
                   width: canvasDisplaySize.width || undefined,
                   height: canvasDisplaySize.height || undefined,
@@ -1706,25 +1836,7 @@ function App() {
                 className={`annotation-guidance${annotationStart ? ' awaiting-point' : ''}`}
                 aria-live="polite"
               >
-                {annotationStart
-                  ? annotationTool === 'leader'
-                    ? 'Choose label position'
-                    : annotationTool === 'arrow'
-                      ? 'Choose arrowhead'
-                      : 'Choose endpoint'
-                  : annotationTool === 'select'
-                    ? 'Select or drag an annotation'
-                    : annotationTool === 'text'
-                      ? 'Place text'
-                      : annotationTool === 'leader'
-                        ? 'Choose callout target'
-                        : annotationTool === 'arrow'
-                          ? 'Choose arrow tail'
-                          : annotationTool === 'line'
-                            ? 'Choose line start'
-                            : annotationTool === 'marker'
-                              ? 'Place marker'
-                              : 'Choose result location'}
+                {annotationGuidance(annotationTool, Boolean(annotationStart))}
               </p>
 
               {annotationStart ? (
@@ -1740,7 +1852,6 @@ function App() {
 
               {(annotationTool === 'text' ||
                 annotationTool === 'leader' ||
-                annotationTool === 'marker' ||
                 (selectedAnnotation &&
                   selectedAnnotation.kind !== 'line' &&
                   selectedAnnotation.kind !== 'arrow' &&
@@ -1802,7 +1913,7 @@ function App() {
                   />
                 </label>
                 <label className="field color-field">
-                  <span>Box / marker fill</span>
+                  <span>Box fill</span>
                   <input
                     type="color"
                     value={annotationEditor.fillColor}

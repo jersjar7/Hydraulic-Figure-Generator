@@ -1145,7 +1145,11 @@ input[type="range"] {
 }
 
 .map-canvas[data-annotation-tool="select"] {
-  cursor: default;
+  cursor: grab;
+}
+
+.map-canvas[data-annotation-dragging="true"] {
+  cursor: grabbing;
 }
 
 .map-canvas[data-annotation-tool="text"] {
@@ -1155,7 +1159,6 @@ input[type="range"] {
 .map-canvas[data-annotation-tool="leader"],
 .map-canvas[data-annotation-tool="arrow"],
 .map-canvas[data-annotation-tool="line"],
-.map-canvas[data-annotation-tool="marker"],
 .map-canvas[data-annotation-tool="result"] {
   cursor: crosshair;
 }

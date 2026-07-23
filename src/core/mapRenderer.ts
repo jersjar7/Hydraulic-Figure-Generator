@@ -635,18 +635,9 @@ function annotationTextBox(
   annotation: MapAnnotation,
   point: { x: number; y: number },
 ) {
-  const lines = (annotation.text.trim() || 'Note').split(/\r?\n/)
-  const lineHeight = annotation.fontSize * 1.25
-  const paddingX = 10
-  const paddingY = 8
+  const layout = annotationTextLayout(context, annotation, point)
+  const { lines, lineHeight, paddingY, width, height, x, y } = layout
   context.save()
-  context.font = `600 ${annotation.fontSize}px "Segoe UI", Arial, sans-serif`
-  const width =
-    Math.max(...lines.map((line) => context.measureText(line).width)) +
-    paddingX * 2
-  const height = lines.length * lineHeight + paddingY * 2
-  const x = point.x - width / 2
-  const y = point.y - height / 2
 
   if (annotation.background) {
     roundedRectangle(context, x, y, width, height, 6)
@@ -672,6 +663,25 @@ function annotationTextBox(
     context.fillText(line, point.x, lineY)
   })
   context.restore()
+}
+
+function annotationTextLayout(
+  context: CanvasRenderingContext2D,
+  annotation: MapAnnotation,
+  point: { x: number; y: number },
+) {
+  const lines = (annotation.text.trim() || 'Note').split(/\r?\n/)
+  const lineHeight = annotation.fontSize * 1.25
+  const paddingX = 10
+  const paddingY = 8
+  context.font = `600 ${annotation.fontSize}px "Segoe UI", Arial, sans-serif`
+  const width =
+    Math.max(...lines.map((line) => context.measureText(line).width)) +
+    paddingX * 2
+  const height = lines.length * lineHeight + paddingY * 2
+  const x = point.x - width / 2
+  const y = point.y - height / 2
+  return { lines, lineHeight, paddingY, width, height, x, y }
 }
 
 function drawArrowHead(
@@ -757,24 +767,73 @@ function drawAnnotations(
       annotationTextBox(context, annotation, points[1])
     } else if (annotation.kind === 'text') {
       annotationTextBox(context, annotation, points[0])
-    } else if (annotation.kind === 'marker') {
-      const radius = Math.max(12, annotation.fontSize * 0.72)
-      context.setLineDash([])
-      context.beginPath()
-      context.arc(points[0].x, points[0].y, radius, 0, Math.PI * 2)
-      context.fillStyle = hexToRgba(annotation.fillColor, 0.94)
-      context.fill()
-      context.strokeStyle = annotation.color
-      context.lineWidth = annotation.lineWidth
-      context.stroke()
-      context.fillStyle = annotation.color
-      context.font = `700 ${annotation.fontSize}px "Segoe UI", Arial, sans-serif`
-      context.textAlign = 'center'
-      context.textBaseline = 'middle'
-      context.fillText(annotation.text.trim() || '1', points[0].x, points[0].y)
     }
     context.restore()
   }
+}
+
+function drawSelectionHandle(
+  context: CanvasRenderingContext2D,
+  point: { x: number; y: number },
+) {
+  context.save()
+  context.setLineDash([])
+  context.beginPath()
+  context.arc(point.x, point.y, 8, 0, Math.PI * 2)
+  context.fillStyle = '#ffffff'
+  context.fill()
+  context.strokeStyle = '#0877b9'
+  context.lineWidth = 3
+  context.stroke()
+  context.restore()
+}
+
+function drawAnnotationSelection(
+  context: CanvasRenderingContext2D,
+  annotation: MapAnnotation,
+  view: View,
+) {
+  const points = annotation.points.map((point) =>
+    annotationScreenPoint(point, view),
+  )
+  if (points.length === 0) return
+
+  context.save()
+  context.strokeStyle = '#0877b9'
+  context.lineWidth = 2
+  context.setLineDash([8, 6])
+
+  if (
+    (annotation.kind === 'leader' || annotation.kind === 'result') &&
+    points[1]
+  ) {
+    const layout = annotationTextLayout(context, annotation, points[1])
+    roundedRectangle(
+      context,
+      layout.x - 5,
+      layout.y - 5,
+      layout.width + 10,
+      layout.height + 10,
+      7,
+    )
+    context.stroke()
+    drawSelectionHandle(context, points[0])
+  } else if (annotation.kind === 'text') {
+    const layout = annotationTextLayout(context, annotation, points[0])
+    roundedRectangle(
+      context,
+      layout.x - 5,
+      layout.y - 5,
+      layout.width + 10,
+      layout.height + 10,
+      7,
+    )
+    context.stroke()
+  } else {
+    drawSelectionHandle(context, points[0])
+    if (points[1]) drawSelectionHandle(context, points[1])
+  }
+  context.restore()
 }
 
 export function canvasPointToMap(
@@ -819,13 +878,68 @@ function pointToSegmentDistance(
   )
 }
 
+export type AnnotationHitPart = 'body' | 'segment' | 'start' | 'end'
+
+export type AnnotationHit = {
+  id: string
+  part: AnnotationHitPart
+}
+
+export function moveAnnotationPoints(
+  annotation: MapAnnotation,
+  part: AnnotationHitPart,
+  originalPoints: MapCoordinate[],
+  dx: number,
+  dy: number,
+) {
+  const points = originalPoints.map((point) => ({ ...point }))
+  const pointIndex =
+    part === 'start'
+      ? 0
+      : part === 'end'
+        ? 1
+        : part === 'body' &&
+            (annotation.kind === 'leader' || annotation.kind === 'result')
+          ? 1
+          : null
+
+  if (pointIndex === null) {
+    return points.map((point) => ({
+      x: point.x + dx,
+      y: point.y + dy,
+    }))
+  }
+  if (!points[pointIndex]) return points
+  points[pointIndex] = {
+    x: points[pointIndex].x + dx,
+    y: points[pointIndex].y + dy,
+  }
+  return points
+}
+
+function estimatedTextBox(annotation: MapAnnotation, point: MapCoordinate) {
+  const lines = (annotation.text || 'Note').split(/\r?\n/)
+  const width =
+    Math.max(...lines.map((line) => line.length)) *
+      annotation.fontSize *
+      0.62 +
+    24
+  const height = lines.length * annotation.fontSize * 1.25 + 20
+  return {
+    left: point.x - width / 2,
+    right: point.x + width / 2,
+    top: point.y - height / 2,
+    bottom: point.y + height / 2,
+  }
+}
+
 export function hitTestAnnotation(
   annotations: MapAnnotation[],
   bounds: Bounds,
   settings: FigureSettings,
   x: number,
   y: number,
-) {
+): AnnotationHit | null {
   const view = makeView(bounds, FRAMES[settings.orientation], settings)
   const pointer = { x, y }
 
@@ -835,9 +949,16 @@ export function hitTestAnnotation(
       annotationScreenPoint(point, view),
     )
     if (points.length === 0) continue
-    if (annotation.kind === 'text' || annotation.kind === 'marker') {
-      if (Math.hypot(x - points[0].x, y - points[0].y) <= 30) {
-        return annotation.id
+
+    if (annotation.kind === 'text') {
+      const box = estimatedTextBox(annotation, points[0])
+      if (
+        x >= box.left &&
+        x <= box.right &&
+        y >= box.top &&
+        y <= box.bottom
+      ) {
+        return { id: annotation.id, part: 'body' }
       }
       continue
     }
@@ -845,19 +966,28 @@ export function hitTestAnnotation(
       (annotation.kind === 'leader' || annotation.kind === 'result') &&
       points[1]
     ) {
-      const labelLines = (annotation.text || 'Note').split(/\r?\n/)
-      const estimatedWidth =
-        Math.max(...labelLines.map((line) => line.length)) *
-          annotation.fontSize *
-          0.62 +
-        24
-      const estimatedHeight =
-        labelLines.length * annotation.fontSize * 1.25 + 20
+      if (Math.hypot(x - points[0].x, y - points[0].y) <= 16) {
+        return { id: annotation.id, part: 'start' }
+      }
+      const box = estimatedTextBox(annotation, points[1])
       if (
-        Math.abs(x - points[1].x) <= estimatedWidth / 2 &&
-        Math.abs(y - points[1].y) <= estimatedHeight / 2
+        x >= box.left &&
+        x <= box.right &&
+        y >= box.top &&
+        y <= box.bottom
       ) {
-        return annotation.id
+        return { id: annotation.id, part: 'body' }
+      }
+    }
+    if (
+      (annotation.kind === 'line' || annotation.kind === 'arrow') &&
+      points[1]
+    ) {
+      if (Math.hypot(x - points[0].x, y - points[0].y) <= 16) {
+        return { id: annotation.id, part: 'start' }
+      }
+      if (Math.hypot(x - points[1].x, y - points[1].y) <= 16) {
+        return { id: annotation.id, part: 'end' }
       }
     }
     if (
@@ -865,7 +995,7 @@ export function hitTestAnnotation(
       pointToSegmentDistance(pointer, points[0], points[1]) <=
         Math.max(10, annotation.lineWidth + 6)
     ) {
-      return annotation.id
+      return { id: annotation.id, part: 'segment' }
     }
   }
   return null
@@ -1307,6 +1437,7 @@ export async function renderWseDifferenceMap(
   settings: FigureSettings,
   overlays: MapOverlay[],
   annotations: MapAnnotation[] = [],
+  selectedAnnotationId: string | null = null,
   signal?: AbortSignal,
 ) {
   const frame = FRAMES[settings.orientation]
@@ -1381,6 +1512,12 @@ export async function renderWseDifferenceMap(
   context.restore()
 
   drawAnnotations(context, annotations, view)
+  const selectedAnnotation = annotations.find(
+    (annotation) => annotation.id === selectedAnnotationId,
+  )
+  if (selectedAnnotation) {
+    drawAnnotationSelection(context, selectedAnnotation, view)
+  }
 
   const positions = settings.elementPositions
   if (settings.showTitle) {

@@ -10,6 +10,7 @@ import {
   formatHydraulicResultLabel,
   hitTestAnnotation,
   mapPointToCanvas,
+  moveAnnotationPoints,
   renderWseDifferenceMap,
   sampleHydraulicResult,
 } from '../src/core/mapRenderer'
@@ -199,13 +200,6 @@ const annotations: MapAnnotation[] = [
     dashed: true,
   },
   {
-    id: 'marker',
-    kind: 'marker',
-    points: [{ x: resultPoint.x - annotationOffset, y: resultPoint.y }],
-    text: '1',
-    ...annotationStyle,
-  },
-  {
     id: 'result',
     kind: 'result',
     points: [
@@ -231,22 +225,85 @@ const roundTripPoint = canvasPointToMap(
   engine.commonBounds(),
   renderSettings,
 )
-const selectedAnnotationId = hitTestAnnotation(
+const selectedAnnotationHit = hitTestAnnotation(
   [annotations[0]],
   engine.commonBounds(),
   renderSettings,
   textScreenPoint.x,
   textScreenPoint.y,
 )
+const leaderTargetScreenPoint = mapPointToCanvas(
+  annotations[1].points[0],
+  engine.commonBounds(),
+  renderSettings,
+)
+const leaderLabelScreenPoint = mapPointToCanvas(
+  annotations[1].points[1],
+  engine.commonBounds(),
+  renderSettings,
+)
+const leaderTargetHit = hitTestAnnotation(
+  [annotations[1]],
+  engine.commonBounds(),
+  renderSettings,
+  leaderTargetScreenPoint.x,
+  leaderTargetScreenPoint.y,
+)
+const leaderLabelHit = hitTestAnnotation(
+  [annotations[1]],
+  engine.commonBounds(),
+  renderSettings,
+  leaderLabelScreenPoint.x,
+  leaderLabelScreenPoint.y,
+)
+const leaderLabelMoved = moveAnnotationPoints(
+  annotations[1],
+  'body',
+  annotations[1].points,
+  25,
+  -10,
+)
+const leaderTargetMoved = moveAnnotationPoints(
+  annotations[1],
+  'start',
+  annotations[1].points,
+  -15,
+  20,
+)
+const leaderWholeMoved = moveAnnotationPoints(
+  annotations[1],
+  'segment',
+  annotations[1].points,
+  8,
+  12,
+)
 if (
-  selectedAnnotationId !== 'text' ||
+  selectedAnnotationHit?.id !== 'text' ||
+  selectedAnnotationHit.part !== 'body' ||
+  leaderTargetHit?.id !== 'leader' ||
+  leaderTargetHit.part !== 'start' ||
+  leaderLabelHit?.id !== 'leader' ||
+  leaderLabelHit.part !== 'body' ||
+  leaderLabelMoved[0].x !== annotations[1].points[0].x ||
+  leaderLabelMoved[1].x !== annotations[1].points[1].x + 25 ||
+  leaderTargetMoved[0].y !== annotations[1].points[0].y + 20 ||
+  leaderTargetMoved[1].y !== annotations[1].points[1].y ||
+  leaderWholeMoved.some(
+    (point, index) =>
+      point.x !== annotations[1].points[index].x + 8 ||
+      point.y !== annotations[1].points[index].y + 12,
+  ) ||
   Math.hypot(
     roundTripPoint.x - annotations[0].points[0].x,
     roundTripPoint.y - annotations[0].points[0].y,
   ) > 1e-6
 ) {
   throw new Error(
-    `Annotation selection or map-coordinate anchoring failed (${selectedAnnotationId}, ${Math.hypot(
+    `Annotation selection or map-coordinate anchoring failed (${JSON.stringify({
+      selectedAnnotationHit,
+      leaderTargetHit,
+      leaderLabelHit,
+    })}, ${Math.hypot(
       roundTripPoint.x - annotations[0].points[0].x,
       roundTripPoint.y - annotations[0].points[0].y,
     )}).`,
@@ -260,6 +317,7 @@ await renderWseDifferenceMap(
   renderSettings,
   overlayResult.overlays,
   annotations,
+  'leader',
 )
 const imageData = canvas
   .getContext('2d')
@@ -367,7 +425,7 @@ console.log(
         height: canvas.height,
         coloredPixelSamples: coloredPixels,
         annotations: annotations.length,
-        selectedAnnotationId,
+        selectedAnnotationId: 'leader',
         sampledResultLabel: annotations.at(-1)?.text,
         basemap: testBasemap,
         differenceOutlinePixels,
