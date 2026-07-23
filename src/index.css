@@ -1,0 +1,70 @@
+:root {
+  font-family:
+    "Segoe UI", Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #132238;
+  background: #eef2f6;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --ink: #132238;
+  --muted: #607087;
+  --border: #ccd6e2;
+  --border-strong: #afbed0;
+  --surface: #ffffff;
+  --surface-soft: #f5f7fa;
+  --canvas: #dfe6ee;
+  --blue: #1268a9;
+  --blue-strong: #0c4f85;
+  --blue-soft: #e7f2fa;
+  --green: #087a5b;
+  --green-soft: #e6f6f0;
+  --amber: #a15f00;
+  --amber-soft: #fff4db;
+  --red: #b73737;
+  --red-soft: #fcecec;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 320px;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  letter-spacing: 0;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #1682cf;
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
