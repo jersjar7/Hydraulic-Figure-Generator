@@ -44,6 +44,12 @@ import './App.css'
 import { ControlSection } from './components/ControlSection'
 import { DiagnosticsWidget } from './components/DiagnosticsWidget'
 import { FileDrop } from './components/FileDrop'
+import { FigureElementsPanel } from './components/FigureElementsPanel'
+import {
+  cloneDefaultElementStyles,
+  DEFAULT_ELEMENT_STYLES,
+  mergeElementStyles,
+} from './core/figureElements'
 import { HydraulicEngine, runDisplayName } from './core/hydraulicEngine'
 import {
   canvasPointToMap,
@@ -58,7 +64,6 @@ import {
 } from './core/mapRenderer'
 import { readShapefileOverlays } from './core/shapefile'
 import type {
-  Anchor,
   AnnotationDefaults,
   AnnotationTool,
   ConditionKey,
@@ -66,7 +71,9 @@ import type {
   IngestNotice,
   MapAnnotation,
   MapCoordinate,
+  MapElementBounds,
   MapElementKey,
+  MapElementStyles,
   MapOverlay,
   ResultLabelField,
   WseDifferenceScene,
@@ -83,6 +90,7 @@ const DEFAULT_SETTINGS: FigureSettings = {
   showLegend: true,
   showNorth: true,
   showScale: true,
+  showWetDryKey: true,
   titleTemplate: '{type} - {existing} vs {proposed}',
   legendBound: null,
   legendInterval: null,
@@ -95,6 +103,7 @@ const DEFAULT_SETTINGS: FigureSettings = {
   panX: 0,
   panY: 0,
   elementPositions: structuredClone(DEFAULT_ELEMENT_POSITIONS),
+  elementStyles: cloneDefaultElementStyles(),
 }
 
 const FRAME_ASPECTS = {
@@ -112,26 +121,6 @@ const DEFAULT_ANNOTATION_SETTINGS: AnnotationDefaults = {
   background: true,
   resultField: 'summary',
 }
-
-const ANCHORS: { value: Anchor; label: string }[] = [
-  { value: 'tl', label: 'Top left' },
-  { value: 'tc', label: 'Top center' },
-  { value: 'tr', label: 'Top right' },
-  { value: 'ml', label: 'Middle left' },
-  { value: 'mc', label: 'Center' },
-  { value: 'mr', label: 'Middle right' },
-  { value: 'bl', label: 'Bottom left' },
-  { value: 'bc', label: 'Bottom center' },
-  { value: 'br', label: 'Bottom right' },
-]
-
-const ELEMENTS: { key: MapElementKey; label: string }[] = [
-  { key: 'title', label: 'Title' },
-  { key: 'diffLegend', label: 'Difference legend' },
-  { key: 'wetDry', label: 'Wet/dry key' },
-  { key: 'north', label: 'North arrow' },
-  { key: 'scale', label: 'Scale bar' },
-]
 
 const SETTINGS_SECTIONS = [
   {
@@ -205,6 +194,7 @@ function cloneDefaultSettings() {
   return {
     ...DEFAULT_SETTINGS,
     elementPositions: structuredClone(DEFAULT_ELEMENT_POSITIONS),
+    elementStyles: cloneDefaultElementStyles(),
   }
 }
 
@@ -214,6 +204,13 @@ type AnnotationDrag = {
   start: MapCoordinate
   end: MapCoordinate
   originalPoints: MapCoordinate[]
+}
+
+type FigureElementDrag = {
+  key: MapElementKey
+  start: { x: number; y: number }
+  originalPosition: FigureSettings['elementPositions'][MapElementKey]
+  originalBounds: MapElementBounds
 }
 
 function draggedAnnotationPoints(
@@ -302,6 +299,11 @@ function App() {
   const [rightOpen, setRightOpen] = useState(false)
   const [activeSettingsSection, setActiveSettingsSection] =
     useState<SettingsSectionKey>('calculation')
+  const [activeElement, setActiveElement] =
+    useState<MapElementKey>('title')
+  const [hoveredElement, setHoveredElement] =
+    useState<MapElementKey | null>(null)
+  const [elementDragging, setElementDragging] = useState(false)
   const [canvasDisplaySize, setCanvasDisplaySize] = useState({
     width: 0,
     height: 0,
@@ -311,6 +313,8 @@ function App() {
   const projectInputRef = useRef<HTMLInputElement>(null)
   const renderSequence = useRef(0)
   const annotationDragRef = useRef<AnnotationDrag | null>(null)
+  const figureElementDragRef = useRef<FigureElementDrag | null>(null)
+  const elementBoundsRef = useRef<MapElementBounds[]>([])
 
   const existingCondition = engine.condition('EX')
   const proposedCondition = engine.condition('PR')
@@ -438,7 +442,7 @@ function App() {
     const sequence = ++renderSequence.current
     const renderCanvas = document.createElement('canvas')
     const controller = new AbortController()
-    if (!annotationDragging) setBusy(true)
+    if (!annotationDragging && !elementDragging) setBusy(true)
     void renderWseDifferenceMap(
       renderCanvas,
       scene,
@@ -447,10 +451,12 @@ function App() {
       overlays,
       annotations,
       selectedAnnotationId,
+      activeSettingsSection === 'elements' ? activeElement : null,
       controller.signal,
     )
-      .then(() => {
+      .then((elementBounds) => {
         if (renderSequence.current !== sequence || !canvasRef.current) return
+        elementBoundsRef.current = elementBounds
         const visibleCanvas = canvasRef.current
         visibleCanvas.width = renderCanvas.width
         visibleCanvas.height = renderCanvas.height
@@ -470,7 +476,11 @@ function App() {
         ])
       })
       .finally(() => {
-        if (renderSequence.current === sequence && !annotationDragging) {
+        if (
+          renderSequence.current === sequence &&
+          !annotationDragging &&
+          !elementDragging
+        ) {
           setBusy(false)
         }
       })
@@ -478,7 +488,10 @@ function App() {
   }, [
     annotations,
     annotationDragging,
+    activeElement,
+    activeSettingsSection,
     appendNotices,
+    elementDragging,
     engine,
     overlays,
     scene,
@@ -661,6 +674,47 @@ function App() {
     }
   }
 
+  const figureElementAt = (point: { x: number; y: number }) =>
+    [...elementBoundsRef.current]
+      .reverse()
+      .find(
+        (bounds) =>
+          point.x >= bounds.x - 6 &&
+          point.x <= bounds.x + bounds.width + 6 &&
+          point.y >= bounds.y - 6 &&
+          point.y <= bounds.y + bounds.height + 6,
+      )
+
+  const moveFigureElementDrag = (point: { x: number; y: number }) => {
+    const drag = figureElementDragRef.current
+    if (!drag) return
+    const frame = FRAMES[settings.orientation]
+    const rawDx = point.x - drag.start.x
+    const rawDy = point.y - drag.start.y
+    const dx = Math.max(
+      -drag.originalBounds.x,
+      Math.min(
+        frame.width -
+          drag.originalBounds.x -
+          drag.originalBounds.width,
+        rawDx,
+      ),
+    )
+    const dy = Math.max(
+      -drag.originalBounds.y,
+      Math.min(
+        frame.height -
+          drag.originalBounds.y -
+          drag.originalBounds.height,
+        rawDy,
+      ),
+    )
+    updateElementPosition(drag.key, {
+      offX: drag.originalPosition.offX + Math.round(dx),
+      offY: drag.originalPosition.offY + Math.round(dy),
+    })
+  }
+
   const chooseAnnotationTool = (tool: AnnotationTool) => {
     setAnnotationTool(tool)
     setAnnotationStart(null)
@@ -673,6 +727,26 @@ function App() {
     if (!scene) return
     event.preventDefault()
     const screenPoint = pointerCanvasPoint(event)
+
+    if (activeSettingsSection === 'elements') {
+      const elementHit = figureElementAt(screenPoint)
+      if (elementHit) {
+        setActiveElement(elementHit.key)
+        figureElementDragRef.current = {
+          key: elementHit.key,
+          start: screenPoint,
+          originalPosition: {
+            ...settings.elementPositions[elementHit.key],
+          },
+          originalBounds: { ...elementHit },
+        }
+        setElementDragging(true)
+        setHoveredElement(elementHit.key)
+        event.currentTarget.setPointerCapture(event.pointerId)
+        return
+      }
+    }
+
     const bounds = engine.commonBounds()
     const mapPoint = canvasPointToMap(
       screenPoint.x,
@@ -760,12 +834,21 @@ function App() {
   const handleCanvasPointerMove = (
     event: ReactPointerEvent<HTMLCanvasElement>,
   ) => {
+    const screenPoint = pointerCanvasPoint(event)
+    if (figureElementDragRef.current) {
+      moveFigureElementDrag(screenPoint)
+      return
+    }
+    if (activeSettingsSection === 'elements') {
+      setHoveredElement(figureElementAt(screenPoint)?.key ?? null)
+    } else if (hoveredElement) {
+      setHoveredElement(null)
+    }
     const drag = annotationDragRef.current
     if (!drag) return
-    const point = pointerCanvasPoint(event)
     drag.end = canvasPointToMap(
-      point.x,
-      point.y,
+      screenPoint.x,
+      screenPoint.y,
       engine.commonBounds(),
       settings,
     )
@@ -784,6 +867,15 @@ function App() {
   const finishAnnotationDrag = (
     event: ReactPointerEvent<HTMLCanvasElement>,
   ) => {
+    if (figureElementDragRef.current) {
+      moveFigureElementDrag(pointerCanvasPoint(event))
+      figureElementDragRef.current = null
+      setElementDragging(false)
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      }
+      return
+    }
     const drag = annotationDragRef.current
     if (!drag) return
     const point = pointerCanvasPoint(event)
@@ -819,6 +911,16 @@ function App() {
   const cancelAnnotationDrag = (
     event: ReactPointerEvent<HTMLCanvasElement>,
   ) => {
+    const elementDrag = figureElementDragRef.current
+    if (elementDrag) {
+      updateElementPosition(elementDrag.key, elementDrag.originalPosition)
+      figureElementDragRef.current = null
+      setElementDragging(false)
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      }
+      return
+    }
     const drag = annotationDragRef.current
     if (drag) {
       setAnnotations((current) =>
@@ -900,11 +1002,65 @@ function App() {
     }))
   }
 
+  const updateElementStyle = (
+    key: MapElementKey,
+    patch: Partial<MapElementStyles[MapElementKey]>,
+  ) => {
+    setSettings((current) => ({
+      ...current,
+      elementStyles: {
+        ...current.elementStyles,
+        [key]: {
+          ...current.elementStyles[key],
+          ...patch,
+        },
+      } as MapElementStyles,
+    }))
+  }
+
+  const updateElementVisibility = (
+    key: MapElementKey,
+    visible: boolean,
+  ) => {
+    const visibilityKey = {
+      title: 'showTitle',
+      diffLegend: 'showLegend',
+      wetDry: 'showWetDryKey',
+      north: 'showNorth',
+      scale: 'showScale',
+    } as const
+    updateSettings(visibilityKey[key], visible)
+  }
+
   const nudgeElement = (key: MapElementKey, dx: number, dy: number) => {
     const position = settings.elementPositions[key]
     updateElementPosition(key, {
       offX: position.offX + dx,
       offY: position.offY + dy,
+    })
+  }
+
+  const resetElement = (key: MapElementKey) => {
+    setSettings((current) => {
+      const visibilityKey = {
+        title: 'showTitle',
+        diffLegend: 'showLegend',
+        wetDry: 'showWetDryKey',
+        north: 'showNorth',
+        scale: 'showScale',
+      } as const
+      return {
+        ...current,
+        [visibilityKey[key]]: true,
+        elementPositions: {
+          ...current.elementPositions,
+          [key]: { ...DEFAULT_ELEMENT_POSITIONS[key] },
+        },
+        elementStyles: {
+          ...current.elementStyles,
+          [key]: structuredClone(DEFAULT_ELEMENT_STYLES[key]),
+        } as MapElementStyles,
+      }
     })
   }
 
@@ -927,6 +1083,11 @@ function App() {
     setAnnotationStart(null)
     setAnnotationTool('select')
     setAnnotationDefaults(DEFAULT_ANNOTATION_SETTINGS)
+    figureElementDragRef.current = null
+    elementBoundsRef.current = []
+    setElementDragging(false)
+    setHoveredElement(null)
+    setActiveElement('title')
     setScene(null)
     setNotices([])
     setExistingRun(0)
@@ -970,7 +1131,7 @@ function App() {
 
   const saveProject = () => {
     const project = {
-      version: 4,
+      version: 5,
       figure: 'fra-wse-difference',
       settings,
       overlays,
@@ -995,9 +1156,16 @@ function App() {
     if (!file) return
     try {
       const project = JSON.parse(await file.text()) as {
-        settings?: Partial<FigureSettings> & {
+        settings?: Omit<Partial<FigureSettings>, 'elementStyles'> & {
           contourColor?: string
           showContours?: boolean
+          elementStyles?: {
+            title?: Partial<MapElementStyles['title']>
+            diffLegend?: Partial<MapElementStyles['diffLegend']>
+            wetDry?: Partial<MapElementStyles['wetDry']>
+            north?: Partial<MapElementStyles['north']>
+            scale?: Partial<MapElementStyles['scale']>
+          }
         }
         overlays?: MapOverlay[]
         annotations?: Array<
@@ -1024,10 +1192,34 @@ function App() {
             projectSettings.showDifferenceOutlines ??
             legacyShowContours ??
             current.showDifferenceOutlines,
+          showWetDryKey:
+            projectSettings.showWetDryKey ?? current.showWetDryKey,
           elementPositions: {
             ...current.elementPositions,
             ...(projectSettings.elementPositions ?? {}),
           },
+          elementStyles: (() => {
+            const merged = mergeElementStyles(
+              current.elementStyles,
+              projectSettings.elementStyles,
+            )
+            if (
+              !projectSettings.elementStyles?.diffLegend &&
+              typeof projectSettings.legendFontSize === 'number'
+            ) {
+              merged.diffLegend.fontSize = projectSettings.legendFontSize
+            }
+            if (
+              !projectSettings.elementStyles?.wetDry &&
+              typeof projectSettings.legendFontSize === 'number'
+            ) {
+              merged.wetDry.fontSize = Math.max(
+                12,
+                projectSettings.legendFontSize - 1,
+              )
+            }
+            return merged
+          })(),
         }))
       }
       if (Array.isArray(project.overlays)) setOverlays(project.overlays)
@@ -1234,6 +1426,15 @@ function App() {
               testId="overlay-file-drop"
               onFiles={handleOverlayFiles}
             />
+            {overlays.length > 0 ? (
+              <Toggle
+                label="Show shapefile overlays"
+                checked={settings.showOverlays}
+                onChange={(checked) =>
+                  updateSettings('showOverlays', checked)
+                }
+              />
+            ) : null}
             {overlays.length === 0 ? (
               <p className="empty-note">No shapefile overlays loaded.</p>
             ) : (
@@ -1373,10 +1574,17 @@ function App() {
                 data-annotation-dragging={
                   annotationDragging ? 'true' : undefined
                 }
+                data-element-hover={hoveredElement ?? undefined}
+                data-element-dragging={
+                  elementDragging ? 'true' : undefined
+                }
                 onPointerDown={handleCanvasPointerDown}
                 onPointerMove={handleCanvasPointerMove}
                 onPointerUp={finishAnnotationDrag}
                 onPointerCancel={cancelAnnotationDrag}
+                onPointerLeave={() => {
+                  if (!elementDragging) setHoveredElement(null)
+                }}
                 style={{
                   width: canvasDisplaySize.width || undefined,
                   height: canvasDisplaySize.height || undefined,
@@ -1551,21 +1759,6 @@ function App() {
                   />
                 </label>
               </div>
-              <label className="field">
-                <span>Legend text size <small>px</small></span>
-                <input
-                  type="number"
-                  min="10"
-                  max="34"
-                  value={settings.legendFontSize}
-                  onChange={(event) =>
-                    updateSettings(
-                      'legendFontSize',
-                      numeric(event.target.value, 19),
-                    )
-                  }
-                />
-              </label>
               <div className="field-grid two">
                 <label className="field color-field">
                   <span>Newly inundated</span>
@@ -1699,106 +1892,19 @@ function App() {
               icon={<MapPin size={17} />}
               title="Figure elements"
             >
-              <Toggle
-                label="Title"
-                checked={settings.showTitle}
-                onChange={(checked) => updateSettings('showTitle', checked)}
+              <FigureElementsPanel
+                settings={settings}
+                activeElement={activeElement}
+                onActiveElementChange={setActiveElement}
+                onVisibilityChange={updateElementVisibility}
+                onTitleTemplateChange={(value) =>
+                  updateSettings('titleTemplate', value)
+                }
+                onStyleChange={updateElementStyle}
+                onPositionChange={updateElementPosition}
+                onNudge={nudgeElement}
+                onResetElement={resetElement}
               />
-              <Toggle
-                label="WSE difference legend"
-                checked={settings.showLegend}
-                onChange={(checked) => updateSettings('showLegend', checked)}
-              />
-              <Toggle
-                label="North arrow"
-                checked={settings.showNorth}
-                onChange={(checked) => updateSettings('showNorth', checked)}
-              />
-              <Toggle
-                label="Scale bar"
-                checked={settings.showScale}
-                onChange={(checked) => updateSettings('showScale', checked)}
-              />
-              <Toggle
-                label="Shapefile overlays"
-                checked={settings.showOverlays}
-                onChange={(checked) => updateSettings('showOverlays', checked)}
-              />
-              <label className="field">
-                <span>Figure title</span>
-                <input
-                  type="text"
-                  value={settings.titleTemplate}
-                  onChange={(event) =>
-                    updateSettings('titleTemplate', event.target.value)
-                  }
-                />
-              </label>
-              <p className="field-help">
-                Available fields: {'{type}'}, {'{existing}'}, {'{proposed}'}
-              </p>
-              <div className="element-list">
-                {ELEMENTS.map((element) => {
-                  const position = settings.elementPositions[element.key]
-                  return (
-                    <div className="element-row" key={element.key}>
-                      <div className="element-row-heading">
-                        <strong>{element.label}</strong>
-                        <span>
-                          {position.offX}, {position.offY}
-                        </span>
-                      </div>
-                      <select
-                        aria-label={`${element.label} anchor`}
-                        value={position.anchor}
-                        onChange={(event) =>
-                          updateElementPosition(element.key, {
-                            anchor: event.target.value as Anchor,
-                          })
-                        }
-                      >
-                        {ANCHORS.map((anchor) => (
-                          <option value={anchor.value} key={anchor.value}>
-                            {anchor.label}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="nudge-buttons">
-                        <NudgeButton
-                          label={`Move ${element.label} left`}
-                          icon={<ArrowLeft size={14} />}
-                          onClick={() => nudgeElement(element.key, -10, 0)}
-                        />
-                        <NudgeButton
-                          label={`Move ${element.label} up`}
-                          icon={<ArrowUp size={14} />}
-                          onClick={() => nudgeElement(element.key, 0, -10)}
-                        />
-                        <NudgeButton
-                          label={`Move ${element.label} down`}
-                          icon={<ArrowDown size={14} />}
-                          onClick={() => nudgeElement(element.key, 0, 10)}
-                        />
-                        <NudgeButton
-                          label={`Move ${element.label} right`}
-                          icon={<ArrowRight size={14} />}
-                          onClick={() => nudgeElement(element.key, 10, 0)}
-                        />
-                        <NudgeButton
-                          label={`Reset ${element.label}`}
-                          icon={<RotateCcw size={14} />}
-                          onClick={() =>
-                            updateElementPosition(
-                              element.key,
-                              DEFAULT_ELEMENT_POSITIONS[element.key],
-                            )
-                          }
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
             </ControlSection>
             ) : null}
 

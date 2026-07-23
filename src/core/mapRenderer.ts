@@ -1,14 +1,22 @@
 import type {
   Anchor,
   Bounds,
+  DifferenceLegendElementStyle,
+  ElementBoxStyle,
   FigureSettings,
   GeoJsonGeometry,
   MapAnnotation,
   MapCoordinate,
+  MapElementBounds,
+  MapElementKey,
   MapElementPositions,
   MapOverlay,
+  NorthElementStyle,
   ProjectedGeometry,
   ResultLabelField,
+  ScaleElementStyle,
+  TitleElementStyle,
+  WetDryElementStyle,
   WseDifferenceScene,
 } from './types'
 import { runDisplayName } from './hydraulicEngine'
@@ -1126,12 +1134,63 @@ function anchorBox(
     m: (frame.height - height) / 2,
     b: frame.height - height - margin,
   }
-  if (anchor === 'ml') return [margin + offX, y.m + offY] as const
-  if (anchor === 'mr') return [x.r + offX, y.m + offY] as const
+  const rawX =
+    anchor === 'ml'
+      ? margin + offX
+      : anchor === 'mr'
+        ? x.r + offX
+        : x[anchor[1] as keyof typeof x] + offX
+  const rawY =
+    anchor === 'ml' || anchor === 'mr'
+      ? y.m + offY
+      : y[anchor[0] as keyof typeof y] + offY
   return [
-    x[anchor[1] as keyof typeof x] + offX,
-    y[anchor[0] as keyof typeof y] + offY,
+    Math.max(0, Math.min(frame.width - width, rawX)),
+    Math.max(0, Math.min(frame.height - height, rawY)),
   ] as const
+}
+
+function drawElementBox(
+  context: CanvasRenderingContext2D,
+  bounds: Omit<MapElementBounds, 'key'>,
+  style: ElementBoxStyle,
+) {
+  context.save()
+  roundedRectangle(context, bounds.x, bounds.y, bounds.width, bounds.height, 7)
+  if (style.background) {
+    context.globalAlpha = Math.max(0, Math.min(1, style.backgroundOpacity))
+    context.fillStyle = style.backgroundColor
+    context.fill()
+    context.globalAlpha = 1
+  }
+  if (style.borderWidth > 0) {
+    context.lineWidth = style.borderWidth
+    context.strokeStyle = style.borderColor
+    context.stroke()
+  }
+  context.restore()
+}
+
+function wrappedLines(
+  context: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+) {
+  const words = text.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return ['']
+  const lines: string[] = []
+  let line = words[0]
+  for (const word of words.slice(1)) {
+    const candidate = `${line} ${word}`
+    if (context.measureText(candidate).width <= maxWidth) {
+      line = candidate
+    } else {
+      lines.push(line)
+      line = word
+    }
+  }
+  lines.push(line)
+  return lines
 }
 
 function drawTitle(
@@ -1139,12 +1198,20 @@ function drawTitle(
   title: string,
   frame: Frame,
   position: MapElementPositions['title'],
+  style: TitleElementStyle,
 ) {
-  const fontSize = 26
+  const padding = 15
+  const lineHeight = Math.round(style.fontSize * 1.22)
   context.save()
-  context.font = `700 ${fontSize}px "Segoe UI", Arial, sans-serif`
-  const width = context.measureText(title).width + 30
-  const height = fontSize + 20
+  context.font = `${style.fontWeight} ${style.fontSize}px "Segoe UI", Arial, sans-serif`
+  const maxTextWidth = Math.max(120, style.maxWidth - padding * 2)
+  const lines = wrappedLines(context, title, maxTextWidth)
+  const measuredWidth = Math.max(
+    1,
+    ...lines.map((line) => context.measureText(line).width),
+  )
+  const width = Math.min(style.maxWidth, measuredWidth + padding * 2)
+  const height = lines.length * lineHeight + padding * 2
   const [x, y] = anchorBox(
     position.anchor,
     width,
@@ -1154,57 +1221,88 @@ function drawTitle(
     position.offX,
     position.offY,
   )
-  roundedRectangle(context, x, y, width, height, 7)
-  context.fillStyle = 'rgba(255,255,255,0.86)'
-  context.strokeStyle = 'rgba(12,25,44,0.2)'
-  context.fill()
-  context.stroke()
-  context.fillStyle = '#0d1c31'
-  context.textAlign = 'center'
+  const bounds = { key: 'title', x, y, width, height } as const
+  drawElementBox(context, bounds, style)
+  context.fillStyle = style.textColor
+  context.textAlign = style.alignment
   context.textBaseline = 'middle'
-  context.fillText(title, x + width / 2, y + height / 2)
+  const textX =
+    style.alignment === 'left'
+      ? x + padding
+      : style.alignment === 'right'
+        ? x + width - padding
+        : x + width / 2
+  lines.forEach((line, index) => {
+    context.fillText(
+      line,
+      textX,
+      y + padding + lineHeight * (index + 0.5),
+      maxTextWidth,
+    )
+  })
   context.restore()
+  return bounds
 }
 
-function formatLegendValue(value: number) {
-  if (Math.abs(value) >= 100 || Math.abs(value % 1) < 1e-9) {
-    return value.toFixed(0)
-  }
-  return value.toFixed(1)
+function formatLegendValue(value: number, decimalPlaces: number) {
+  return value.toFixed(Math.max(0, Math.min(3, decimalPlaces)))
+}
+
+function legendTitle(style: DifferenceLegendElementStyle) {
+  const title = style.title.trim()
+  const units = style.units.trim()
+  return units ? `${title} (${units})` : title
 }
 
 function drawDifferenceLegend(
   context: CanvasRenderingContext2D,
   maxAbsolute: number,
   interval: number | null,
-  fontSize: number,
   frame: Frame,
   position: MapElementPositions['diffLegend'],
+  style: DifferenceLegendElementStyle,
 ) {
   const bandCount = differenceBandCount(maxAbsolute, interval)
-  const blockHeight = Math.max(fontSize + 6, 20)
-  const swatchWidth = Math.round(fontSize * 1.9)
   const padding = 12
-  const title = 'WSE Difference (ft)'
+  const title = legendTitle(style)
   const labels = Array.from({ length: bandCount + 1 }, (_, index) =>
     formatLegendValue(
       -maxAbsolute + (index * 2 * maxAbsolute) / bandCount,
+      style.decimalPlaces,
     ),
   )
+  const titleHeight = style.fontSize + 14
   context.save()
-  context.font = `700 ${fontSize + 2}px "Segoe UI", Arial, sans-serif`
+  context.font = `700 ${style.fontSize + 2}px "Segoe UI", Arial, sans-serif`
   const titleWidth = context.measureText(title).width
-  context.font = `${fontSize}px "Segoe UI", Arial, sans-serif`
+  context.font = `${style.fontSize}px "Segoe UI", Arial, sans-serif`
   const labelWidth = Math.max(
     ...labels.map((label) => context.measureText(label).width),
   )
-  const width = Math.max(
-    padding * 2 + titleWidth,
-    padding * 2 + swatchWidth + 12 + labelWidth,
-  )
-  const titleHeight = fontSize + 14
-  const barHeight = bandCount * blockHeight
-  const height = padding * 2 + titleHeight + barHeight + fontSize / 2
+
+  let width: number
+  let height: number
+  if (style.orientation === 'horizontal') {
+    const blockWidth = Math.max(style.swatchSize * 2, labelWidth + 36)
+    width = Math.max(
+      padding * 2 + titleWidth,
+      padding * 2 + blockWidth * bandCount,
+    )
+    height = padding * 2 + titleHeight + style.swatchSize + style.fontSize + 14
+  } else {
+    const blockHeight = Math.max(style.swatchSize, style.fontSize + 4)
+    const swatchWidth = Math.round(style.swatchSize * 1.7)
+    width = Math.max(
+      padding * 2 + titleWidth,
+      padding * 2 + swatchWidth + 12 + labelWidth,
+    )
+    height =
+      padding * 2 +
+      titleHeight +
+      bandCount * blockHeight +
+      style.fontSize / 2
+  }
+
   const [x, y] = anchorBox(
     position.anchor,
     width,
@@ -1214,44 +1312,77 @@ function drawDifferenceLegend(
     position.offX,
     position.offY,
   )
-  roundedRectangle(context, x, y, width, height, 7)
-  context.fillStyle = 'rgba(255,255,255,0.88)'
-  context.strokeStyle = 'rgba(12,25,44,0.25)'
-  context.fill()
-  context.stroke()
-  context.fillStyle = '#0d1c31'
-  context.font = `700 ${fontSize + 2}px "Segoe UI", Arial, sans-serif`
+  const bounds = { key: 'diffLegend', x, y, width, height } as const
+  drawElementBox(context, bounds, style)
+  context.fillStyle = style.textColor
+  context.font = `700 ${style.fontSize + 2}px "Segoe UI", Arial, sans-serif`
   context.textAlign = 'left'
   context.textBaseline = 'top'
   context.fillText(title, x + padding, y + padding)
 
   const barX = x + padding
   const barTop = y + padding + titleHeight
-  const barBottom = barTop + barHeight
-  for (let band = 0; band < bandCount; band += 1) {
-    const middle = -maxAbsolute + ((band + 0.5) * 2 * maxAbsolute) / bandCount
-    context.fillStyle = differenceColor(middle, maxAbsolute) ?? '#fff'
-    context.fillRect(
-      barX,
-      barBottom - (band + 1) * blockHeight,
-      swatchWidth,
-      blockHeight,
+  context.font = `${style.fontSize}px "Segoe UI", Arial, sans-serif`
+  context.strokeStyle = style.borderColor
+  context.fillStyle = style.textColor
+  if (style.orientation === 'horizontal') {
+    const blockWidth = (width - padding * 2) / bandCount
+    for (let band = 0; band < bandCount; band += 1) {
+      const middle =
+        -maxAbsolute + ((band + 0.5) * 2 * maxAbsolute) / bandCount
+      context.fillStyle = differenceColor(middle, maxAbsolute) ?? '#fff'
+      context.fillRect(
+        barX + band * blockWidth,
+        barTop,
+        blockWidth,
+        style.swatchSize,
+      )
+    }
+    context.strokeRect(
+      barX + 0.5,
+      barTop + 0.5,
+      width - padding * 2,
+      style.swatchSize,
     )
-  }
-  context.strokeStyle = 'rgba(12,25,44,0.55)'
-  context.strokeRect(barX + 0.5, barTop + 0.5, swatchWidth, barHeight)
-  context.fillStyle = '#0d1c31'
-  context.font = `${fontSize}px "Segoe UI", Arial, sans-serif`
-  context.textBaseline = 'middle'
-  for (let index = 0; index <= bandCount; index += 1) {
-    const labelY = barBottom - index * blockHeight
-    context.beginPath()
-    context.moveTo(barX + swatchWidth, labelY)
-    context.lineTo(barX + swatchWidth + 5, labelY)
-    context.stroke()
-    context.fillText(labels[index], barX + swatchWidth + 9, labelY)
+    context.fillStyle = style.textColor
+    context.textBaseline = 'top'
+    labels.forEach((label, index) => {
+      const labelX = barX + (index * (width - padding * 2)) / bandCount
+      context.textAlign =
+        index === 0 ? 'left' : index === bandCount ? 'right' : 'center'
+      context.fillText(label, labelX, barTop + style.swatchSize + 7)
+    })
+  } else {
+    const blockHeight = Math.max(style.swatchSize, style.fontSize + 4)
+    const swatchWidth = Math.round(style.swatchSize * 1.7)
+    const barHeight = bandCount * blockHeight
+    const barBottom = barTop + barHeight
+    for (let band = 0; band < bandCount; band += 1) {
+      const middle =
+        -maxAbsolute + ((band + 0.5) * 2 * maxAbsolute) / bandCount
+      context.fillStyle = differenceColor(middle, maxAbsolute) ?? '#fff'
+      context.fillRect(
+        barX,
+        barBottom - (band + 1) * blockHeight,
+        swatchWidth,
+        blockHeight,
+      )
+    }
+    context.strokeRect(barX + 0.5, barTop + 0.5, swatchWidth, barHeight)
+    context.fillStyle = style.textColor
+    context.textAlign = 'left'
+    context.textBaseline = 'middle'
+    labels.forEach((label, index) => {
+      const labelY = barBottom - index * blockHeight
+      context.beginPath()
+      context.moveTo(barX + swatchWidth, labelY)
+      context.lineTo(barX + swatchWidth + 5, labelY)
+      context.stroke()
+      context.fillText(label, barX + swatchWidth + 9, labelY)
+    })
   }
   context.restore()
+  return bounds
 }
 
 function drawNorthArrow(
@@ -1259,9 +1390,10 @@ function drawNorthArrow(
   frame: Frame,
   rotationRadians: number,
   position: MapElementPositions['north'],
+  style: NorthElementStyle,
 ) {
-  const radius = 44
-  const diameter = radius * 2
+  const diameter = style.size
+  const radius = diameter / 2
   const [x, y] = anchorBox(
     position.anchor,
     diameter,
@@ -1271,30 +1403,84 @@ function drawNorthArrow(
     position.offX,
     position.offY,
   )
+  const bounds = { key: 'north', x, y, width: diameter, height: diameter } as const
   const centerX = x + radius
   const centerY = y + radius
+  const rotation =
+    style.rotationMode === 'true-north' ? rotationRadians : 0
   context.save()
   context.beginPath()
   context.arc(centerX, centerY, radius, 0, Math.PI * 2)
-  context.fillStyle = 'rgba(255,255,255,0.88)'
-  context.strokeStyle = 'rgba(12,25,44,0.3)'
-  context.fill()
-  context.stroke()
+  if (style.background) {
+    context.globalAlpha = Math.max(0, Math.min(1, style.backgroundOpacity))
+    context.fillStyle = style.backgroundColor
+    context.fill()
+    context.globalAlpha = 1
+  }
+  if (style.borderWidth > 0) {
+    context.lineWidth = style.borderWidth
+    context.strokeStyle = style.borderColor
+    context.stroke()
+  }
   context.translate(centerX, centerY)
-  context.rotate(rotationRadians)
-  context.fillStyle = '#0c1a2d'
-  context.beginPath()
-  context.moveTo(0, -24)
-  context.lineTo(15, 29)
-  context.lineTo(0, 15)
-  context.lineTo(-15, 29)
-  context.closePath()
-  context.fill()
-  context.font = '700 18px "Segoe UI", Arial, sans-serif'
-  context.textAlign = 'center'
-  context.textBaseline = 'middle'
-  context.fillText('N', 0, -33)
+  context.rotate(rotation)
+  context.fillStyle = style.color
+  context.strokeStyle = style.color
+  context.lineWidth = Math.max(2, diameter * 0.035)
+  if (style.style === 'simple') {
+    context.beginPath()
+    context.moveTo(0, radius * 0.48)
+    context.lineTo(0, -radius * 0.45)
+    context.stroke()
+    context.beginPath()
+    context.moveTo(0, -radius * 0.62)
+    context.lineTo(radius * 0.18, -radius * 0.28)
+    context.lineTo(0, -radius * 0.36)
+    context.lineTo(-radius * 0.18, -radius * 0.28)
+    context.closePath()
+    context.fill()
+  } else if (style.style === 'compass') {
+    context.beginPath()
+    context.moveTo(0, -radius * 0.62)
+    context.lineTo(radius * 0.16, 0)
+    context.lineTo(0, radius * 0.5)
+    context.lineTo(-radius * 0.16, 0)
+    context.closePath()
+    context.stroke()
+    context.beginPath()
+    context.moveTo(0, -radius * 0.62)
+    context.lineTo(radius * 0.16, 0)
+    context.lineTo(0, -radius * 0.08)
+    context.closePath()
+    context.fill()
+    context.beginPath()
+    context.moveTo(-radius * 0.48, 0)
+    context.lineTo(radius * 0.48, 0)
+    context.stroke()
+  } else {
+    context.beginPath()
+    context.moveTo(0, -radius * 0.55)
+    context.lineTo(radius * 0.34, radius * 0.5)
+    context.lineTo(0, radius * 0.24)
+    context.lineTo(-radius * 0.34, radius * 0.5)
+    context.closePath()
+    context.fill()
+  }
   context.restore()
+
+  if (style.showLabel) {
+    const labelRadius = radius * 0.75
+    const labelX = centerX + Math.sin(rotation) * labelRadius
+    const labelY = centerY - Math.cos(rotation) * labelRadius
+    context.save()
+    context.fillStyle = style.color
+    context.font = `700 ${Math.max(12, diameter * 0.2)}px "Segoe UI", Arial, sans-serif`
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    context.fillText('N', labelX, labelY)
+    context.restore()
+  }
+  return bounds
 }
 
 function niceScaleValue(value: number) {
@@ -1312,16 +1498,34 @@ function drawScaleBar(
   frame: Frame,
   feetPerPixel: number,
   position: MapElementPositions['scale'],
+  style: ScaleElementStyle,
 ) {
-  const segments = 4
-  const segmentFeet = niceScaleValue((140 * feetPerPixel) / segments)
-  const totalPixels = (segmentFeet * segments) / feetPerPixel
-  const segmentPixels = totalPixels / segments
+  const unitFactors = {
+    'us-survey-ft': 1,
+    ft: 0.3048006096012192 / 0.3048,
+    mi: 1 / 5280,
+    m: 0.3048006096012192,
+  }
+  const unitLabels = {
+    'us-survey-ft': 'ft (U.S. Survey)',
+    ft: 'ft',
+    mi: 'mi',
+    m: 'm',
+  }
+  const unitsPerSurveyFoot = unitFactors[style.units]
+  const divisions = Math.max(2, Math.min(6, Math.round(style.divisions)))
+  const targetUnits = 170 * feetPerPixel * unitsPerSurveyFoot
+  const totalUnits =
+    style.lengthMode === 'manual'
+      ? Math.max(0.0001, style.manualLength)
+      : niceScaleValue(targetUnits)
+  const totalFeet = totalUnits / unitsPerSurveyFoot
+  const totalPixels = totalFeet / feetPerPixel
+  const segmentPixels = totalPixels / divisions
   const padding = 12
-  const barHeight = 10
-  const fontSize = 17
+  const barHeight = Math.max(8, Math.round(style.fontSize * 0.58))
   const width = totalPixels + padding * 2
-  const height = 72
+  const height = barHeight + style.fontSize * 2 + padding * 2 + 14
   const [x, y] = anchorBox(
     position.anchor,
     width,
@@ -1331,17 +1535,17 @@ function drawScaleBar(
     position.offX,
     position.offY,
   )
+  const bounds = { key: 'scale', x, y, width, height } as const
   context.save()
-  roundedRectangle(context, x, y, width, height, 7)
-  context.fillStyle = 'rgba(255,255,255,0.88)'
-  context.strokeStyle = 'rgba(12,25,44,0.25)'
-  context.fill()
-  context.stroke()
+  drawElementBox(context, bounds, style)
   const barX = x + padding
-  const barY = y + 10
-  for (let segment = 0; segment < segments; segment += 1) {
-    if (segment % 2 === 0) {
-      context.fillStyle = '#0c1a2d'
+  const barY = y + padding
+  context.strokeStyle = style.lineColor
+  context.lineWidth = 1.5
+  if (style.style === 'alternating') {
+    for (let segment = 0; segment < divisions; segment += 1) {
+      context.fillStyle =
+        segment % 2 === 0 ? style.fillColor : style.backgroundColor
       context.fillRect(
         barX + segment * segmentPixels,
         barY,
@@ -1349,31 +1553,39 @@ function drawScaleBar(
         barHeight,
       )
     }
+    context.strokeRect(barX, barY, totalPixels, barHeight)
+  } else {
+    context.beginPath()
+    context.moveTo(barX, barY + barHeight)
+    context.lineTo(barX + totalPixels, barY + barHeight)
+    context.stroke()
   }
-  context.strokeStyle = '#0c1a2d'
-  context.strokeRect(barX, barY, totalPixels, barHeight)
-  context.font = `${fontSize}px "Segoe UI", Arial, sans-serif`
-  context.fillStyle = '#0c1a2d'
+  context.font = `${style.fontSize}px "Segoe UI", Arial, sans-serif`
+  context.fillStyle = style.textColor
   context.textAlign = 'center'
   context.textBaseline = 'top'
-  for (let index = 0; index <= segments; index += 1) {
+  for (let index = 0; index <= divisions; index += 1) {
     const markerX = barX + index * segmentPixels
     context.beginPath()
-    context.moveTo(markerX, barY + barHeight)
+    context.moveTo(
+      markerX,
+      style.style === 'ticks' ? barY + barHeight - 5 : barY + barHeight,
+    )
     context.lineTo(markerX, barY + barHeight + 5)
     context.stroke()
     context.fillText(
-      String(Math.round(index * segmentFeet)),
+      ((index * totalUnits) / divisions).toFixed(style.decimalPlaces),
       markerX,
       barY + barHeight + 7,
     )
   }
   context.fillText(
-    'ft (U.S. Survey)',
+    unitLabels[style.units],
     barX + totalPixels / 2,
-    barY + barHeight + 30,
+    barY + barHeight + style.fontSize + 12,
   )
   context.restore()
+  return bounds
 }
 
 function drawWetDryKey(
@@ -1381,13 +1593,36 @@ function drawWetDryKey(
   frame: Frame,
   settings: FigureSettings,
   position: MapElementPositions['wetDry'],
+  style: WetDryElementStyle,
 ) {
-  const fontSize = Math.max(12, settings.legendFontSize - 1)
   const padding = 12
+  const swatchHeight = Math.max(10, Math.round(style.swatchSize * 0.55))
+  const rows = [
+    [style.wetLabel, settings.newlyWetColor],
+    [style.dryLabel, settings.newlyDryColor],
+  ] as const
   context.save()
-  context.font = `700 ${fontSize + 1}px "Segoe UI", Arial, sans-serif`
-  const width = Math.max(190, context.measureText('Wet/Dry Change').width + 24)
-  const height = 92
+  context.font = `700 ${style.fontSize + 1}px "Segoe UI", Arial, sans-serif`
+  const titleWidth = context.measureText(style.title).width
+  context.font = `${style.fontSize}px "Segoe UI", Arial, sans-serif`
+  const itemWidths = rows.map(
+    ([label]) =>
+      style.swatchSize + 10 + context.measureText(label).width,
+  )
+  const titleHeight = style.fontSize + 14
+  const width =
+    style.orientation === 'horizontal'
+      ? Math.max(
+          titleWidth + padding * 2,
+          itemWidths.reduce((total, value) => total + value, 0) +
+            padding * 2 +
+            20,
+        )
+      : Math.max(titleWidth, ...itemWidths) + padding * 2
+  const height =
+    style.orientation === 'horizontal'
+      ? padding * 2 + titleHeight + Math.max(style.fontSize, swatchHeight)
+      : padding * 2 + titleHeight + rows.length * (style.fontSize + 8)
   const [x, y] = anchorBox(
     position.anchor,
     width,
@@ -1397,28 +1632,35 @@ function drawWetDryKey(
     position.offX,
     position.offY,
   )
-  roundedRectangle(context, x, y, width, height, 7)
-  context.fillStyle = 'rgba(255,255,255,0.88)'
-  context.strokeStyle = 'rgba(12,25,44,0.25)'
-  context.fill()
-  context.stroke()
-  context.fillStyle = '#0d1c31'
+  const bounds = { key: 'wetDry', x, y, width, height } as const
+  drawElementBox(context, bounds, style)
+  context.fillStyle = style.textColor
   context.textAlign = 'left'
   context.textBaseline = 'top'
-  context.fillText('Wet/Dry Change', x + padding, y + padding)
-  context.font = `${fontSize}px "Segoe UI", Arial, sans-serif`
-  const rows = [
-    ['Newly inundated', settings.newlyWetColor],
-    ['Newly dry', settings.newlyDryColor],
-  ]
+  context.font = `700 ${style.fontSize + 1}px "Segoe UI", Arial, sans-serif`
+  context.fillText(style.title, x + padding, y + padding)
+  context.font = `${style.fontSize}px "Segoe UI", Arial, sans-serif`
+  let rowX = x + padding
   rows.forEach(([label, color], index) => {
-    const rowY = y + 40 + index * 23
+    const rowY =
+      y +
+      padding +
+      titleHeight +
+      (style.orientation === 'vertical' ? index * (style.fontSize + 8) : 0)
     context.fillStyle = color
-    context.fillRect(x + padding, rowY, 24, 13)
-    context.fillStyle = '#0d1c31'
-    context.fillText(label, x + padding + 34, rowY - 2)
+    context.fillRect(rowX, rowY, style.swatchSize, swatchHeight)
+    context.fillStyle = style.textColor
+    context.fillText(
+      label,
+      rowX + style.swatchSize + 10,
+      rowY + (swatchHeight - style.fontSize) / 2,
+    )
+    if (style.orientation === 'horizontal') {
+      rowX += itemWidths[index] + 20
+    }
   })
   context.restore()
+  return bounds
 }
 
 function resolveTitle(scene: WseDifferenceScene, template: string) {
@@ -1430,6 +1672,23 @@ function resolveTitle(scene: WseDifferenceScene, template: string) {
     .trim()
 }
 
+function drawMapElementSelection(
+  context: CanvasRenderingContext2D,
+  bounds: MapElementBounds,
+) {
+  context.save()
+  context.strokeStyle = '#1682cf'
+  context.lineWidth = 2
+  context.setLineDash([7, 5])
+  context.strokeRect(
+    bounds.x - 4,
+    bounds.y - 4,
+    bounds.width + 8,
+    bounds.height + 8,
+  )
+  context.restore()
+}
+
 export async function renderWseDifferenceMap(
   canvas: HTMLCanvasElement,
   scene: WseDifferenceScene,
@@ -1438,6 +1697,7 @@ export async function renderWseDifferenceMap(
   overlays: MapOverlay[],
   annotations: MapAnnotation[] = [],
   selectedAnnotationId: string | null = null,
+  selectedElementKey: MapElementKey | null = null,
   signal?: AbortSignal,
 ) {
   const frame = FRAMES[settings.orientation]
@@ -1520,41 +1780,69 @@ export async function renderWseDifferenceMap(
   }
 
   const positions = settings.elementPositions
+  const styles = settings.elementStyles
+  const elementBounds: MapElementBounds[] = []
   if (settings.showTitle) {
-    drawTitle(
-      context,
-      resolveTitle(scene, settings.titleTemplate),
-      frame,
-      positions.title,
+    elementBounds.push(
+      drawTitle(
+        context,
+        resolveTitle(scene, settings.titleTemplate),
+        frame,
+        positions.title,
+        styles.title,
+      ),
     )
   }
   if (settings.showLegend) {
-    drawDifferenceLegend(
-      context,
-      legendBound,
-      settings.legendInterval,
-      settings.legendFontSize,
-      frame,
-      positions.diffLegend,
+    elementBounds.push(
+      drawDifferenceLegend(
+        context,
+        legendBound,
+        settings.legendInterval,
+        frame,
+        positions.diffLegend,
+        styles.diffLegend,
+      ),
     )
   }
   if (settings.showNorth) {
-    drawNorthArrow(
-      context,
-      frame,
-      view.rotationRadians,
-      positions.north,
+    elementBounds.push(
+      drawNorthArrow(
+        context,
+        frame,
+        view.rotationRadians,
+        positions.north,
+        styles.north,
+      ),
     )
   }
   if (settings.showScale) {
-    drawScaleBar(
-      context,
-      frame,
-      scene.projected.ftPerMerc / view.scale,
-      positions.scale,
+    elementBounds.push(
+      drawScaleBar(
+        context,
+        frame,
+        scene.projected.ftPerMerc / view.scale,
+        positions.scale,
+        styles.scale,
+      ),
     )
   }
-  if (settings.showWetDry) {
-    drawWetDryKey(context, frame, settings, positions.wetDry)
+  if (settings.showWetDry && settings.showWetDryKey) {
+    elementBounds.push(
+      drawWetDryKey(
+        context,
+        frame,
+        settings,
+        positions.wetDry,
+        styles.wetDry,
+      ),
+    )
   }
+  const selectedElement = elementBounds.find(
+    (bounds) => bounds.key === selectedElementKey,
+  )
+  if (selectedElement) {
+    drawMapElementSelection(context, selectedElement)
+  }
+  return elementBounds
 }

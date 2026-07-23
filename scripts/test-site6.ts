@@ -1,8 +1,9 @@
-import { readFile, writeFile } from 'node:fs/promises'
+import { access, readFile, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { File } from 'node:buffer'
 import { tmpdir } from 'node:os'
 import { createCanvas, loadImage } from '@napi-rs/canvas'
+import { cloneDefaultElementStyles } from '../src/core/figureElements'
 import { HydraulicEngine } from '../src/core/hydraulicEngine'
 import {
   canvasPointToMap,
@@ -35,12 +36,24 @@ if (testBasemap) {
   }) as typeof createImageBitmap
 }
 
-const fileNames = [
-  'Existing_Datasets.h5',
-  'Existing_Geometry.h5',
-  'Proposed_Datasets.h5',
-  'Proposed_Geometry.h5',
-]
+async function availableFileName(candidates: string[]) {
+  for (const candidate of candidates) {
+    try {
+      await access(join(dataDirectory, candidate))
+      return candidate
+    } catch {
+      // Try the next supported Site 6 filename.
+    }
+  }
+  throw new Error(`None of these files were found: ${candidates.join(', ')}`)
+}
+
+const fileNames = await Promise.all([
+  availableFileName(['Existing_Datasets.h5', 'EX_datasets.h5']),
+  availableFileName(['Existing_Geometry.h5', 'EX_geometry.h5']),
+  availableFileName(['Proposed_Datasets.h5', 'PR_datasets.h5']),
+  availableFileName(['Proposed_Geometry.h5', 'PR_geometry.h5']),
+])
 
 const files = await Promise.all(
   fileNames.map(async (fileName) => {
@@ -74,7 +87,10 @@ const scene = engine.buildWseDifference(existingIndex, proposedIndex, 0)
 const validProposedWetNodes = Array.from(scene.proposedWseWet).filter(
   (value) => Number.isFinite(value) && value > -900,
 ).length
-const overlayPath = join(dataDirectory, 'Proposed_CL.zip')
+const overlayPath = join(
+  dataDirectory,
+  await availableFileName(['Proposed_CL.zip', 'CL.zip']),
+)
 const overlayFile = new File([await readFile(overlayPath)], basename(overlayPath))
 const overlayResult = await readShapefileOverlays(
   [overlayFile] as unknown as globalThis.File[],
@@ -106,6 +122,7 @@ const renderSettings: FigureSettings = {
   showLegend: true,
   showNorth: true,
   showScale: true,
+  showWetDryKey: true,
   titleTemplate: '{type} - {existing} vs {proposed}',
   legendBound: null,
   legendInterval: null,
@@ -118,6 +135,7 @@ const renderSettings: FigureSettings = {
   panX: 0,
   panY: 0,
   elementPositions: structuredClone(DEFAULT_ELEMENT_POSITIONS),
+  elementStyles: cloneDefaultElementStyles(),
 }
 const resultIndex = Array.from(scene.diff).findIndex(
   (value) => Number.isFinite(value) && value > -900,
@@ -310,7 +328,7 @@ if (
   )
 }
 const canvas = createCanvas(1650, 1275)
-await renderWseDifferenceMap(
+const landscapeElementBounds = await renderWseDifferenceMap(
   canvas as unknown as HTMLCanvasElement,
   scene,
   engine.commonBounds(),
@@ -318,7 +336,22 @@ await renderWseDifferenceMap(
   overlayResult.overlays,
   annotations,
   'leader',
+  'title',
 )
+if (
+  landscapeElementBounds.length !== 5 ||
+  landscapeElementBounds.some(
+    (bounds) =>
+      bounds.x < 0 ||
+      bounds.y < 0 ||
+      bounds.x + bounds.width > canvas.width ||
+      bounds.y + bounds.height > canvas.height,
+  )
+) {
+  throw new Error(
+    `Landscape figure elements are missing or outside the frame: ${JSON.stringify(landscapeElementBounds)}`,
+  )
+}
 const imageData = canvas
   .getContext('2d')
   .getImageData(0, 0, canvas.width, canvas.height).data
@@ -396,6 +429,50 @@ const outputPath =
   process.env.HFG_TEST_OUTPUT || join(tmpdir(), 'hydraulic-site6-render.png')
 await writeFile(outputPath, canvas.toBuffer('image/png'))
 
+const portraitSettings: FigureSettings = {
+  ...renderSettings,
+  orientation: 'portrait',
+  elementPositions: structuredClone(DEFAULT_ELEMENT_POSITIONS),
+  elementStyles: cloneDefaultElementStyles(),
+}
+portraitSettings.elementStyles.title.fontSize = 34
+portraitSettings.elementStyles.title.maxWidth = 760
+portraitSettings.elementStyles.diffLegend.orientation = 'horizontal'
+portraitSettings.elementStyles.diffLegend.decimalPlaces = 2
+portraitSettings.elementStyles.wetDry.orientation = 'horizontal'
+portraitSettings.elementStyles.north.style = 'compass'
+portraitSettings.elementStyles.north.size = 104
+portraitSettings.elementStyles.scale.units = 'm'
+portraitSettings.elementStyles.scale.divisions = 5
+portraitSettings.elementStyles.scale.style = 'ticks'
+const portraitCanvas = createCanvas(1275, 1650)
+const portraitElementBounds = await renderWseDifferenceMap(
+  portraitCanvas as unknown as HTMLCanvasElement,
+  scene,
+  engine.commonBounds(),
+  portraitSettings,
+  overlayResult.overlays,
+  annotations,
+)
+if (
+  portraitElementBounds.length !== 5 ||
+  portraitElementBounds.some(
+    (bounds) =>
+      bounds.x < 0 ||
+      bounds.y < 0 ||
+      bounds.x + bounds.width > portraitCanvas.width ||
+      bounds.y + bounds.height > portraitCanvas.height,
+  )
+) {
+  throw new Error(
+    `Portrait figure elements are missing or outside the frame: ${JSON.stringify(portraitElementBounds)}`,
+  )
+}
+const portraitOutputPath =
+  process.env.HFG_TEST_PORTRAIT_OUTPUT ||
+  join(tmpdir(), 'hydraulic-site6-render-portrait.png')
+await writeFile(portraitOutputPath, portraitCanvas.toBuffer('image/png'))
+
 console.log(
   JSON.stringify(
     {
@@ -421,8 +498,11 @@ console.log(
       },
       render: {
         outputPath,
+        portraitOutputPath,
         width: canvas.width,
         height: canvas.height,
+        landscapeElements: landscapeElementBounds,
+        portraitElements: portraitElementBounds,
         coloredPixelSamples: coloredPixels,
         annotations: annotations.length,
         selectedAnnotationId: 'leader',
