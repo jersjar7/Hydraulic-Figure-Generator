@@ -13,13 +13,13 @@ export function ControlSection({
   children,
 }: ControlSectionProps) {
   return (
-    <details className="control-section">
-      <summary>
+    <section className="control-section">
+      <header className="control-section-header">
         <span className="section-icon">{icon}</span>
-        <span>{title}</span>
+        <h3>{title}</h3>
         {badge ? <span className="section-badge">{badge}</span> : null}
-      </summary>
+      </header>
       <div className="control-section-body">{children}</div>
-    </details>
+    </section>
   )
 }

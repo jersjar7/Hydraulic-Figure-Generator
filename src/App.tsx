@@ -30,6 +30,7 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type KeyboardEvent,
 } from 'react'
 import './App.css'
 import { ControlSection } from './components/ControlSection'
@@ -102,6 +103,41 @@ const ELEMENTS: { key: MapElementKey; label: string }[] = [
   { key: 'scale', label: 'Scale bar' },
 ]
 
+const SETTINGS_SECTIONS = [
+  {
+    key: 'calculation',
+    label: 'Calculation',
+    title: 'Map calculation',
+    icon: Settings2,
+  },
+  {
+    key: 'legend',
+    label: 'Legend & colors',
+    title: 'Legend and colors',
+    icon: Palette,
+  },
+  {
+    key: 'frame',
+    label: 'Frame & view',
+    title: 'Frame and view',
+    icon: SlidersHorizontal,
+  },
+  {
+    key: 'elements',
+    label: 'Elements',
+    title: 'Figure elements',
+    icon: MapPin,
+  },
+  {
+    key: 'export',
+    label: 'Export',
+    title: 'Export',
+    icon: ImageDown,
+  },
+] as const
+
+type SettingsSectionKey = (typeof SETTINGS_SECTIONS)[number]['key']
+
 const numeric = (value: string, fallback = 0) => {
   const parsed = Number.parseFloat(value)
   return Number.isFinite(parsed) ? parsed : fallback
@@ -127,6 +163,8 @@ function App() {
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
   const [leftOpen, setLeftOpen] = useState(false)
   const [rightOpen, setRightOpen] = useState(false)
+  const [activeSettingsSection, setActiveSettingsSection] =
+    useState<SettingsSectionKey>('calculation')
   const [canvasDisplaySize, setCanvasDisplaySize] = useState({
     width: 0,
     height: 0,
@@ -155,6 +193,34 @@ function App() {
     value: FigureSettings[Key],
   ) => {
     setSettings((current) => ({ ...current, [key]: value }))
+  }
+
+  const handleSettingsTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
+    let nextIndex = index
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      nextIndex = (index + 1) % SETTINGS_SECTIONS.length
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      nextIndex =
+        (index - 1 + SETTINGS_SECTIONS.length) % SETTINGS_SECTIONS.length
+    } else if (event.key === 'Home') {
+      nextIndex = 0
+    } else if (event.key === 'End') {
+      nextIndex = SETTINGS_SECTIONS.length - 1
+    } else {
+      return
+    }
+
+    event.preventDefault()
+    const nextSection = SETTINGS_SECTIONS[nextIndex]
+    setActiveSettingsSection(nextSection.key)
+    const tabs =
+      event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
+        '[role="tab"]',
+      )
+    tabs?.[nextIndex]?.focus()
   }
 
   const handleH5Files = async (files: File[]) => {
@@ -736,7 +802,48 @@ function App() {
             </button>
           </div>
 
-          <div className="right-scroll">
+          <nav
+            className="settings-switcher"
+            aria-label="Figure settings sections"
+            role="tablist"
+          >
+            {SETTINGS_SECTIONS.map((section, index) => {
+              const Icon = section.icon
+              const active = activeSettingsSection === section.key
+              return (
+                <button
+                  className={`settings-tab${active ? ' active' : ''}`}
+                  type="button"
+                  role="tab"
+                  id={`settings-tab-${section.key}`}
+                  aria-controls={`settings-panel-${section.key}`}
+                  aria-selected={active}
+                  tabIndex={active ? 0 : -1}
+                  title={section.title}
+                  key={section.key}
+                  onClick={() => setActiveSettingsSection(section.key)}
+                  onKeyDown={(event) =>
+                    handleSettingsTabKeyDown(event, index)
+                  }
+                >
+                  <Icon
+                    className="settings-tab-icon"
+                    size={18}
+                    aria-hidden="true"
+                  />
+                  <span className="settings-tab-label">{section.label}</span>
+                </button>
+              )
+            })}
+          </nav>
+
+          <div
+            className="right-scroll"
+            id={`settings-panel-${activeSettingsSection}`}
+            role="tabpanel"
+            aria-labelledby={`settings-tab-${activeSettingsSection}`}
+          >
+            {activeSettingsSection === 'calculation' ? (
             <ControlSection
               icon={<Settings2 size={17} />}
               title="Map calculation"
@@ -803,7 +910,9 @@ function App() {
                 </label>
               </div>
             </ControlSection>
+            ) : null}
 
+            {activeSettingsSection === 'legend' ? (
             <ControlSection
               icon={<Palette size={17} />}
               title="Legend and colors"
@@ -884,7 +993,9 @@ function App() {
                 </label>
               </div>
             </ControlSection>
+            ) : null}
 
+            {activeSettingsSection === 'frame' ? (
             <ControlSection
               icon={<SlidersHorizontal size={17} />}
               title="Frame and view"
@@ -985,7 +1096,9 @@ function App() {
                 </div>
               </div>
             </ControlSection>
+            ) : null}
 
+            {activeSettingsSection === 'elements' ? (
             <ControlSection
               icon={<MapPin size={17} />}
               title="Figure elements"
@@ -1091,7 +1204,9 @@ function App() {
                 })}
               </div>
             </ControlSection>
+            ) : null}
 
+            {activeSettingsSection === 'export' ? (
             <ControlSection
               icon={<ImageDown size={17} />}
               title="Export"
@@ -1113,6 +1228,7 @@ function App() {
                 Download map PNG
               </button>
             </ControlSection>
+            ) : null}
           </div>
 
           <div className="generate-bar">
