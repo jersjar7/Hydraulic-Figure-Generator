@@ -69,7 +69,7 @@ if (existingIndex < 0 || proposedIndex < 0) {
   throw new Error('A 100-year run was not found in both conditions.')
 }
 
-const scene = engine.buildWseDifference(existingIndex, proposedIndex, 0.05)
+const scene = engine.buildWseDifference(existingIndex, proposedIndex, 0)
 const validProposedWetNodes = Array.from(scene.proposedWseWet).filter(
   (value) => Number.isFinite(value) && value > -900,
 ).length
@@ -96,7 +96,7 @@ if (
 
 const renderSettings: FigureSettings = {
   orientation: 'landscape',
-  dryDepth: 0.05,
+  dryDepth: 0,
   differenceOutlineColor: '#111111',
   showDifferenceOutlines: true,
   showWetDry: true,

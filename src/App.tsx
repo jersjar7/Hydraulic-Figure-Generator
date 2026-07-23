@@ -73,7 +73,7 @@ import type {
 
 const DEFAULT_SETTINGS: FigureSettings = {
   orientation: 'landscape',
-  dryDepth: 0.05,
+  dryDepth: 0,
   differenceOutlineColor: '#111111',
   showDifferenceOutlines: true,
   showWetDry: true,
@@ -1347,8 +1347,8 @@ function App() {
                 />
               </label>
               <p className="field-help">
-                Depths at or below this value are treated as dry for wet/dry
-                classification.
+                Depths at or below this value are dry. At 0.00 ft, every
+                positive modeled depth is wet.
               </p>
               <Toggle
                 label="Newly wet/dry fill"
