@@ -3,9 +3,12 @@ import type {
   Bounds,
   FigureSettings,
   GeoJsonGeometry,
+  MapAnnotation,
+  MapCoordinate,
   MapElementPositions,
   MapOverlay,
   ProjectedGeometry,
+  ResultLabelField,
   WseDifferenceScene,
 } from './types'
 import { runDisplayName } from './hydraulicEngine'
@@ -41,6 +44,7 @@ type View = {
   centerX: number
   centerY: number
   toLocal(mx: number, my: number): [number, number]
+  toScreen(mx: number, my: number): [number, number]
   screenToMerc(x: number, y: number): { x: number; y: number }
   coverBounds(): Bounds
 }
@@ -74,6 +78,13 @@ function makeView(
     centerY,
     toLocal(mx, my) {
       return [(mx - centerX) * scale, -(my - centerY) * scale]
+    },
+    toScreen(mx, my) {
+      const [localX, localY] = this.toLocal(mx, my)
+      return [
+        originX + localX * cosine - localY * sine,
+        originY + localX * sine + localY * cosine,
+      ]
     },
     screenToMerc(x, y) {
       const dx = x - originX
@@ -484,6 +495,346 @@ function drawOverlays(
   context.restore()
 }
 
+function annotationScreenPoint(point: MapCoordinate, view: View) {
+  const [x, y] = view.toScreen(point.x, point.y)
+  return { x, y }
+}
+
+function annotationTextBox(
+  context: CanvasRenderingContext2D,
+  annotation: MapAnnotation,
+  point: { x: number; y: number },
+) {
+  const lines = (annotation.text.trim() || 'Note').split(/\r?\n/)
+  const lineHeight = annotation.fontSize * 1.25
+  const paddingX = 10
+  const paddingY = 8
+  context.save()
+  context.font = `600 ${annotation.fontSize}px "Segoe UI", Arial, sans-serif`
+  const width =
+    Math.max(...lines.map((line) => context.measureText(line).width)) +
+    paddingX * 2
+  const height = lines.length * lineHeight + paddingY * 2
+  const x = point.x - width / 2
+  const y = point.y - height / 2
+
+  if (annotation.background) {
+    roundedRectangle(context, x, y, width, height, 6)
+    context.fillStyle = hexToRgba(annotation.fillColor, 0.9)
+    context.strokeStyle = hexToRgba(annotation.color, 0.65)
+    context.lineWidth = Math.max(1, annotation.lineWidth * 0.65)
+    context.fill()
+    context.stroke()
+  }
+
+  context.font = `600 ${annotation.fontSize}px "Segoe UI", Arial, sans-serif`
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  lines.forEach((line, index) => {
+    const lineY = y + paddingY + lineHeight * (index + 0.5)
+    if (!annotation.background) {
+      context.strokeStyle = 'rgba(255,255,255,0.96)'
+      context.lineWidth = Math.max(3, annotation.fontSize * 0.22)
+      context.lineJoin = 'round'
+      context.strokeText(line, point.x, lineY)
+    }
+    context.fillStyle = annotation.color
+    context.fillText(line, point.x, lineY)
+  })
+  context.restore()
+}
+
+function drawArrowHead(
+  context: CanvasRenderingContext2D,
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  color: string,
+  lineWidth: number,
+) {
+  const angle = Math.atan2(end.y - start.y, end.x - start.x)
+  const length = Math.max(12, lineWidth * 4)
+  context.save()
+  context.fillStyle = color
+  context.beginPath()
+  context.moveTo(end.x, end.y)
+  context.lineTo(
+    end.x - length * Math.cos(angle - Math.PI / 7),
+    end.y - length * Math.sin(angle - Math.PI / 7),
+  )
+  context.lineTo(
+    end.x - length * Math.cos(angle + Math.PI / 7),
+    end.y - length * Math.sin(angle + Math.PI / 7),
+  )
+  context.closePath()
+  context.fill()
+  context.restore()
+}
+
+function drawAnnotations(
+  context: CanvasRenderingContext2D,
+  annotations: MapAnnotation[],
+  view: View,
+) {
+  for (const annotation of annotations) {
+    const points = annotation.points.map((point) =>
+      annotationScreenPoint(point, view),
+    )
+    if (points.length === 0) continue
+
+    context.save()
+    context.strokeStyle = annotation.color
+    context.fillStyle = annotation.color
+    context.lineWidth = annotation.lineWidth
+    context.lineCap = 'round'
+    context.lineJoin = 'round'
+    context.setLineDash(annotation.dashed ? [12, 8] : [])
+
+    if (
+      (annotation.kind === 'line' || annotation.kind === 'arrow') &&
+      points[1]
+    ) {
+      context.beginPath()
+      context.moveTo(points[0].x, points[0].y)
+      context.lineTo(points[1].x, points[1].y)
+      context.stroke()
+      if (annotation.kind === 'arrow') {
+        drawArrowHead(
+          context,
+          points[0],
+          points[1],
+          annotation.color,
+          annotation.lineWidth,
+        )
+      }
+    } else if (
+      (annotation.kind === 'leader' || annotation.kind === 'result') &&
+      points[1]
+    ) {
+      context.beginPath()
+      context.moveTo(points[0].x, points[0].y)
+      context.lineTo(points[1].x, points[1].y)
+      context.stroke()
+      context.setLineDash([])
+      context.beginPath()
+      context.arc(
+        points[0].x,
+        points[0].y,
+        Math.max(4, annotation.lineWidth * 1.5),
+        0,
+        Math.PI * 2,
+      )
+      context.fill()
+      annotationTextBox(context, annotation, points[1])
+    } else if (annotation.kind === 'text') {
+      annotationTextBox(context, annotation, points[0])
+    } else if (annotation.kind === 'marker') {
+      const radius = Math.max(12, annotation.fontSize * 0.72)
+      context.setLineDash([])
+      context.beginPath()
+      context.arc(points[0].x, points[0].y, radius, 0, Math.PI * 2)
+      context.fillStyle = hexToRgba(annotation.fillColor, 0.94)
+      context.fill()
+      context.strokeStyle = annotation.color
+      context.lineWidth = annotation.lineWidth
+      context.stroke()
+      context.fillStyle = annotation.color
+      context.font = `700 ${annotation.fontSize}px "Segoe UI", Arial, sans-serif`
+      context.textAlign = 'center'
+      context.textBaseline = 'middle'
+      context.fillText(annotation.text.trim() || '1', points[0].x, points[0].y)
+    }
+    context.restore()
+  }
+}
+
+export function canvasPointToMap(
+  x: number,
+  y: number,
+  bounds: Bounds,
+  settings: FigureSettings,
+): MapCoordinate {
+  const view = makeView(bounds, FRAMES[settings.orientation], settings)
+  return view.screenToMerc(x, y)
+}
+
+export function mapPointToCanvas(
+  point: MapCoordinate,
+  bounds: Bounds,
+  settings: FigureSettings,
+) {
+  const view = makeView(bounds, FRAMES[settings.orientation], settings)
+  const [x, y] = view.toScreen(point.x, point.y)
+  return { x, y }
+}
+
+function pointToSegmentDistance(
+  point: { x: number; y: number },
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+) {
+  const dx = end.x - start.x
+  const dy = end.y - start.y
+  if (dx === 0 && dy === 0) return Math.hypot(point.x - start.x, point.y - start.y)
+  const fraction = Math.max(
+    0,
+    Math.min(
+      1,
+      ((point.x - start.x) * dx + (point.y - start.y) * dy) /
+        (dx * dx + dy * dy),
+    ),
+  )
+  return Math.hypot(
+    point.x - (start.x + fraction * dx),
+    point.y - (start.y + fraction * dy),
+  )
+}
+
+export function hitTestAnnotation(
+  annotations: MapAnnotation[],
+  bounds: Bounds,
+  settings: FigureSettings,
+  x: number,
+  y: number,
+) {
+  const view = makeView(bounds, FRAMES[settings.orientation], settings)
+  const pointer = { x, y }
+
+  for (let index = annotations.length - 1; index >= 0; index -= 1) {
+    const annotation = annotations[index]
+    const points = annotation.points.map((point) =>
+      annotationScreenPoint(point, view),
+    )
+    if (points.length === 0) continue
+    if (annotation.kind === 'text' || annotation.kind === 'marker') {
+      if (Math.hypot(x - points[0].x, y - points[0].y) <= 30) {
+        return annotation.id
+      }
+      continue
+    }
+    if (
+      (annotation.kind === 'leader' || annotation.kind === 'result') &&
+      points[1]
+    ) {
+      const labelLines = (annotation.text || 'Note').split(/\r?\n/)
+      const estimatedWidth =
+        Math.max(...labelLines.map((line) => line.length)) *
+          annotation.fontSize *
+          0.62 +
+        24
+      const estimatedHeight =
+        labelLines.length * annotation.fontSize * 1.25 + 20
+      if (
+        Math.abs(x - points[1].x) <= estimatedWidth / 2 &&
+        Math.abs(y - points[1].y) <= estimatedHeight / 2
+      ) {
+        return annotation.id
+      }
+    }
+    if (
+      points[1] &&
+      pointToSegmentDistance(pointer, points[0], points[1]) <=
+        Math.max(10, annotation.lineWidth + 6)
+    ) {
+      return annotation.id
+    }
+  }
+  return null
+}
+
+type HydraulicResultSample = {
+  existingWse: number | null
+  proposedWse: number | null
+  difference: number | null
+  existingDepth: number | null
+  proposedDepth: number | null
+}
+
+function nearestNode(
+  geometry: ProjectedGeometry,
+  point: MapCoordinate,
+) {
+  let nearestIndex = -1
+  let nearestDistance2 = Number.POSITIVE_INFINITY
+  for (let index = 0; index < geometry.N; index += 1) {
+    const dx = geometry.mx[index] - point.x
+    const dy = geometry.my[index] - point.y
+    const distance2 = dx * dx + dy * dy
+    if (distance2 < nearestDistance2) {
+      nearestDistance2 = distance2
+      nearestIndex = index
+    }
+  }
+  return { index: nearestIndex, distance2: nearestDistance2 }
+}
+
+const validResult = (value: number | undefined) =>
+  value != null && VALID(value) ? value : null
+
+export function sampleHydraulicResult(
+  scene: WseDifferenceScene,
+  bounds: Bounds,
+  settings: FigureSettings,
+  point: MapCoordinate,
+): HydraulicResultSample | null {
+  const view = makeView(bounds, FRAMES[settings.orientation], settings)
+  const existing = nearestNode(scene.projected, point)
+  const proposed = nearestNode(scene.proposedProjected, point)
+  const tolerance2 = (45 / view.scale) ** 2
+  const existingNear = existing.distance2 <= tolerance2
+  const proposedNear = proposed.distance2 <= tolerance2
+  if (!existingNear && !proposedNear) return null
+
+  return {
+    existingWse: existingNear
+      ? validResult(scene.existingWse[existing.index])
+      : null,
+    proposedWse: proposedNear
+      ? validResult(scene.proposedWse[proposed.index])
+      : null,
+    difference: existingNear
+      ? validResult(scene.diff[existing.index])
+      : null,
+    existingDepth: existingNear
+      ? validResult(scene.existingDepth[existing.index])
+      : null,
+    proposedDepth: proposedNear
+      ? validResult(scene.proposedDepth[proposed.index])
+      : null,
+  }
+}
+
+function formattedResult(value: number | null, signed = false) {
+  if (value == null) return 'No result'
+  const sign = signed && value > 0 ? '+' : ''
+  return `${sign}${value.toFixed(2)} ft`
+}
+
+export function formatHydraulicResultLabel(
+  field: ResultLabelField,
+  sample: HydraulicResultSample,
+) {
+  if (field === 'difference') {
+    return `WSE difference: ${formattedResult(sample.difference, true)}`
+  }
+  if (field === 'existingWse') {
+    return `Existing WSE: ${formattedResult(sample.existingWse)}`
+  }
+  if (field === 'proposedWse') {
+    return `Proposed WSE: ${formattedResult(sample.proposedWse)}`
+  }
+  if (field === 'existingDepth') {
+    return `Existing depth: ${formattedResult(sample.existingDepth)}`
+  }
+  if (field === 'proposedDepth') {
+    return `Proposed depth: ${formattedResult(sample.proposedDepth)}`
+  }
+  return [
+    `Existing WSE: ${formattedResult(sample.existingWse)}`,
+    `Proposed WSE: ${formattedResult(sample.proposedWse)}`,
+    `Difference: ${formattedResult(sample.difference, true)}`,
+  ].join('\n')
+}
+
 function roundedRectangle(
   context: CanvasRenderingContext2D,
   x: number,
@@ -828,6 +1179,7 @@ export async function renderWseDifferenceMap(
   commonBounds: Bounds,
   settings: FigureSettings,
   overlays: MapOverlay[],
+  annotations: MapAnnotation[] = [],
 ) {
   const frame = FRAMES[settings.orientation]
   canvas.width = frame.width
@@ -890,6 +1242,8 @@ export async function renderWseDifferenceMap(
   }
   if (settings.showOverlays) drawOverlays(context, overlays, view)
   context.restore()
+
+  drawAnnotations(context, annotations, view)
 
   const positions = settings.elementPositions
   if (settings.showTitle) {

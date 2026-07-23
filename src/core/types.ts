@@ -75,6 +75,10 @@ export type WseDifferenceScene = {
   proposed: RunSelection
   projected: ProjectedGeometry
   proposedProjected: ProjectedGeometry
+  existingWse: Float32Array
+  proposedWse: Float32Array
+  existingDepth: Float32Array
+  proposedDepth: Float32Array
   diff: Float32Array
   wetDry: Int8Array
   proposedWetDry: Int8Array
@@ -133,6 +137,55 @@ export type ElementPosition = {
 export type MapElementKey = 'title' | 'diffLegend' | 'north' | 'scale' | 'wetDry'
 
 export type MapElementPositions = Record<MapElementKey, ElementPosition>
+
+export type MapCoordinate = {
+  x: number
+  y: number
+}
+
+export type AnnotationTool =
+  | 'select'
+  | 'text'
+  | 'leader'
+  | 'arrow'
+  | 'line'
+  | 'marker'
+  | 'result'
+
+export type AnnotationKind = Exclude<AnnotationTool, 'select'>
+
+export type ResultLabelField =
+  | 'summary'
+  | 'difference'
+  | 'existingWse'
+  | 'proposedWse'
+  | 'existingDepth'
+  | 'proposedDepth'
+
+export type MapAnnotation = {
+  id: string
+  kind: AnnotationKind
+  points: MapCoordinate[]
+  text: string
+  color: string
+  fillColor: string
+  lineWidth: number
+  fontSize: number
+  dashed: boolean
+  background: boolean
+  resultField?: ResultLabelField
+}
+
+export type AnnotationDefaults = {
+  text: string
+  color: string
+  fillColor: string
+  lineWidth: number
+  fontSize: number
+  dashed: boolean
+  background: boolean
+  resultField: ResultLabelField
+}
 
 export type FigureSettings = {
   orientation: 'landscape' | 'portrait'

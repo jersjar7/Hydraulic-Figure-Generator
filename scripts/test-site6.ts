@@ -5,11 +5,19 @@ import { tmpdir } from 'node:os'
 import { createCanvas } from '@napi-rs/canvas'
 import { HydraulicEngine } from '../src/core/hydraulicEngine'
 import {
+  canvasPointToMap,
   DEFAULT_ELEMENT_POSITIONS,
+  formatHydraulicResultLabel,
+  hitTestAnnotation,
+  mapPointToCanvas,
   renderWseDifferenceMap,
+  sampleHydraulicResult,
 } from '../src/core/mapRenderer'
 import { readShapefileOverlays } from '../src/core/shapefile'
-import type { FigureSettings } from '../src/core/types'
+import type {
+  FigureSettings,
+  MapAnnotation,
+} from '../src/core/types'
 
 const dataDirectory = process.env.HFG_SITE6_DATA
 if (!dataDirectory) {
@@ -101,6 +109,140 @@ const renderSettings: FigureSettings = {
   panY: 0,
   elementPositions: structuredClone(DEFAULT_ELEMENT_POSITIONS),
 }
+const resultIndex = Array.from(scene.diff).findIndex(
+  (value) => Number.isFinite(value) && value > -900,
+)
+if (resultIndex < 0) {
+  throw new Error('No valid mesh node was available for annotation sampling.')
+}
+const resultPoint = {
+  x: scene.projected.mx[resultIndex],
+  y: scene.projected.my[resultIndex],
+}
+const hydraulicSample = sampleHydraulicResult(
+  scene,
+  engine.commonBounds(),
+  renderSettings,
+  resultPoint,
+)
+if (!hydraulicSample) {
+  throw new Error('The automatic result annotation could not sample Site 6.')
+}
+const annotationOffset =
+  Math.max(
+    scene.projected.bbox.x1 - scene.projected.bbox.x0,
+    scene.projected.bbox.y1 - scene.projected.bbox.y0,
+  ) * 0.06
+const annotationStyle = {
+  color: '#b42318',
+  fillColor: '#ffffff',
+  lineWidth: 3,
+  fontSize: 20,
+  dashed: false,
+  background: true,
+}
+const annotations: MapAnnotation[] = [
+  {
+    id: 'text',
+    kind: 'text',
+    points: [{ x: resultPoint.x, y: resultPoint.y + annotationOffset }],
+    text: 'Site 6',
+    ...annotationStyle,
+  },
+  {
+    id: 'leader',
+    kind: 'leader',
+    points: [
+      resultPoint,
+      {
+        x: resultPoint.x + annotationOffset,
+        y: resultPoint.y + annotationOffset,
+      },
+    ],
+    text: 'Hydraulic structure',
+    ...annotationStyle,
+  },
+  {
+    id: 'arrow',
+    kind: 'arrow',
+    points: [
+      { x: resultPoint.x - annotationOffset, y: resultPoint.y },
+      resultPoint,
+    ],
+    text: '',
+    ...annotationStyle,
+  },
+  {
+    id: 'line',
+    kind: 'line',
+    points: [
+      {
+        x: resultPoint.x - annotationOffset,
+        y: resultPoint.y - annotationOffset,
+      },
+      {
+        x: resultPoint.x + annotationOffset,
+        y: resultPoint.y - annotationOffset,
+      },
+    ],
+    text: '',
+    ...annotationStyle,
+    dashed: true,
+  },
+  {
+    id: 'marker',
+    kind: 'marker',
+    points: [{ x: resultPoint.x - annotationOffset, y: resultPoint.y }],
+    text: '1',
+    ...annotationStyle,
+  },
+  {
+    id: 'result',
+    kind: 'result',
+    points: [
+      resultPoint,
+      {
+        x: resultPoint.x + annotationOffset,
+        y: resultPoint.y - annotationOffset,
+      },
+    ],
+    text: formatHydraulicResultLabel('summary', hydraulicSample),
+    resultField: 'summary',
+    ...annotationStyle,
+  },
+]
+const textScreenPoint = mapPointToCanvas(
+  annotations[0].points[0],
+  engine.commonBounds(),
+  renderSettings,
+)
+const roundTripPoint = canvasPointToMap(
+  textScreenPoint.x,
+  textScreenPoint.y,
+  engine.commonBounds(),
+  renderSettings,
+)
+const selectedAnnotationId = hitTestAnnotation(
+  [annotations[0]],
+  engine.commonBounds(),
+  renderSettings,
+  textScreenPoint.x,
+  textScreenPoint.y,
+)
+if (
+  selectedAnnotationId !== 'text' ||
+  Math.hypot(
+    roundTripPoint.x - annotations[0].points[0].x,
+    roundTripPoint.y - annotations[0].points[0].y,
+  ) > 1e-6
+) {
+  throw new Error(
+    `Annotation selection or map-coordinate anchoring failed (${selectedAnnotationId}, ${Math.hypot(
+      roundTripPoint.x - annotations[0].points[0].x,
+      roundTripPoint.y - annotations[0].points[0].y,
+    )}).`,
+  )
+}
 const canvas = createCanvas(1650, 1275)
 await renderWseDifferenceMap(
   canvas as unknown as HTMLCanvasElement,
@@ -108,6 +250,7 @@ await renderWseDifferenceMap(
   engine.commonBounds(),
   renderSettings,
   overlayResult.overlays,
+  annotations,
 )
 const imageData = canvas
   .getContext('2d')
@@ -156,6 +299,9 @@ console.log(
         width: canvas.width,
         height: canvas.height,
         coloredPixelSamples: coloredPixels,
+        annotations: annotations.length,
+        selectedAnnotationId,
+        sampledResultLabel: annotations.at(-1)?.text,
       },
     },
     null,

@@ -3,7 +3,10 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
+  ArrowUpRight,
   ArrowUp,
+  CircleDot,
+  Crosshair,
   Download,
   FileJson,
   FolderOpen,
@@ -11,6 +14,9 @@ import {
   Layers3,
   Map,
   MapPin,
+  MessageSquareText,
+  Minus,
+  MousePointer2,
   PanelLeft,
   PanelRight,
   Palette,
@@ -19,6 +25,8 @@ import {
   Save,
   Settings2,
   SlidersHorizontal,
+  Trash2,
+  Type,
   UploadCloud,
   X,
   ZoomIn,
@@ -31,6 +39,7 @@ import {
   useState,
   type ChangeEvent,
   type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
 } from 'react'
 import './App.css'
 import { ControlSection } from './components/ControlSection'
@@ -38,17 +47,27 @@ import { DiagnosticsDrawer } from './components/DiagnosticsDrawer'
 import { FileDrop } from './components/FileDrop'
 import { HydraulicEngine, runDisplayName } from './core/hydraulicEngine'
 import {
+  canvasPointToMap,
   DEFAULT_ELEMENT_POSITIONS,
+  formatHydraulicResultLabel,
+  FRAMES,
+  hitTestAnnotation,
   renderWseDifferenceMap,
+  sampleHydraulicResult,
 } from './core/mapRenderer'
 import { readShapefileOverlays } from './core/shapefile'
 import type {
   Anchor,
+  AnnotationDefaults,
+  AnnotationTool,
   ConditionKey,
   FigureSettings,
   IngestNotice,
+  MapAnnotation,
+  MapCoordinate,
   MapElementKey,
   MapOverlay,
+  ResultLabelField,
   WseDifferenceScene,
 } from './core/types'
 
@@ -83,6 +102,17 @@ const FRAME_ASPECTS = {
   portrait: 1275 / 1650,
 } as const
 
+const DEFAULT_ANNOTATION_SETTINGS: AnnotationDefaults = {
+  text: 'Note',
+  color: '#b42318',
+  fillColor: '#ffffff',
+  lineWidth: 3,
+  fontSize: 20,
+  dashed: false,
+  background: true,
+  resultField: 'summary',
+}
+
 const ANCHORS: { value: Anchor; label: string }[] = [
   { value: 'tl', label: 'Top left' },
   { value: 'tc', label: 'Top center' },
@@ -106,19 +136,19 @@ const ELEMENTS: { key: MapElementKey; label: string }[] = [
 const SETTINGS_SECTIONS = [
   {
     key: 'calculation',
-    label: 'Calculation',
+    label: 'Map',
     title: 'Map calculation',
     icon: Settings2,
   },
   {
     key: 'legend',
-    label: 'Legend & colors',
+    label: 'Legend',
     title: 'Legend and colors',
     icon: Palette,
   },
   {
     key: 'frame',
-    label: 'Frame & view',
+    label: 'View',
     title: 'Frame and view',
     icon: SlidersHorizontal,
   },
@@ -129,6 +159,12 @@ const SETTINGS_SECTIONS = [
     icon: MapPin,
   },
   {
+    key: 'annotations',
+    label: 'Callouts',
+    title: 'Annotations and callouts',
+    icon: MessageSquareText,
+  },
+  {
     key: 'export',
     label: 'Export',
     title: 'Export',
@@ -137,6 +173,29 @@ const SETTINGS_SECTIONS = [
 ] as const
 
 type SettingsSectionKey = (typeof SETTINGS_SECTIONS)[number]['key']
+
+const ANNOTATION_TOOLS = [
+  { key: 'select', label: 'Select', icon: MousePointer2 },
+  { key: 'text', label: 'Text', icon: Type },
+  { key: 'leader', label: 'Leader callout', icon: MessageSquareText },
+  { key: 'arrow', label: 'Arrow', icon: ArrowUpRight },
+  { key: 'line', label: 'Line', icon: Minus },
+  { key: 'marker', label: 'Point marker', icon: CircleDot },
+  { key: 'result', label: 'Automatic result label', icon: Crosshair },
+] as const satisfies ReadonlyArray<{
+  key: AnnotationTool
+  label: string
+  icon: typeof MousePointer2
+}>
+
+const RESULT_LABEL_OPTIONS: { value: ResultLabelField; label: string }[] = [
+  { value: 'summary', label: 'WSE summary' },
+  { value: 'difference', label: 'WSE difference' },
+  { value: 'existingWse', label: 'Existing WSE' },
+  { value: 'proposedWse', label: 'Proposed WSE' },
+  { value: 'existingDepth', label: 'Existing depth' },
+  { value: 'proposedDepth', label: 'Proposed depth' },
+]
 
 const numeric = (value: string, fallback = 0) => {
   const parsed = Number.parseFloat(value)
@@ -157,6 +216,17 @@ function App() {
   const [existingRun, setExistingRun] = useState(0)
   const [proposedRun, setProposedRun] = useState(0)
   const [overlays, setOverlays] = useState<MapOverlay[]>([])
+  const [annotations, setAnnotations] = useState<MapAnnotation[]>([])
+  const [annotationTool, setAnnotationTool] =
+    useState<AnnotationTool>('select')
+  const [annotationDefaults, setAnnotationDefaults] =
+    useState<AnnotationDefaults>(DEFAULT_ANNOTATION_SETTINGS)
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(
+    null,
+  )
+  const [annotationStart, setAnnotationStart] = useState<MapCoordinate | null>(
+    null,
+  )
   const [notices, setNotices] = useState<IngestNotice[]>([])
   const [scene, setScene] = useState<WseDifferenceScene | null>(null)
   const [busy, setBusy] = useState(false)
@@ -173,12 +243,26 @@ function App() {
   const canvasFrameRef = useRef<HTMLDivElement>(null)
   const projectInputRef = useRef<HTMLInputElement>(null)
   const renderSequence = useRef(0)
+  const annotationDragRef = useRef<{
+    id: string
+    start: MapCoordinate
+    end: MapCoordinate
+    originalPoints: MapCoordinate[]
+  } | null>(null)
 
   const existingCondition = engine.condition('EX')
   const proposedCondition = engine.condition('PR')
   const existingRuns = engine.runOptions('EX')
   const proposedRuns = engine.runOptions('PR')
   const ready = engine.isReady()
+  const selectedAnnotation =
+    annotations.find((annotation) => annotation.id === selectedAnnotationId) ??
+    null
+  const annotationEditor = selectedAnnotation ?? annotationDefaults
+  const activeResultField =
+    selectedAnnotation?.kind === 'result'
+      ? (selectedAnnotation.resultField ?? annotationDefaults.resultField)
+      : annotationDefaults.resultField
 
   const appendNotices = useCallback((incoming: IngestNotice[]) => {
     if (incoming.length === 0) return
@@ -300,6 +384,7 @@ function App() {
       engine.commonBounds(),
       settings,
       overlays,
+      annotations,
     )
       .catch((error) => {
         appendNotices([
@@ -312,7 +397,7 @@ function App() {
       .finally(() => {
         if (renderSequence.current === sequence) setBusy(false)
       })
-  }, [appendNotices, engine, overlays, scene, settings])
+  }, [annotations, appendNotices, engine, overlays, scene, settings])
 
   useEffect(() => {
     const frame = canvasFrameRef.current
@@ -338,6 +423,346 @@ function App() {
 
     return () => observer.disconnect()
   }, [settings.orientation])
+
+  useEffect(() => {
+    if (!scene) return
+    const bounds = engine.commonBounds()
+    setAnnotations((current) =>
+      current.map((annotation) => {
+        if (annotation.kind !== 'result' || !annotation.resultField) {
+          return annotation
+        }
+        const sample = sampleHydraulicResult(
+          scene,
+          bounds,
+          settings,
+          annotation.points[0],
+        )
+        return sample
+          ? {
+              ...annotation,
+              text: formatHydraulicResultLabel(
+                annotation.resultField,
+                sample,
+              ),
+            }
+          : annotation
+      }),
+    )
+  }, [engine, scene, settings])
+
+  useEffect(() => {
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      const target = event.target
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement
+      ) {
+        return
+      }
+      if (event.key === 'Escape') {
+        setAnnotationStart(null)
+        setAnnotationTool('select')
+      }
+      if (
+        (event.key === 'Delete' || event.key === 'Backspace') &&
+        selectedAnnotationId
+      ) {
+        setAnnotations((current) =>
+          current.filter(
+            (annotation) => annotation.id !== selectedAnnotationId,
+          ),
+        )
+        setSelectedAnnotationId(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedAnnotationId])
+
+  const createAnnotation = (
+    kind: MapAnnotation['kind'],
+    points: MapCoordinate[],
+    text = annotationDefaults.text,
+    resultField?: ResultLabelField,
+  ) => {
+    const id = globalThis.crypto.randomUUID()
+    const annotation: MapAnnotation = {
+      id,
+      kind,
+      points,
+      text,
+      color: annotationDefaults.color,
+      fillColor: annotationDefaults.fillColor,
+      lineWidth: annotationDefaults.lineWidth,
+      fontSize: annotationDefaults.fontSize,
+      dashed: annotationDefaults.dashed,
+      background:
+        kind === 'text'
+          ? annotationDefaults.background
+          : kind === 'leader' || kind === 'result'
+            ? true
+            : false,
+      resultField,
+    }
+    setAnnotations((current) => [...current, annotation])
+    setSelectedAnnotationId(id)
+    return annotation
+  }
+
+  const updateAnnotationAppearance = (
+    patch: Partial<AnnotationDefaults>,
+  ) => {
+    if (selectedAnnotationId) {
+      setAnnotations((current) =>
+        current.map((annotation) =>
+          annotation.id === selectedAnnotationId
+            ? { ...annotation, ...patch }
+            : annotation,
+        ),
+      )
+    } else {
+      setAnnotationDefaults((current) => ({ ...current, ...patch }))
+    }
+  }
+
+  const setResultLabelField = (field: ResultLabelField) => {
+    setAnnotationDefaults((current) => ({
+      ...current,
+      resultField: field,
+    }))
+    if (
+      !selectedAnnotation ||
+      selectedAnnotation.kind !== 'result' ||
+      !scene
+    ) {
+      return
+    }
+    const sample = sampleHydraulicResult(
+      scene,
+      engine.commonBounds(),
+      settings,
+      selectedAnnotation.points[0],
+    )
+    setAnnotations((current) =>
+      current.map((annotation) =>
+        annotation.id === selectedAnnotation.id
+          ? {
+              ...annotation,
+              resultField: field,
+              text: sample
+                ? formatHydraulicResultLabel(field, sample)
+                : annotation.text,
+            }
+          : annotation,
+      ),
+    )
+  }
+
+  const pointerCanvasPoint = (
+    event: ReactPointerEvent<HTMLCanvasElement>,
+  ) => {
+    const canvas = event.currentTarget
+    const rect = canvas.getBoundingClientRect()
+    return {
+      x: ((event.clientX - rect.left) * canvas.width) / rect.width,
+      y: ((event.clientY - rect.top) * canvas.height) / rect.height,
+    }
+  }
+
+  const chooseAnnotationTool = (tool: AnnotationTool) => {
+    setAnnotationTool(tool)
+    setAnnotationStart(null)
+    if (tool !== 'select') setSelectedAnnotationId(null)
+  }
+
+  const handleCanvasPointerDown = (
+    event: ReactPointerEvent<HTMLCanvasElement>,
+  ) => {
+    if (!scene) return
+    event.preventDefault()
+    const screenPoint = pointerCanvasPoint(event)
+    const bounds = engine.commonBounds()
+    const mapPoint = canvasPointToMap(
+      screenPoint.x,
+      screenPoint.y,
+      bounds,
+      settings,
+    )
+
+    if (annotationTool === 'select') {
+      const id = hitTestAnnotation(
+        annotations,
+        bounds,
+        settings,
+        screenPoint.x,
+        screenPoint.y,
+      )
+      setSelectedAnnotationId(id)
+      if (id) {
+        const annotation = annotations.find((item) => item.id === id)
+        if (annotation) {
+          annotationDragRef.current = {
+            id,
+            start: mapPoint,
+            end: mapPoint,
+            originalPoints: annotation.points.map((point) => ({ ...point })),
+          }
+          event.currentTarget.setPointerCapture(event.pointerId)
+        }
+      }
+      return
+    }
+
+    if (annotationTool === 'text') {
+      createAnnotation('text', [mapPoint])
+      return
+    }
+
+    if (annotationTool === 'marker') {
+      const markerCount =
+        annotations.filter((annotation) => annotation.kind === 'marker').length +
+        1
+      const markerText =
+        annotationDefaults.text.trim() &&
+        annotationDefaults.text.trim().toLowerCase() !== 'note'
+          ? annotationDefaults.text.trim()
+          : String(markerCount)
+      createAnnotation('marker', [mapPoint], markerText)
+      return
+    }
+
+    if (annotationTool === 'result') {
+      const sample = sampleHydraulicResult(
+        scene,
+        bounds,
+        settings,
+        mapPoint,
+      )
+      if (!sample) {
+        appendNotices([
+          {
+            level: 'warning',
+            text: 'No hydraulic result was found close enough to that point.',
+          },
+        ])
+        return
+      }
+      const frame = FRAMES[settings.orientation]
+      const labelScreenPoint = {
+        x: Math.min(frame.width - 40, screenPoint.x + 135),
+        y: Math.max(40, screenPoint.y - 80),
+      }
+      const labelMapPoint = canvasPointToMap(
+        labelScreenPoint.x,
+        labelScreenPoint.y,
+        bounds,
+        settings,
+      )
+      createAnnotation(
+        'result',
+        [mapPoint, labelMapPoint],
+        formatHydraulicResultLabel(annotationDefaults.resultField, sample),
+        annotationDefaults.resultField,
+      )
+      return
+    }
+
+    if (!annotationStart) {
+      setAnnotationStart(mapPoint)
+      return
+    }
+
+    createAnnotation(annotationTool, [annotationStart, mapPoint])
+    setAnnotationStart(null)
+  }
+
+  const handleCanvasPointerMove = (
+    event: ReactPointerEvent<HTMLCanvasElement>,
+  ) => {
+    if (!annotationDragRef.current) return
+    const point = pointerCanvasPoint(event)
+    annotationDragRef.current.end = canvasPointToMap(
+      point.x,
+      point.y,
+      engine.commonBounds(),
+      settings,
+    )
+  }
+
+  const finishAnnotationDrag = (
+    event: ReactPointerEvent<HTMLCanvasElement>,
+  ) => {
+    const drag = annotationDragRef.current
+    if (!drag) return
+    const point = pointerCanvasPoint(event)
+    drag.end = canvasPointToMap(
+      point.x,
+      point.y,
+      engine.commonBounds(),
+      settings,
+    )
+    const dx = drag.end.x - drag.start.x
+    const dy = drag.end.y - drag.start.y
+    setAnnotations((current) =>
+      current.map((annotation) =>
+        annotation.id === drag.id
+          ? {
+              ...annotation,
+              points: drag.originalPoints.map((point) => ({
+                x: point.x + dx,
+                y: point.y + dy,
+              })),
+            }
+          : annotation,
+      ),
+    )
+    annotationDragRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  const deleteSelectedAnnotation = () => {
+    if (!selectedAnnotationId) return
+    setAnnotations((current) =>
+      current.filter(
+        (annotation) => annotation.id !== selectedAnnotationId,
+      ),
+    )
+    setSelectedAnnotationId(null)
+  }
+
+  const nudgeSelectedAnnotation = (dx: number, dy: number) => {
+    if (!selectedAnnotationId) return
+    const frame = FRAMES[settings.orientation]
+    const center = canvasPointToMap(
+      frame.width / 2,
+      frame.height / 2,
+      engine.commonBounds(),
+      settings,
+    )
+    const offset = canvasPointToMap(
+      frame.width / 2 + dx,
+      frame.height / 2 + dy,
+      engine.commonBounds(),
+      settings,
+    )
+    setAnnotations((current) =>
+      current.map((annotation) =>
+        annotation.id === selectedAnnotationId
+          ? {
+              ...annotation,
+              points: annotation.points.map((point) => ({
+                x: point.x + offset.x - center.x,
+                y: point.y + offset.y - center.y,
+              })),
+            }
+          : annotation,
+      ),
+    )
+  }
 
   const updateOverlay = (id: string, patch: Partial<MapOverlay>) => {
     setOverlays((current) =>
@@ -382,6 +807,11 @@ function App() {
     engine.reset()
     setDataVersion((value) => value + 1)
     setOverlays([])
+    setAnnotations([])
+    setSelectedAnnotationId(null)
+    setAnnotationStart(null)
+    setAnnotationTool('select')
+    setAnnotationDefaults(DEFAULT_ANNOTATION_SETTINGS)
     setScene(null)
     setNotices([])
     setExistingRun(0)
@@ -405,10 +835,12 @@ function App() {
 
   const saveProject = () => {
     const project = {
-      version: 1,
+      version: 2,
       figure: 'fra-wse-difference',
       settings,
       overlays,
+      annotations,
+      annotationDefaults,
       selectedRuns: { existingRun, proposedRun },
     }
     const blob = new Blob([JSON.stringify(project, null, 2)], {
@@ -430,6 +862,8 @@ function App() {
       const project = JSON.parse(await file.text()) as {
         settings?: Partial<FigureSettings>
         overlays?: MapOverlay[]
+        annotations?: MapAnnotation[]
+        annotationDefaults?: Partial<AnnotationDefaults>
         selectedRuns?: { existingRun?: number; proposedRun?: number }
       }
       if (project.settings) {
@@ -443,6 +877,17 @@ function App() {
         }))
       }
       if (Array.isArray(project.overlays)) setOverlays(project.overlays)
+      if (Array.isArray(project.annotations)) {
+        setAnnotations(project.annotations)
+      }
+      if (project.annotationDefaults) {
+        setAnnotationDefaults((current) => ({
+          ...current,
+          ...project.annotationDefaults,
+        }))
+      }
+      setSelectedAnnotationId(null)
+      setAnnotationStart(null)
       setExistingRun(project.selectedRuns?.existingRun ?? 0)
       setProposedRun(project.selectedRuns?.proposedRun ?? 0)
       setScene(null)
@@ -765,6 +1210,16 @@ function App() {
                 ref={canvasRef}
                 className={scene ? 'map-canvas is-visible' : 'map-canvas'}
                 aria-label="Generated WSE difference figure"
+                data-annotation-tool={annotationTool}
+                onPointerDown={handleCanvasPointerDown}
+                onPointerMove={handleCanvasPointerMove}
+                onPointerUp={finishAnnotationDrag}
+                onPointerCancel={(event) => {
+                  annotationDragRef.current = null
+                  if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                    event.currentTarget.releasePointerCapture(event.pointerId)
+                  }
+                }}
                 style={{
                   width: canvasDisplaySize.width || undefined,
                   height: canvasDisplaySize.height || undefined,
@@ -1206,6 +1661,281 @@ function App() {
             </ControlSection>
             ) : null}
 
+            {activeSettingsSection === 'annotations' ? (
+            <ControlSection
+              icon={<MessageSquareText size={17} />}
+              title="Annotations and callouts"
+            >
+              <div
+                className="annotation-tools"
+                role="toolbar"
+                aria-label="Annotation tools"
+              >
+                {ANNOTATION_TOOLS.map((tool) => {
+                  const ToolIcon = tool.icon
+                  return (
+                    <button
+                      className={`annotation-tool${annotationTool === tool.key ? ' active' : ''}`}
+                      type="button"
+                      title={tool.label}
+                      aria-label={tool.label}
+                      aria-pressed={annotationTool === tool.key}
+                      disabled={!scene}
+                      key={tool.key}
+                      onClick={() => chooseAnnotationTool(tool.key)}
+                    >
+                      <ToolIcon size={18} aria-hidden="true" />
+                      <span>{tool.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <p
+                className={`annotation-guidance${annotationStart ? ' awaiting-point' : ''}`}
+                aria-live="polite"
+              >
+                {annotationStart
+                  ? annotationTool === 'leader'
+                    ? 'Choose label position'
+                    : annotationTool === 'arrow'
+                      ? 'Choose arrowhead'
+                      : 'Choose endpoint'
+                  : annotationTool === 'select'
+                    ? 'Select or drag an annotation'
+                    : annotationTool === 'text'
+                      ? 'Place text'
+                      : annotationTool === 'leader'
+                        ? 'Choose callout target'
+                        : annotationTool === 'arrow'
+                          ? 'Choose arrow tail'
+                          : annotationTool === 'line'
+                            ? 'Choose line start'
+                            : annotationTool === 'marker'
+                              ? 'Place marker'
+                              : 'Choose result location'}
+              </p>
+
+              {annotationStart ? (
+                <button
+                  className="button secondary compact full"
+                  type="button"
+                  onClick={() => setAnnotationStart(null)}
+                >
+                  <X size={15} aria-hidden="true" />
+                  Cancel current drawing
+                </button>
+              ) : null}
+
+              {(annotationTool === 'text' ||
+                annotationTool === 'leader' ||
+                annotationTool === 'marker' ||
+                (selectedAnnotation &&
+                  selectedAnnotation.kind !== 'line' &&
+                  selectedAnnotation.kind !== 'arrow' &&
+                  selectedAnnotation.kind !== 'result')) ? (
+                <label className="field">
+                  <span>
+                    {selectedAnnotation ? 'Selected text' : 'New annotation text'}
+                  </span>
+                  <textarea
+                    className="annotation-textarea"
+                    rows={3}
+                    value={annotationEditor.text}
+                    onChange={(event) =>
+                      updateAnnotationAppearance({ text: event.target.value })
+                    }
+                  />
+                </label>
+              ) : null}
+
+              {annotationTool === 'result' ||
+              selectedAnnotation?.kind === 'result' ? (
+                <label className="field">
+                  <span>Automatic result label</span>
+                  <select
+                    value={activeResultField}
+                    onChange={(event) =>
+                      setResultLabelField(
+                        event.target.value as ResultLabelField,
+                      )
+                    }
+                  >
+                    {RESULT_LABEL_OPTIONS.map((option) => (
+                      <option value={option.value} key={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+
+              <div className="annotation-style-heading">
+                <span>{selectedAnnotation ? 'Selected style' : 'New item style'}</span>
+                {selectedAnnotation ? (
+                  <span className="annotation-selected-kind">
+                    {selectedAnnotation.kind}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="field-grid two">
+                <label className="field color-field">
+                  <span>Color</span>
+                  <input
+                    type="color"
+                    value={annotationEditor.color}
+                    onChange={(event) =>
+                      updateAnnotationAppearance({ color: event.target.value })
+                    }
+                  />
+                </label>
+                <label className="field color-field">
+                  <span>Box / marker fill</span>
+                  <input
+                    type="color"
+                    value={annotationEditor.fillColor}
+                    onChange={(event) =>
+                      updateAnnotationAppearance({
+                        fillColor: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <div className="field-grid two">
+                <label className="field">
+                  <span>Line width <small>px</small></span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="12"
+                    step="0.5"
+                    value={annotationEditor.lineWidth}
+                    onChange={(event) =>
+                      updateAnnotationAppearance({
+                        lineWidth: numeric(event.target.value, 3),
+                      })
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>Text size <small>px</small></span>
+                  <input
+                    type="number"
+                    min="10"
+                    max="48"
+                    step="1"
+                    value={annotationEditor.fontSize}
+                    onChange={(event) =>
+                      updateAnnotationAppearance({
+                        fontSize: numeric(event.target.value, 20),
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <Toggle
+                label="Dashed line"
+                checked={annotationEditor.dashed}
+                onChange={(checked) =>
+                  updateAnnotationAppearance({ dashed: checked })
+                }
+              />
+              <Toggle
+                label="Text background"
+                checked={annotationEditor.background}
+                onChange={(checked) =>
+                  updateAnnotationAppearance({ background: checked })
+                }
+              />
+
+              {selectedAnnotation ? (
+                <div className="annotation-selection-actions">
+                  <div className="nudge-control">
+                    <span>Move selected</span>
+                    <div className="nudge-buttons">
+                      <NudgeButton
+                        label="Move annotation left"
+                        icon={<ArrowLeft size={14} />}
+                        onClick={() => nudgeSelectedAnnotation(-10, 0)}
+                      />
+                      <NudgeButton
+                        label="Move annotation up"
+                        icon={<ArrowUp size={14} />}
+                        onClick={() => nudgeSelectedAnnotation(0, -10)}
+                      />
+                      <NudgeButton
+                        label="Move annotation down"
+                        icon={<ArrowDown size={14} />}
+                        onClick={() => nudgeSelectedAnnotation(0, 10)}
+                      />
+                      <NudgeButton
+                        label="Move annotation right"
+                        icon={<ArrowRight size={14} />}
+                        onClick={() => nudgeSelectedAnnotation(10, 0)}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    className="button danger-outline compact full"
+                    type="button"
+                    onClick={deleteSelectedAnnotation}
+                  >
+                    <Trash2 size={15} aria-hidden="true" />
+                    Delete selected
+                  </button>
+                </div>
+              ) : null}
+
+              <div className="annotation-list-heading">
+                <span>Placed annotations</span>
+                <span>{annotations.length}</span>
+              </div>
+              {annotations.length === 0 ? (
+                <p className="empty-note">No annotations placed yet.</p>
+              ) : (
+                <div className="annotation-list">
+                  {annotations.map((annotation, index) => (
+                    <button
+                      className={`annotation-list-item${annotation.id === selectedAnnotationId ? ' active' : ''}`}
+                      type="button"
+                      key={annotation.id}
+                      onClick={() => {
+                        setAnnotationTool('select')
+                        setAnnotationStart(null)
+                        setSelectedAnnotationId(annotation.id)
+                      }}
+                    >
+                      <span>
+                        {annotation.kind.charAt(0).toUpperCase() +
+                          annotation.kind.slice(1)}{' '}
+                        {index + 1}
+                      </span>
+                      <small>
+                        {annotation.text.split(/\r?\n/)[0] || 'Untitled'}
+                      </small>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {annotations.length > 0 ? (
+                <button
+                  className="text-button annotation-clear"
+                  type="button"
+                  onClick={() => {
+                    setAnnotations([])
+                    setSelectedAnnotationId(null)
+                    setAnnotationStart(null)
+                  }}
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                  Clear all annotations
+                </button>
+              ) : null}
+            </ControlSection>
+            ) : null}
+
             {activeSettingsSection === 'export' ? (
             <ControlSection
               icon={<ImageDown size={17} />}
@@ -1214,8 +1944,8 @@ function App() {
               <div className="export-note">
                 <FileJson size={17} aria-hidden="true" />
                 <span>
-                  Project files retain figure settings and overlays. H5 files
-                  remain local and must be re-added.
+                  Project files retain figure settings, overlays, and
+                  annotations. H5 files remain local and must be re-added.
                 </span>
               </div>
               <button
