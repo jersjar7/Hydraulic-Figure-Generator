@@ -7,6 +7,8 @@ import {
   ArrowUp,
   ArrowUpDown,
   Crosshair,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Download,
   FileJson,
@@ -179,6 +181,8 @@ const SETTINGS_SECTIONS = [
 
 type SettingsSectionKey = (typeof SETTINGS_SECTIONS)[number]['key']
 type AnnotationPanelView = 'create' | 'placed'
+type AnnotationPlacedView = 'list' | 'detail'
+type AnnotationEditorView = 'content' | 'style' | 'position'
 
 const ANNOTATION_TOOLS = [
   { key: 'select', label: 'Select', icon: MousePointer2 },
@@ -301,6 +305,20 @@ function extremumDisplayName(kind: WseExtremumKind) {
   return kind === 'max-rise' ? 'Max WSE rise' : 'Max WSE reduction'
 }
 
+function annotationDisplayName(annotation: MapAnnotation, index: number) {
+  return annotation.hydraulicExtremum
+    ? extremumDisplayName(annotation.hydraulicExtremum)
+    : `${annotation.kind.charAt(0).toUpperCase()}${annotation.kind.slice(1)} ${index + 1}`
+}
+
+function annotationHasContentEditor(annotation: MapAnnotation) {
+  return annotation.kind !== 'line' && annotation.kind !== 'arrow'
+}
+
+function defaultEditorView(annotation: MapAnnotation): AnnotationEditorView {
+  return annotationHasContentEditor(annotation) ? 'content' : 'style'
+}
+
 function App() {
   const [engine] = useState(() => new HydraulicEngine())
   const [dataVersion, setDataVersion] = useState(0)
@@ -313,6 +331,10 @@ function App() {
     useState<AnnotationTool>('select')
   const [annotationPanelView, setAnnotationPanelView] =
     useState<AnnotationPanelView>('create')
+  const [annotationPlacedView, setAnnotationPlacedView] =
+    useState<AnnotationPlacedView>('list')
+  const [annotationEditorView, setAnnotationEditorView] =
+    useState<AnnotationEditorView>('content')
   const [annotationDefaults, setAnnotationDefaults] =
     useState<AnnotationDefaults>(DEFAULT_ANNOTATION_SETTINGS)
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(
@@ -357,6 +379,11 @@ function App() {
   const selectedAnnotation =
     annotations.find((annotation) => annotation.id === selectedAnnotationId) ??
     null
+  const selectedAnnotationIndex = selectedAnnotation
+    ? annotations.findIndex(
+        (annotation) => annotation.id === selectedAnnotation.id,
+      )
+    : -1
   const annotationEditor = selectedAnnotation ?? annotationDefaults
   const activeResultField =
     selectedAnnotation?.kind === 'result'
@@ -369,6 +396,16 @@ function App() {
   const extremaCalloutCount = annotations.filter(
     (annotation) => annotation.hydraulicExtremum,
   ).length
+
+  useEffect(() => {
+    if (
+      annotationPanelView === 'placed' &&
+      annotationPlacedView === 'detail' &&
+      !selectedAnnotation
+    ) {
+      setAnnotationPlacedView('list')
+    }
+  }, [annotationPanelView, annotationPlacedView, selectedAnnotation])
 
   const appendNotices = useCallback((incoming: IngestNotice[]) => {
     if (incoming.length === 0) return
@@ -692,6 +729,8 @@ function App() {
     setSelectedAnnotationId(id)
     setAnnotationTool('select')
     setAnnotationPanelView('placed')
+    setAnnotationPlacedView('detail')
+    setAnnotationEditorView(defaultEditorView(annotation))
     return annotation
   }
 
@@ -786,6 +825,8 @@ function App() {
     setSelectedAnnotationId(ids.get(extrema[0].kind) ?? null)
     setAnnotationTool('select')
     setAnnotationPanelView('placed')
+    setAnnotationPlacedView('detail')
+    setAnnotationEditorView('content')
     setAnnotationStart(null)
     const summary = extrema
       .map((extremum) =>
@@ -929,11 +970,7 @@ function App() {
       return
     }
     setAnnotationTool('select')
-    setSelectedAnnotationId((current) =>
-      current && annotations.some((annotation) => annotation.id === current)
-        ? current
-        : (annotations[0]?.id ?? null),
-    )
+    setAnnotationPlacedView('list')
   }
 
   const handleAnnotationPanelTabKeyDown = (
@@ -969,9 +1006,75 @@ function App() {
 
   const selectPlacedAnnotation = (annotation: MapAnnotation) => {
     setAnnotationPanelView('placed')
+    setAnnotationPlacedView('detail')
+    setAnnotationEditorView(defaultEditorView(annotation))
     setAnnotationTool('select')
     setAnnotationStart(null)
     setSelectedAnnotationId(annotation.id)
+  }
+
+  const returnToPlacedAnnotations = () => {
+    setAnnotationPlacedView('list')
+    setAnnotationStart(null)
+    requestAnimationFrame(() => {
+      if (selectedAnnotationId) {
+        annotationListItemRefs.current.get(selectedAnnotationId)?.focus()
+      }
+    })
+  }
+
+  const selectAdjacentAnnotation = (direction: -1 | 1) => {
+    if (annotations.length === 0) return
+    const currentIndex = Math.max(0, selectedAnnotationIndex)
+    const nextIndex =
+      (currentIndex + direction + annotations.length) % annotations.length
+    const next = annotations[nextIndex]
+    setSelectedAnnotationId(next.id)
+    if (
+      annotationEditorView === 'content' &&
+      !annotationHasContentEditor(next)
+    ) {
+      setAnnotationEditorView('style')
+    }
+  }
+
+  const handleAnnotationEditorTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    view: AnnotationEditorView,
+  ) => {
+    if (!selectedAnnotation) return
+    const views: AnnotationEditorView[] = annotationHasContentEditor(
+      selectedAnnotation,
+    )
+      ? ['content', 'style', 'position']
+      : ['style', 'position']
+    if (
+      event.key !== 'ArrowLeft' &&
+      event.key !== 'ArrowRight' &&
+      event.key !== 'Home' &&
+      event.key !== 'End'
+    ) {
+      return
+    }
+    event.preventDefault()
+    const currentIndex = Math.max(0, views.indexOf(view))
+    const nextIndex =
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? views.length - 1
+          : event.key === 'ArrowRight'
+            ? (currentIndex + 1) % views.length
+            : (currentIndex - 1 + views.length) % views.length
+    const nextView = views[nextIndex]
+    setAnnotationEditorView(nextView)
+    requestAnimationFrame(() =>
+      document
+        .querySelector<HTMLButtonElement>(
+          `#annotation-editor-tab-${nextView}`,
+        )
+        ?.focus(),
+    )
   }
 
   const handleAnnotationListKeyDown = (
@@ -993,7 +1096,7 @@ function App() {
     event.preventDefault()
     const next = annotations[nextIndex]
     if (!next) return
-    selectPlacedAnnotation(next)
+    setSelectedAnnotationId(next.id)
     requestAnimationFrame(() =>
       annotationListItemRefs.current.get(next.id)?.focus(),
     )
@@ -1044,10 +1147,12 @@ function App() {
         screenPoint.y,
       )
       setSelectedAnnotationId(hit?.id ?? null)
-      if (hit) setAnnotationPanelView('placed')
       if (hit) {
         const annotation = annotations.find((item) => item.id === hit.id)
         if (annotation) {
+          setAnnotationPanelView('placed')
+          setAnnotationPlacedView('detail')
+          setAnnotationEditorView(defaultEditorView(annotation))
           if (annotation.hydraulicExtremum && hit.part !== 'body') {
             return
           }
@@ -1238,11 +1343,7 @@ function App() {
       ),
     )
     setSelectedAnnotationId(nextSelection?.id ?? null)
-    if (nextSelection) {
-      requestAnimationFrame(() =>
-        annotationListItemRefs.current.get(nextSelection.id)?.focus(),
-      )
-    }
+    if (!nextSelection) setAnnotationPlacedView('list')
   }
 
   const duplicateSelectedAnnotation = () => {
@@ -1283,6 +1384,8 @@ function App() {
     setSelectedAnnotationId(id)
     setAnnotationTool('select')
     setAnnotationPanelView('placed')
+    setAnnotationPlacedView('detail')
+    setAnnotationEditorView(defaultEditorView(copy))
     setAnnotationStart(null)
   }
 
@@ -1422,6 +1525,8 @@ function App() {
     setAnnotationStart(null)
     setAnnotationTool('select')
     setAnnotationPanelView('create')
+    setAnnotationPlacedView('list')
+    setAnnotationEditorView('content')
     setAnnotationDefaults(DEFAULT_ANNOTATION_SETTINGS)
     figureElementDragRef.current = null
     elementBoundsRef.current = []
@@ -1585,6 +1690,8 @@ function App() {
       setSelectedAnnotationId(null)
       setAnnotationStart(null)
       setAnnotationPanelView('create')
+      setAnnotationPlacedView('list')
+      setAnnotationEditorView('content')
       setExistingRun(project.selectedRuns?.existingRun ?? 0)
       setProposedRun(project.selectedRuns?.proposedRun ?? 0)
       setScene(null)
@@ -2388,324 +2495,613 @@ function App() {
                         </button>
                       </div>
                     ) : null}
+
+                    {annotationTool === 'text' ||
+                    annotationTool === 'leader' ? (
+                      <label className="field">
+                        <span>New annotation text</span>
+                        <textarea
+                          className="annotation-textarea"
+                          rows={3}
+                          value={annotationEditor.text}
+                          onChange={(event) =>
+                            updateAnnotationAppearance({
+                              text: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    ) : null}
+
+                    {annotationTool === 'result' ? (
+                      <label className="field">
+                        <span>Automatic result label</span>
+                        <select
+                          value={activeResultField}
+                          onChange={(event) =>
+                            setResultLabelField(
+                              event.target.value as ResultLabelField,
+                            )
+                          }
+                        >
+                          {RESULT_LABEL_OPTIONS.map((option) => (
+                            <option value={option.value} key={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+
+                    {annotationTool !== 'select' ? (
+                      <>
+                        <div className="annotation-style-heading">
+                          <span>New item style</span>
+                        </div>
+                        <div className="field-grid two">
+                          <label className="field color-field">
+                            <span>Color</span>
+                            <input
+                              type="color"
+                              value={annotationEditor.color}
+                              onChange={(event) =>
+                                updateAnnotationAppearance({
+                                  color: event.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="field color-field">
+                            <span>Box fill</span>
+                            <input
+                              type="color"
+                              value={annotationEditor.fillColor}
+                              onChange={(event) =>
+                                updateAnnotationAppearance({
+                                  fillColor: event.target.value,
+                                })
+                              }
+                            />
+                          </label>
+                        </div>
+                        <div className="field-grid two">
+                          <label className="field">
+                            <span>Line width <small>px</small></span>
+                            <input
+                              type="number"
+                              min="1"
+                              max="12"
+                              step="0.5"
+                              value={annotationEditor.lineWidth}
+                              onChange={(event) =>
+                                updateAnnotationAppearance({
+                                  lineWidth: numeric(event.target.value, 3),
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="field">
+                            <span>Text size <small>px</small></span>
+                            <input
+                              type="number"
+                              min="10"
+                              max="48"
+                              step="1"
+                              value={annotationEditor.fontSize}
+                              onChange={(event) =>
+                                updateAnnotationAppearance({
+                                  fontSize: numeric(event.target.value, 20),
+                                })
+                              }
+                            />
+                          </label>
+                        </div>
+                        {annotationTool !== 'line' &&
+                        annotationTool !== 'arrow' ? (
+                          <label className="field">
+                            <span>Text rotation <small>degrees</small></span>
+                            <div className="annotation-rotation-control">
+                              <input
+                                type="range"
+                                min="-180"
+                                max="180"
+                                step="1"
+                                aria-label="Text rotation slider"
+                                value={annotationEditor.rotation ?? 0}
+                                onChange={(event) =>
+                                  updateAnnotationAppearance({
+                                    rotation: numeric(event.target.value, 0),
+                                  })
+                                }
+                              />
+                              <input
+                                type="number"
+                                min="-180"
+                                max="180"
+                                step="1"
+                                aria-label="Text rotation degrees"
+                                value={annotationEditor.rotation ?? 0}
+                                onChange={(event) =>
+                                  updateAnnotationAppearance({
+                                    rotation: Math.max(
+                                      -180,
+                                      Math.min(
+                                        180,
+                                        numeric(event.target.value, 0),
+                                      ),
+                                    ),
+                                  })
+                                }
+                              />
+                            </div>
+                          </label>
+                        ) : null}
+                        <Toggle
+                          label="Dashed line"
+                          checked={annotationEditor.dashed}
+                          onChange={(checked) =>
+                            updateAnnotationAppearance({ dashed: checked })
+                          }
+                        />
+                        {annotationTool !== 'line' &&
+                        annotationTool !== 'arrow' ? (
+                          <Toggle
+                            label="Text background"
+                            checked={annotationEditor.background}
+                            onChange={(checked) =>
+                              updateAnnotationAppearance({
+                                background: checked,
+                              })
+                            }
+                          />
+                        ) : null}
+                      </>
+                    ) : null}
                   </div>
                 ) : (
                   <div
-                    className="annotation-view-panel annotation-manager"
+                    className={`annotation-view-panel annotation-manager ${annotationPlacedView}-view`}
                     id="annotation-view-panel-placed"
                     role="tabpanel"
                     aria-labelledby="annotation-view-tab-placed"
                   >
-                    {annotations.length === 0 ? (
-                      <div className="annotation-manager-empty">
-                        <p>No annotations placed yet.</p>
-                        <button
-                          className="button secondary compact"
-                          type="button"
-                          onClick={() => chooseAnnotationPanelView('create')}
-                        >
-                          <Plus size={14} aria-hidden="true" />
-                          Create annotation
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div
-                          className="annotation-list"
-                          role="listbox"
-                          aria-label="Placed annotations"
-                        >
-                          {annotations.map((annotation, index) => (
-                            <button
-                              className={`annotation-list-item${annotation.id === selectedAnnotationId ? ' active' : ''}`}
-                              type="button"
-                              role="option"
-                              aria-selected={
-                                annotation.id === selectedAnnotationId
-                              }
-                              tabIndex={
-                                annotation.id === selectedAnnotationId ||
-                                (!selectedAnnotationId && index === 0)
-                                  ? 0
-                                  : -1
-                              }
-                              ref={(node) => {
-                                if (node) {
-                                  annotationListItemRefs.current.set(
-                                    annotation.id,
-                                    node,
-                                  )
-                                } else {
-                                  annotationListItemRefs.current.delete(
-                                    annotation.id,
-                                  )
+                    {annotationPlacedView === 'list' ? (
+                      annotations.length === 0 ? (
+                        <div className="annotation-manager-empty">
+                          <p>No annotations placed yet.</p>
+                          <button
+                            className="button secondary compact"
+                            type="button"
+                            onClick={() => chooseAnnotationPanelView('create')}
+                          >
+                            <Plus size={14} aria-hidden="true" />
+                            Create annotation
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div
+                            className="annotation-list"
+                            role="listbox"
+                            aria-label="Placed annotations"
+                          >
+                            {annotations.map((annotation, index) => (
+                              <button
+                                className={`annotation-list-item${annotation.id === selectedAnnotationId ? ' active' : ''}`}
+                                type="button"
+                                role="option"
+                                aria-selected={
+                                  annotation.id === selectedAnnotationId
                                 }
-                              }}
-                              key={annotation.id}
-                              onClick={() =>
-                                selectPlacedAnnotation(annotation)
-                              }
-                              onKeyDown={(event) =>
-                                handleAnnotationListKeyDown(event, index)
-                              }
-                            >
-                              <span>
-                                {annotation.hydraulicExtremum
-                                  ? extremumDisplayName(
-                                      annotation.hydraulicExtremum,
+                                tabIndex={
+                                  annotation.id === selectedAnnotationId ||
+                                  (!selectedAnnotationId && index === 0)
+                                    ? 0
+                                    : -1
+                                }
+                                ref={(node) => {
+                                  if (node) {
+                                    annotationListItemRefs.current.set(
+                                      annotation.id,
+                                      node,
                                     )
-                                  : `${annotation.kind.charAt(0).toUpperCase()}${annotation.kind.slice(1)} ${index + 1}`}
-                              </span>
-                              <small>
-                                {annotation.text.split(/\r?\n/)[0] ||
-                                  'Untitled'}
-                              </small>
+                                  } else {
+                                    annotationListItemRefs.current.delete(
+                                      annotation.id,
+                                    )
+                                  }
+                                }}
+                                key={annotation.id}
+                                onClick={() =>
+                                  selectPlacedAnnotation(annotation)
+                                }
+                                onKeyDown={(event) =>
+                                  handleAnnotationListKeyDown(event, index)
+                                }
+                              >
+                                <span>
+                                  {annotationDisplayName(annotation, index)}
+                                </span>
+                                <small>
+                                  {annotation.text.split(/\r?\n/)[0] ||
+                                    'Untitled'}
+                                </small>
+                                <ChevronRight
+                                  size={14}
+                                  aria-hidden="true"
+                                />
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            className="text-button annotation-clear"
+                            type="button"
+                            onClick={() => {
+                              setAnnotations([])
+                              setSelectedAnnotationId(null)
+                              setAnnotationStart(null)
+                            }}
+                          >
+                            <Trash2 size={14} aria-hidden="true" />
+                            Clear all annotations
+                          </button>
+                        </>
+                      )
+                    ) : selectedAnnotation ? (
+                      <div className="annotation-detail">
+                        <div className="annotation-detail-header">
+                          <button
+                            className="icon-button compact"
+                            type="button"
+                            title="Back to placed annotations"
+                            aria-label="Back to placed annotations"
+                            onClick={returnToPlacedAnnotations}
+                          >
+                            <ChevronLeft size={17} aria-hidden="true" />
+                          </button>
+                          <div className="annotation-detail-title">
+                            <strong>
+                              {annotationDisplayName(
+                                selectedAnnotation,
+                                selectedAnnotationIndex,
+                              )}
+                            </strong>
+                            <small>
+                              {selectedAnnotationIndex + 1} of{' '}
+                              {annotations.length}
+                            </small>
+                          </div>
+                          <div className="annotation-detail-paging">
+                            <button
+                              className="icon-button compact"
+                              type="button"
+                              title="Previous annotation"
+                              aria-label="Previous annotation"
+                              disabled={annotations.length < 2}
+                              onClick={() => selectAdjacentAnnotation(-1)}
+                            >
+                              <ChevronLeft size={16} aria-hidden="true" />
                             </button>
-                          ))}
-                        </div>
-                        <button
-                          className="text-button annotation-clear"
-                          type="button"
-                          onClick={() => {
-                            setAnnotations([])
-                            setSelectedAnnotationId(null)
-                            setAnnotationStart(null)
-                          }}
-                        >
-                          <Trash2 size={14} aria-hidden="true" />
-                          Clear all annotations
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {(annotationPanelView === 'create' &&
-                  (annotationTool === 'text' ||
-                    annotationTool === 'leader')) ||
-                (annotationPanelView === 'placed' &&
-                  selectedAnnotation &&
-                  !selectedAnnotation.hydraulicExtremum &&
-                  selectedAnnotation.kind !== 'line' &&
-                  selectedAnnotation.kind !== 'arrow' &&
-                  selectedAnnotation.kind !== 'result') ? (
-                  <label className="field">
-                    <span>
-                      {annotationPanelView === 'placed'
-                        ? 'Selected text'
-                        : 'New annotation text'}
-                    </span>
-                    <textarea
-                      className="annotation-textarea"
-                      rows={3}
-                      value={annotationEditor.text}
-                      onChange={(event) =>
-                        updateAnnotationAppearance({
-                          text: event.target.value,
-                        })
-                      }
-                    />
-                  </label>
-                ) : null}
-
-                {(annotationPanelView === 'create' &&
-                  annotationTool === 'result') ||
-                (annotationPanelView === 'placed' &&
-                  selectedAnnotation?.kind === 'result' &&
-                  !selectedAnnotation.hydraulicExtremum) ? (
-                  <label className="field">
-                    <span>Automatic result label</span>
-                    <select
-                      value={activeResultField}
-                      onChange={(event) =>
-                        setResultLabelField(
-                          event.target.value as ResultLabelField,
-                        )
-                      }
-                    >
-                      {RESULT_LABEL_OPTIONS.map((option) => (
-                        <option value={option.value} key={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
-
-                {annotationPanelView === 'create' || selectedAnnotation ? (
-                  <>
-                    <div className="annotation-style-heading">
-                      <span>
-                        {annotationPanelView === 'placed'
-                          ? 'Selected style'
-                          : 'New item style'}
-                      </span>
-                      {annotationPanelView === 'placed' &&
-                      selectedAnnotation ? (
-                        <span className="annotation-selected-kind">
-                          {selectedAnnotation.hydraulicExtremum
-                            ? extremumDisplayName(
-                                selectedAnnotation.hydraulicExtremum,
-                              )
-                            : selectedAnnotation.kind}
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <div className="field-grid two">
-                      <label className="field color-field">
-                        <span>Color</span>
-                        <input
-                          type="color"
-                          value={annotationEditor.color}
-                          onChange={(event) =>
-                            updateAnnotationAppearance({
-                              color: event.target.value,
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="field color-field">
-                        <span>Box fill</span>
-                        <input
-                          type="color"
-                          value={annotationEditor.fillColor}
-                          onChange={(event) =>
-                            updateAnnotationAppearance({
-                              fillColor: event.target.value,
-                            })
-                          }
-                        />
-                      </label>
-                    </div>
-                    <div className="field-grid two">
-                      <label className="field">
-                        <span>Line width <small>px</small></span>
-                        <input
-                          type="number"
-                          min="1"
-                          max="12"
-                          step="0.5"
-                          value={annotationEditor.lineWidth}
-                          onChange={(event) =>
-                            updateAnnotationAppearance({
-                              lineWidth: numeric(event.target.value, 3),
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="field">
-                        <span>Text size <small>px</small></span>
-                        <input
-                          type="number"
-                          min="10"
-                          max="48"
-                          step="1"
-                          value={annotationEditor.fontSize}
-                          onChange={(event) =>
-                            updateAnnotationAppearance({
-                              fontSize: numeric(event.target.value, 20),
-                            })
-                          }
-                        />
-                      </label>
-                    </div>
-                    {(annotationPanelView === 'create' &&
-                      annotationTool !== 'line' &&
-                      annotationTool !== 'arrow') ||
-                    (annotationPanelView === 'placed' &&
-                      selectedAnnotation?.kind !== 'line' &&
-                      selectedAnnotation?.kind !== 'arrow') ? (
-                      <label className="field">
-                        <span>Text rotation <small>degrees</small></span>
-                        <div className="annotation-rotation-control">
-                          <input
-                            type="range"
-                            min="-180"
-                            max="180"
-                            step="1"
-                            aria-label="Text rotation slider"
-                            value={annotationEditor.rotation ?? 0}
-                            onChange={(event) =>
-                              updateAnnotationAppearance({
-                                rotation: numeric(event.target.value, 0),
-                              })
-                            }
-                          />
-                          <input
-                            type="number"
-                            min="-180"
-                            max="180"
-                            step="1"
-                            aria-label="Text rotation degrees"
-                            value={annotationEditor.rotation ?? 0}
-                            onChange={(event) =>
-                              updateAnnotationAppearance({
-                                rotation: Math.max(
-                                  -180,
-                                  Math.min(
-                                    180,
-                                    numeric(event.target.value, 0),
-                                  ),
-                                ),
-                              })
-                            }
-                          />
-                        </div>
-                      </label>
-                    ) : null}
-                    <Toggle
-                      label="Dashed line"
-                      checked={annotationEditor.dashed}
-                      onChange={(checked) =>
-                        updateAnnotationAppearance({ dashed: checked })
-                      }
-                    />
-                    <Toggle
-                      label="Text background"
-                      checked={annotationEditor.background}
-                      onChange={(checked) =>
-                        updateAnnotationAppearance({ background: checked })
-                      }
-                    />
-
-                    {annotationPanelView === 'placed' &&
-                    selectedAnnotation ? (
-                      <div className="annotation-selection-actions">
-                        <div className="nudge-control">
-                          <span>Move selected</span>
-                          <div className="nudge-buttons">
-                            <NudgeButton
-                              label="Move annotation left"
-                              icon={<ArrowLeft size={14} />}
-                              onClick={() =>
-                                nudgeSelectedAnnotation(-10, 0)
-                              }
-                            />
-                            <NudgeButton
-                              label="Move annotation up"
-                              icon={<ArrowUp size={14} />}
-                              onClick={() =>
-                                nudgeSelectedAnnotation(0, -10)
-                              }
-                            />
-                            <NudgeButton
-                              label="Move annotation down"
-                              icon={<ArrowDown size={14} />}
-                              onClick={() =>
-                                nudgeSelectedAnnotation(0, 10)
-                              }
-                            />
-                            <NudgeButton
-                              label="Move annotation right"
-                              icon={<ArrowRight size={14} />}
-                              onClick={() =>
-                                nudgeSelectedAnnotation(10, 0)
-                              }
-                            />
+                            <button
+                              className="icon-button compact"
+                              type="button"
+                              title="Next annotation"
+                              aria-label="Next annotation"
+                              disabled={annotations.length < 2}
+                              onClick={() => selectAdjacentAnnotation(1)}
+                            >
+                              <ChevronRight size={16} aria-hidden="true" />
+                            </button>
                           </div>
                         </div>
-                        <div className="annotation-item-actions">
+
+                        <div
+                          className="annotation-editor-tabs"
+                          role="tablist"
+                          aria-label="Annotation editor sections"
+                        >
+                          {annotationHasContentEditor(selectedAnnotation) ? (
+                            <button
+                              className={`annotation-editor-tab${annotationEditorView === 'content' ? ' active' : ''}`}
+                              type="button"
+                              id="annotation-editor-tab-content"
+                              role="tab"
+                              aria-controls="annotation-editor-panel-content"
+                              aria-selected={
+                                annotationEditorView === 'content'
+                              }
+                              tabIndex={
+                                annotationEditorView === 'content' ? 0 : -1
+                              }
+                              onClick={() =>
+                                setAnnotationEditorView('content')
+                              }
+                              onKeyDown={(event) =>
+                                handleAnnotationEditorTabKeyDown(
+                                  event,
+                                  'content',
+                                )
+                              }
+                            >
+                              <Type size={14} aria-hidden="true" />
+                              Content
+                            </button>
+                          ) : null}
+                          <button
+                            className={`annotation-editor-tab${annotationEditorView === 'style' ? ' active' : ''}`}
+                            type="button"
+                            id="annotation-editor-tab-style"
+                            role="tab"
+                            aria-controls="annotation-editor-panel-style"
+                            aria-selected={annotationEditorView === 'style'}
+                            tabIndex={
+                              annotationEditorView === 'style' ? 0 : -1
+                            }
+                            onClick={() => setAnnotationEditorView('style')}
+                            onKeyDown={(event) =>
+                              handleAnnotationEditorTabKeyDown(event, 'style')
+                            }
+                          >
+                            <Palette size={14} aria-hidden="true" />
+                            Style
+                          </button>
+                          <button
+                            className={`annotation-editor-tab${annotationEditorView === 'position' ? ' active' : ''}`}
+                            type="button"
+                            id="annotation-editor-tab-position"
+                            role="tab"
+                            aria-controls="annotation-editor-panel-position"
+                            aria-selected={annotationEditorView === 'position'}
+                            tabIndex={
+                              annotationEditorView === 'position' ? 0 : -1
+                            }
+                            onClick={() => setAnnotationEditorView('position')}
+                            onKeyDown={(event) =>
+                              handleAnnotationEditorTabKeyDown(
+                                event,
+                                'position',
+                              )
+                            }
+                          >
+                            <MapPin size={14} aria-hidden="true" />
+                            Position
+                          </button>
+                        </div>
+
+                        {annotationEditorView === 'content' ? (
+                          <div
+                            className="annotation-editor-panel"
+                            id="annotation-editor-panel-content"
+                            role="tabpanel"
+                            aria-labelledby="annotation-editor-tab-content"
+                          >
+                            {selectedAnnotation.kind === 'result' &&
+                            !selectedAnnotation.hydraulicExtremum ? (
+                              <label className="field">
+                                <span>Automatic result label</span>
+                                <select
+                                  value={activeResultField}
+                                  onChange={(event) =>
+                                    setResultLabelField(
+                                      event.target.value as ResultLabelField,
+                                    )
+                                  }
+                                >
+                                  {RESULT_LABEL_OPTIONS.map((option) => (
+                                    <option
+                                      value={option.value}
+                                      key={option.value}
+                                    >
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            ) : (
+                              <label className="field">
+                                <span>Text</span>
+                                <textarea
+                                  className="annotation-textarea"
+                                  rows={4}
+                                  value={annotationEditor.text}
+                                  onChange={(event) =>
+                                    updateAnnotationAppearance({
+                                      text: event.target.value,
+                                    })
+                                  }
+                                />
+                              </label>
+                            )}
+                          </div>
+                        ) : null}
+
+                        {annotationEditorView === 'style' ? (
+                          <div
+                            className="annotation-editor-panel"
+                            id="annotation-editor-panel-style"
+                            role="tabpanel"
+                            aria-labelledby="annotation-editor-tab-style"
+                          >
+                            <div className="field-grid two">
+                              <label className="field color-field">
+                                <span>Color</span>
+                                <input
+                                  type="color"
+                                  value={annotationEditor.color}
+                                  onChange={(event) =>
+                                    updateAnnotationAppearance({
+                                      color: event.target.value,
+                                    })
+                                  }
+                                />
+                              </label>
+                              {annotationHasContentEditor(
+                                selectedAnnotation,
+                              ) ? (
+                                <label className="field color-field">
+                                  <span>Box fill</span>
+                                  <input
+                                    type="color"
+                                    value={annotationEditor.fillColor}
+                                    onChange={(event) =>
+                                      updateAnnotationAppearance({
+                                        fillColor: event.target.value,
+                                      })
+                                    }
+                                  />
+                                </label>
+                              ) : null}
+                            </div>
+                            <div className="field-grid two">
+                              <label className="field">
+                                <span>Line width <small>px</small></span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="12"
+                                  step="0.5"
+                                  value={annotationEditor.lineWidth}
+                                  onChange={(event) =>
+                                    updateAnnotationAppearance({
+                                      lineWidth: numeric(event.target.value, 3),
+                                    })
+                                  }
+                                />
+                              </label>
+                              {annotationHasContentEditor(
+                                selectedAnnotation,
+                              ) ? (
+                                <label className="field">
+                                  <span>Text size <small>px</small></span>
+                                  <input
+                                    type="number"
+                                    min="10"
+                                    max="48"
+                                    step="1"
+                                    value={annotationEditor.fontSize}
+                                    onChange={(event) =>
+                                      updateAnnotationAppearance({
+                                        fontSize: numeric(
+                                          event.target.value,
+                                          20,
+                                        ),
+                                      })
+                                    }
+                                  />
+                                </label>
+                              ) : null}
+                            </div>
+                            {annotationHasContentEditor(selectedAnnotation) ? (
+                              <label className="field">
+                                <span>
+                                  Text rotation <small>degrees</small>
+                                </span>
+                                <div className="annotation-rotation-control">
+                                  <input
+                                    type="range"
+                                    min="-180"
+                                    max="180"
+                                    step="1"
+                                    aria-label="Text rotation slider"
+                                    value={annotationEditor.rotation ?? 0}
+                                    onChange={(event) =>
+                                      updateAnnotationAppearance({
+                                        rotation: numeric(
+                                          event.target.value,
+                                          0,
+                                        ),
+                                      })
+                                    }
+                                  />
+                                  <input
+                                    type="number"
+                                    min="-180"
+                                    max="180"
+                                    step="1"
+                                    aria-label="Text rotation degrees"
+                                    value={annotationEditor.rotation ?? 0}
+                                    onChange={(event) =>
+                                      updateAnnotationAppearance({
+                                        rotation: Math.max(
+                                          -180,
+                                          Math.min(
+                                            180,
+                                            numeric(event.target.value, 0),
+                                          ),
+                                        ),
+                                      })
+                                    }
+                                  />
+                                </div>
+                              </label>
+                            ) : null}
+                            <Toggle
+                              label="Dashed line"
+                              checked={annotationEditor.dashed}
+                              onChange={(checked) =>
+                                updateAnnotationAppearance({
+                                  dashed: checked,
+                                })
+                              }
+                            />
+                            {annotationHasContentEditor(selectedAnnotation) ? (
+                              <Toggle
+                                label="Text background"
+                                checked={annotationEditor.background}
+                                onChange={(checked) =>
+                                  updateAnnotationAppearance({
+                                    background: checked,
+                                  })
+                                }
+                              />
+                            ) : null}
+                          </div>
+                        ) : null}
+
+                        {annotationEditorView === 'position' ? (
+                          <div
+                            className="annotation-editor-panel"
+                            id="annotation-editor-panel-position"
+                            role="tabpanel"
+                            aria-labelledby="annotation-editor-tab-position"
+                          >
+                            <div className="nudge-control">
+                              <span>Move selected</span>
+                              <div className="nudge-buttons">
+                                <NudgeButton
+                                  label="Move annotation left"
+                                  icon={<ArrowLeft size={14} />}
+                                  onClick={() =>
+                                    nudgeSelectedAnnotation(-10, 0)
+                                  }
+                                />
+                                <NudgeButton
+                                  label="Move annotation up"
+                                  icon={<ArrowUp size={14} />}
+                                  onClick={() =>
+                                    nudgeSelectedAnnotation(0, -10)
+                                  }
+                                />
+                                <NudgeButton
+                                  label="Move annotation down"
+                                  icon={<ArrowDown size={14} />}
+                                  onClick={() =>
+                                    nudgeSelectedAnnotation(0, 10)
+                                  }
+                                />
+                                <NudgeButton
+                                  label="Move annotation right"
+                                  icon={<ArrowRight size={14} />}
+                                  onClick={() =>
+                                    nudgeSelectedAnnotation(10, 0)
+                                  }
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        <div className="annotation-detail-actions">
                           <button
                             className="button secondary compact"
                             type="button"
@@ -2725,8 +3121,8 @@ function App() {
                         </div>
                       </div>
                     ) : null}
-                  </>
-                ) : null}
+                  </div>
+                )}
               </div>
             </ControlSection>
             ) : null}
