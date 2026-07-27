@@ -5,6 +5,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   ArrowUp,
+  ArrowUpDown,
   Crosshair,
   Copy,
   Download,
@@ -183,6 +184,7 @@ const ANNOTATION_TOOLS = [
   { key: 'arrow', label: 'Arrow', icon: ArrowUpRight },
   { key: 'line', label: 'Line', icon: Minus },
   { key: 'result', label: 'Automatic result label', icon: Crosshair },
+  { key: 'extrema', label: 'Max / min WSE', icon: ArrowUpDown },
 ] as const satisfies ReadonlyArray<{
   key: AnnotationTool
   label: string
@@ -283,6 +285,9 @@ function annotationGuidance(tool: AnnotationTool, hasStart: boolean) {
   if (tool === 'leader') return 'Choose callout target'
   if (tool === 'arrow') return 'Choose arrow tail'
   if (tool === 'line') return 'Choose line start'
+  if (tool === 'extrema') {
+    return 'Review the detected extrema, then add or refresh their callouts'
+  }
   return 'Choose result location'
 }
 
@@ -789,7 +794,7 @@ function App() {
     })
 
     setSelectedAnnotationId(ids.get(extrema[0].kind) ?? null)
-    setAnnotationTool('select')
+    setAnnotationTool('extrema')
     setAnnotationStart(null)
     const summary = extrema
       .map((extremum) =>
@@ -949,6 +954,8 @@ function App() {
         return
       }
     }
+
+    if (annotationTool === 'extrema') return
 
     const bounds = engine.commonBounds()
     const mapPoint = canvasPointToMap(
@@ -2168,48 +2175,7 @@ function App() {
               icon={<MessageSquareText size={17} />}
               title="Annotations and callouts"
             >
-              <div className="extrema-callout-card">
-                <div className="extrema-callout-heading">
-                  <Crosshair size={17} aria-hidden="true" />
-                  <strong>Maximum WSE change</strong>
-                </div>
-                <div className="extrema-values">
-                  <div className="extrema-value rise">
-                    <ArrowUp size={15} aria-hidden="true" />
-                    <span>Rise</span>
-                    <strong>
-                      {wseExtrema?.rise
-                        ? `+${wseExtrema.rise.value.toFixed(2)} ft`
-                        : 'None'}
-                    </strong>
-                  </div>
-                  <div className="extrema-value reduction">
-                    <ArrowDown size={15} aria-hidden="true" />
-                    <span>Reduction</span>
-                    <strong>
-                      {wseExtrema?.reduction
-                        ? `${wseExtrema.reduction.value.toFixed(2)} ft`
-                        : 'None'}
-                    </strong>
-                  </div>
-                </div>
-                <button
-                  className="button secondary compact full"
-                  type="button"
-                  title="Place labels at the maximum positive and negative Proposed-minus-Existing WSE values"
-                  disabled={
-                    !scene ||
-                    (!wseExtrema?.rise && !wseExtrema?.reduction)
-                  }
-                  onClick={addWseExtremaCallouts}
-                >
-                  <Crosshair size={15} aria-hidden="true" />
-                  {extremaCalloutCount > 0
-                    ? 'Refresh max WSE callouts'
-                    : 'Add max WSE callouts'}
-                </button>
-              </div>
-
+              <div className="annotation-panel">
               <div
                 className="annotation-tools"
                 role="toolbar"
@@ -2228,7 +2194,7 @@ function App() {
                       key={tool.key}
                       onClick={() => chooseAnnotationTool(tool.key)}
                     >
-                      <ToolIcon size={18} aria-hidden="true" />
+                      <ToolIcon size={16} aria-hidden="true" />
                       <span>{tool.label}</span>
                     </button>
                   )
@@ -2257,6 +2223,50 @@ function App() {
                   <X size={15} aria-hidden="true" />
                   Cancel current drawing
                 </button>
+              ) : null}
+
+              {annotationTool === 'extrema' ? (
+                <div className="extrema-callout-card">
+                  <div className="extrema-callout-heading">
+                    <ArrowUpDown size={16} aria-hidden="true" />
+                    <strong>Maximum WSE change</strong>
+                  </div>
+                  <div className="extrema-values">
+                    <div className="extrema-value rise">
+                      <ArrowUp size={14} aria-hidden="true" />
+                      <span>Maximum rise</span>
+                      <strong>
+                        {wseExtrema?.rise
+                          ? `+${wseExtrema.rise.value.toFixed(2)} ft`
+                          : 'None'}
+                      </strong>
+                    </div>
+                    <div className="extrema-value reduction">
+                      <ArrowDown size={14} aria-hidden="true" />
+                      <span>Maximum reduction</span>
+                      <strong>
+                        {wseExtrema?.reduction
+                          ? `${wseExtrema.reduction.value.toFixed(2)} ft`
+                          : 'None'}
+                      </strong>
+                    </div>
+                  </div>
+                  <button
+                    className="button secondary compact full"
+                    type="button"
+                    title="Place labels at the maximum positive and negative Proposed-minus-Existing WSE values"
+                    disabled={
+                      !scene ||
+                      (!wseExtrema?.rise && !wseExtrema?.reduction)
+                    }
+                    onClick={addWseExtremaCallouts}
+                  >
+                    <Crosshair size={14} aria-hidden="true" />
+                    {extremaCalloutCount > 0
+                      ? 'Refresh max / min WSE callouts'
+                      : 'Add max / min WSE callouts'}
+                  </button>
+                </div>
               ) : null}
 
               {(annotationTool === 'text' ||
@@ -2522,6 +2532,7 @@ function App() {
                   Clear all annotations
                 </button>
               ) : null}
+              </div>
             </ControlSection>
             ) : null}
 

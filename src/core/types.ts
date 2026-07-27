@@ -223,8 +223,9 @@ export type AnnotationTool =
   | 'arrow'
   | 'line'
   | 'result'
+  | 'extrema'
 
-export type AnnotationKind = Exclude<AnnotationTool, 'select'>
+export type AnnotationKind = Exclude<AnnotationTool, 'select' | 'extrema'>
 
 export type ResultLabelField =
   | 'summary'
