@@ -548,6 +548,92 @@ input[type="color"] {
   padding-top: 4px;
 }
 
+.annotation-view-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  margin-bottom: 5px;
+  padding: 2px;
+  background: #edf1f5;
+  border: 1px solid #d7dfe7;
+  border-radius: 5px;
+}
+
+.annotation-view-tab {
+  min-width: 0;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 3px 7px;
+  color: #52667b;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.annotation-view-tab:hover {
+  color: #155f91;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.annotation-view-tab.active {
+  color: #0c578b;
+  background: white;
+  border-color: #bdccd8;
+  box-shadow: 0 1px 2px rgba(23, 45, 68, 0.08);
+}
+
+.annotation-view-tab:focus-visible {
+  outline: 2px solid #1682cf;
+  outline-offset: 1px;
+}
+
+.annotation-view-count {
+  min-width: 18px;
+  padding: 1px 5px;
+  color: #49677f;
+  background: #e5edf3;
+  border-radius: 9px;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+
+.annotation-view-tab.active .annotation-view-count {
+  color: #0f654f;
+  background: #e4f4ee;
+}
+
+.annotation-view-panel {
+  min-width: 0;
+}
+
+.annotation-manager {
+  margin-top: 3px;
+}
+
+.annotation-manager-empty {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 15px 8px;
+  color: #6a798b;
+  background: #f7f9fb;
+  border: 1px dashed #cad5df;
+  border-radius: 5px;
+  text-align: center;
+}
+
+.annotation-manager-empty p {
+  margin: 0;
+  font-size: 10px;
+}
+
 .extrema-callout-card {
   display: grid;
   gap: 5px;
@@ -763,7 +849,14 @@ input[type="color"] {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  margin-top: 5px;
+  max-height: clamp(150px, 28vh, 240px);
+  margin-top: 3px;
+  padding: 3px;
+  overflow-y: auto;
+  background: #f2f5f8;
+  border: 1px solid #d7e0e7;
+  border-radius: 5px;
+  scrollbar-gutter: stable;
 }
 
 .annotation-list-item {
@@ -802,6 +895,11 @@ input[type="color"] {
   color: #0c578b;
   background: #eaf4fa;
   border-color: #72a9cb;
+}
+
+.annotation-list-item:focus-visible {
+  outline: 2px solid #1682cf;
+  outline-offset: -1px;
 }
 
 .annotation-clear {
