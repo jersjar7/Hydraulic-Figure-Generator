@@ -348,6 +348,7 @@ function App() {
   const [scene, setScene] = useState<WseDifferenceScene | null>(null)
   const [busy, setBusy] = useState(false)
   const [leftOpen, setLeftOpen] = useState(false)
+  const [leftCollapsed, setLeftCollapsed] = useState(false)
   const [rightOpen, setRightOpen] = useState(false)
   const [activeSettingsSection, setActiveSettingsSection] =
     useState<SettingsSectionKey>('calculation')
@@ -473,6 +474,17 @@ function App() {
     } finally {
       setBusy(false)
     }
+  }
+
+  const removeHydraulicCondition = (key: ConditionKey) => {
+    engine.removeCondition(key)
+    if (key === 'EX') {
+      setExistingRun(0)
+    } else {
+      setProposedRun(0)
+    }
+    setScene(null)
+    setDataVersion((value) => value + 1)
   }
 
   const generateMap = () => {
@@ -1527,6 +1539,7 @@ function App() {
     setAnnotationPanelView('create')
     setAnnotationPlacedView('list')
     setAnnotationEditorView('content')
+    setLeftCollapsed(false)
     setAnnotationDefaults(DEFAULT_ANNOTATION_SETTINGS)
     figureElementDragRef.current = null
     elementBoundsRef.current = []
@@ -1692,6 +1705,7 @@ function App() {
       setAnnotationPanelView('create')
       setAnnotationPlacedView('list')
       setAnnotationEditorView('content')
+      setLeftCollapsed(false)
       setExistingRun(project.selectedRuns?.existingRun ?? 0)
       setProposedRun(project.selectedRuns?.proposedRun ?? 0)
       setScene(null)
@@ -1741,7 +1755,10 @@ function App() {
             type="button"
             title="Open project data"
             aria-label="Open project data"
-            onClick={() => setLeftOpen(true)}
+            onClick={() => {
+              setLeftCollapsed(false)
+              setLeftOpen(true)
+            }}
           >
             <PanelLeft size={19} />
           </button>
@@ -1764,22 +1781,80 @@ function App() {
         </div>
       </header>
 
-      <main className="workspace">
-        <aside className={`sidebar left-sidebar${leftOpen ? ' is-mobile-open' : ''}`}>
+      <main
+        className={`workspace${leftCollapsed ? ' inputs-collapsed' : ''}`}
+      >
+        <aside
+          className={`sidebar left-sidebar${leftOpen ? ' is-mobile-open' : ''}${leftCollapsed ? ' is-collapsed' : ''}`}
+        >
+          {leftCollapsed ? (
+            <div className="left-sidebar-rail">
+              <button
+                className="icon-button left-rail-expand"
+                type="button"
+                title="Expand project data"
+                aria-label="Expand project data"
+                onClick={() => setLeftCollapsed(false)}
+              >
+                <ChevronRight size={18} aria-hidden="true" />
+              </button>
+              <div className="left-rail-conditions" aria-label="Input status">
+                <button
+                  className={`left-rail-condition${existingCondition?.projected && existingCondition.datasets ? ' ready' : ''}`}
+                  type="button"
+                  title="Expand Existing inputs"
+                  aria-label="Expand Existing inputs"
+                  onClick={() => setLeftCollapsed(false)}
+                >
+                  EX
+                </button>
+                <button
+                  className={`left-rail-condition${proposedCondition?.projected && proposedCondition.datasets ? ' ready' : ''}`}
+                  type="button"
+                  title="Expand Proposed inputs"
+                  aria-label="Expand Proposed inputs"
+                  onClick={() => setLeftCollapsed(false)}
+                >
+                  PR
+                </button>
+              </div>
+              <button
+                className="icon-button left-rail-overlays"
+                type="button"
+                title="Expand shapefile overlays"
+                aria-label="Expand shapefile overlays"
+                onClick={() => setLeftCollapsed(false)}
+              >
+                <Layers3 size={17} aria-hidden="true" />
+              </button>
+            </div>
+          ) : (
+            <>
           <div className="sidebar-heading">
             <div>
               <span className="eyebrow">Inputs</span>
               <h2>Project data</h2>
             </div>
-            <button
-              className="icon-button mobile-close"
-              type="button"
-              title="Close project data"
-              aria-label="Close project data"
-              onClick={() => setLeftOpen(false)}
-            >
-              <X size={18} />
-            </button>
+            <div className="sidebar-heading-actions">
+              <button
+                className="icon-button desktop-collapse"
+                type="button"
+                title="Collapse project data"
+                aria-label="Collapse project data"
+                onClick={() => setLeftCollapsed(true)}
+              >
+                <ChevronLeft size={18} aria-hidden="true" />
+              </button>
+              <button
+                className="icon-button mobile-close"
+                type="button"
+                title="Close project data"
+                aria-label="Close project data"
+                onClick={() => setLeftOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           <section className="sidebar-block">
@@ -1804,6 +1879,11 @@ function App() {
                 datasetName={existingCondition?.datasetFileName}
                 nodeCount={existingCondition?.projected?.N}
                 runCount={existingCondition?.datasets?.runs.length}
+                onRemove={
+                  existingCondition
+                    ? () => removeHydraulicCondition('EX')
+                    : undefined
+                }
               />
               <ConditionStatus
                 label="Proposed"
@@ -1812,6 +1892,11 @@ function App() {
                 datasetName={proposedCondition?.datasetFileName}
                 nodeCount={proposedCondition?.projected?.N}
                 runCount={proposedCondition?.datasets?.runs.length}
+                onRemove={
+                  proposedCondition
+                    ? () => removeHydraulicCondition('PR')
+                    : undefined
+                }
               />
             </div>
           </section>
@@ -1951,6 +2036,8 @@ function App() {
             <RotateCcw size={15} aria-hidden="true" />
             Reset project
           </button>
+            </>
+          )}
         </aside>
 
         <section className="map-workspace">
@@ -2113,11 +2200,7 @@ function App() {
             aria-labelledby={`settings-tab-${activeSettingsSection}`}
           >
             {activeSettingsSection === 'calculation' ? (
-            <ControlSection
-              icon={<Settings2 size={17} />}
-              title="Map calculation"
-              badge="FRA"
-            >
+            <ControlSection>
               <label className="field">
                 <span>
                   Dry-depth threshold
@@ -2170,10 +2253,7 @@ function App() {
             ) : null}
 
             {activeSettingsSection === 'legend' ? (
-            <ControlSection
-              icon={<Palette size={17} />}
-              title="Legend and colors"
-            >
+            <ControlSection>
               <div className="field-grid two">
                 <label className="field">
                   <span>Symmetric bound <small>± ft</small></span>
@@ -2238,10 +2318,7 @@ function App() {
             ) : null}
 
             {activeSettingsSection === 'frame' ? (
-            <ControlSection
-              icon={<SlidersHorizontal size={17} />}
-              title="Frame and view"
-            >
+            <ControlSection>
               <div className="segmented" aria-label="Figure orientation">
                 <button
                   type="button"
@@ -2341,10 +2418,7 @@ function App() {
             ) : null}
 
             {activeSettingsSection === 'elements' ? (
-            <ControlSection
-              icon={<MapPin size={17} />}
-              title="Figure elements"
-            >
+            <ControlSection>
               <FigureElementsPanel
                 settings={settings}
                 activeElement={activeElement}
@@ -2362,10 +2436,7 @@ function App() {
             ) : null}
 
             {activeSettingsSection === 'annotations' ? (
-            <ControlSection
-              icon={<MessageSquareText size={17} />}
-              title="Annotations and callouts"
-            >
+            <ControlSection>
               <div className="annotation-panel">
                 <div
                   className="annotation-view-tabs"
@@ -3128,10 +3199,7 @@ function App() {
             ) : null}
 
             {activeSettingsSection === 'export' ? (
-            <ControlSection
-              icon={<ImageDown size={17} />}
-              title="Export"
-            >
+            <ControlSection>
               <div className="export-note">
                 <FileJson size={17} aria-hidden="true" />
                 <span>
@@ -3195,6 +3263,7 @@ type ConditionStatusProps = {
   datasetName?: string
   nodeCount?: number
   runCount?: number
+  onRemove?: () => void
 }
 
 function ConditionStatus({
@@ -3204,6 +3273,7 @@ function ConditionStatus({
   datasetName,
   nodeCount,
   runCount,
+  onRemove,
 }: ConditionStatusProps) {
   const complete = Boolean(geometryName && datasetName)
   return (
@@ -3213,6 +3283,17 @@ function ConditionStatus({
           {conditionKey}
         </span>
         <strong>{label}</strong>
+        {onRemove ? (
+          <button
+            className="icon-button tiny danger condition-remove"
+            type="button"
+            title={`Remove ${label} inputs`}
+            aria-label={`Remove ${label} inputs`}
+            onClick={onRemove}
+          >
+            <Trash2 size={13} aria-hidden="true" />
+          </button>
+        ) : null}
       </div>
       <div className="condition-badges">
         <span

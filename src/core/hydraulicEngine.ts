@@ -555,6 +555,11 @@ export class HydraulicEngine {
     this.valueCache.clear()
   }
 
+  removeCondition(key: ConditionKey) {
+    this.conditions.delete(key)
+    this.valueCache.clear()
+  }
+
   getCondition(key: ConditionKey) {
     const existing = this.conditions.get(key)
     if (existing) return existing
