@@ -671,25 +671,6 @@ input[type="color"] {
   opacity: 0.42;
 }
 
-.annotation-guidance {
-  min-height: 24px;
-  display: flex;
-  align-items: center;
-  margin: 0 0 5px;
-  padding: 4px 6px;
-  color: #52677d;
-  background: #f4f7fa;
-  border-left: 3px solid #89a8bf;
-  font-size: 9px;
-  font-weight: 650;
-}
-
-.annotation-guidance.awaiting-point {
-  color: #81540c;
-  background: #fff9ec;
-  border-left-color: #d99b2c;
-}
-
 .annotation-textarea {
   width: 100%;
   min-height: 52px;

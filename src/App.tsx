@@ -272,25 +272,6 @@ function updateDraggedResultAnnotation(
     : annotation
 }
 
-function annotationGuidance(tool: AnnotationTool, hasStart: boolean) {
-  if (hasStart) {
-    if (tool === 'leader') return 'Choose label position'
-    if (tool === 'arrow') return 'Choose arrowhead'
-    return 'Choose endpoint'
-  }
-  if (tool === 'select') {
-    return 'Drag a label to move it, its endpoint to retarget, or its line to move the whole item'
-  }
-  if (tool === 'text') return 'Place text'
-  if (tool === 'leader') return 'Choose callout target'
-  if (tool === 'arrow') return 'Choose arrow tail'
-  if (tool === 'line') return 'Choose line start'
-  if (tool === 'extrema') {
-    return 'Review the detected extrema, then add or refresh their callouts'
-  }
-  return 'Choose result location'
-}
-
 function defaultExtremumLabelPoint(
   extremum: WseDifferenceExtremum,
   bounds: Bounds,
@@ -2200,19 +2181,6 @@ function App() {
                   )
                 })}
               </div>
-
-              <p
-                className={`annotation-guidance${annotationStart ? ' awaiting-point' : ''}`}
-                aria-live="polite"
-              >
-                {selectedAnnotation?.hydraulicExtremum &&
-                annotationTool === 'select'
-                  ? 'Drag the label to reposition it; its computed target stays fixed'
-                  : annotationGuidance(
-                      annotationTool,
-                      Boolean(annotationStart),
-                    )}
-              </p>
 
               {annotationStart ? (
                 <button
