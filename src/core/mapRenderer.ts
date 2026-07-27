@@ -202,6 +202,30 @@ type LoadedTile = {
   height: number
 }
 
+const TILE_CACHE_LIMIT = 256
+const tileBlobCache = new Map<string, Promise<Blob | null>>()
+
+function cachedTileBlob(url: string) {
+  const cached = tileBlobCache.get(url)
+  if (cached) return cached
+
+  const request = fetch(url, { mode: 'cors' })
+    .then((response) => (response.ok ? response.blob() : null))
+    .catch(() => null)
+    .then((blob) => {
+      if (!blob) tileBlobCache.delete(url)
+      return blob
+    })
+  tileBlobCache.set(url, request)
+
+  while (tileBlobCache.size > TILE_CACHE_LIMIT) {
+    const oldest = tileBlobCache.keys().next().value
+    if (!oldest) break
+    tileBlobCache.delete(oldest)
+  }
+  return request
+}
+
 async function loadTile(
   view: View,
   zoom: number,
@@ -212,9 +236,9 @@ async function loadTile(
 ): Promise<LoadedTile | null> {
   try {
     const url = `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${tileY}/${tileX}`
-    const response = await fetch(url, { mode: 'cors', signal })
-    if (!response.ok) return null
-    const bitmap = await createImageBitmap(await response.blob())
+    const blob = await cachedTileBlob(url)
+    if (!blob || signal?.aborted) return null
+    const bitmap = await createImageBitmap(blob)
     const [mx0, my1] = globalToMercator(
       tileX * 256,
       tileY * 256,

@@ -1,0 +1,60 @@
+# Testing
+
+## Required Gates
+
+Run before merging or deploying:
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+GitHub Pages runs these commands in this order and deploys only after all three
+pass.
+
+## Checked-In Regression Tests
+
+Tests under `tests/` use the Node.js test runner and require no project data.
+They cover:
+
+- Exact nearest-node matching across spatial-index cell boundaries.
+- Mesh-spacing tolerance behavior.
+- Current project-file round trips.
+- Supported legacy project migration.
+- Rejection of future, wrong-figure, malformed, and unsafe project files.
+
+Add a focused test for every bug fixed in a core module. Prefer small synthetic
+geometry where the expected engineering result can be calculated by hand.
+
+## Site 6 Acceptance Test
+
+The local Site 6 test exercises real SMS files, shapefile ingestion, hydraulic
+comparison, callouts, both report orientations, and raster rendering:
+
+```powershell
+$env:HFG_SITE6_DATA = "C:\SMS\Report Figures\Site 6\Data"
+npm run test:site6
+```
+
+It pins the accepted node counts and WSE extrema. Those golden values should
+change only after an intentional hydraulic-method update and visual review of
+both generated PNGs.
+
+The Site 6 files are not committed and the acceptance test is therefore not a
+GitHub Actions gate.
+
+## Next Coverage
+
+Before adding another figure type, add checked-in synthetic coverage for:
+
+- Missing and malformed H5 groups.
+- Dataset/geometry node-count mismatches.
+- Nonoverlapping and differently spaced meshes.
+- CRS failures and projected shapefile fixtures.
+- Basemap failure and cache behavior.
+- Save-file migrations when version 9 is introduced.
+
+Browser interaction tests should be added when a second figure workflow is
+introduced, because navigation and shared-shell regressions then become more
+likely.

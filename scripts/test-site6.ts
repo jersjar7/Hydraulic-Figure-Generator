@@ -114,6 +114,30 @@ if (
 const validProposedWetNodes = Array.from(scene.proposedWseWet).filter(
   (value) => Number.isFinite(value) && value > -900,
 ).length
+const expectedComparison = {
+  validDifferenceNodes: 2711,
+  validProposedWetNodes: 3558,
+  maxWseRise: 0.7870330810546875,
+  maxWseReduction: -2.9294357299804688,
+}
+if (
+  scene.validDifferenceNodes !== expectedComparison.validDifferenceNodes ||
+  validProposedWetNodes !== expectedComparison.validProposedWetNodes ||
+  Math.abs(extrema.rise.value - expectedComparison.maxWseRise) > 1e-6 ||
+  Math.abs(extrema.reduction.value - expectedComparison.maxWseReduction) > 1e-6
+) {
+  throw new Error(
+    `Site 6 hydraulic comparison changed: ${JSON.stringify({
+      actual: {
+        validDifferenceNodes: scene.validDifferenceNodes,
+        validProposedWetNodes,
+        maxWseRise: extrema.rise.value,
+        maxWseReduction: extrema.reduction.value,
+      },
+      expected: expectedComparison,
+    })}`,
+  )
+}
 const overlayPath = join(
   dataDirectory,
   await availableFileName(['Proposed_CL.zip', 'CL.zip']),

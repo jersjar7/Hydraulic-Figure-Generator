@@ -14,7 +14,6 @@ import {
   FileJson,
   FolderOpen,
   ImageDown,
-  Layers3,
   List,
   Map,
   MapPin,
@@ -26,13 +25,11 @@ import {
   Palette,
   Plus,
   RefreshCcw,
-  RotateCcw,
   Save,
   Settings2,
   SlidersHorizontal,
   Trash2,
   Type,
-  UploadCloud,
   X,
   ZoomIn,
   ZoomOut,
@@ -50,10 +47,13 @@ import {
 import './App.css'
 import { ControlSection } from './components/ControlSection'
 import { DiagnosticsWidget } from './components/DiagnosticsWidget'
-import { FileDrop } from './components/FileDrop'
 import { FigureElementsPanel } from './components/FigureElementsPanel'
+import { ProjectDataPanel } from './components/ProjectDataPanel'
 import {
-  cloneDefaultElementStyles,
+  createDefaultAnnotationSettings,
+  createDefaultFigureSettings,
+} from './core/defaults'
+import {
   DEFAULT_ELEMENT_STYLES,
   mergeElementStyles,
 } from './core/figureElements'
@@ -77,6 +77,10 @@ import {
   sampleHydraulicResult,
   type AnnotationHitPart,
 } from './core/mapRenderer'
+import {
+  createHydraulicFigureProject,
+  parseHydraulicFigureProject,
+} from './core/projectFile'
 import { readShapefileOverlays } from './core/shapefile'
 import type {
   AnnotationDefaults,
@@ -96,49 +100,10 @@ import type {
   WseDifferenceScene,
 } from './core/types'
 
-const DEFAULT_SETTINGS: FigureSettings = {
-  orientation: 'landscape',
-  dryDepth: 0,
-  differenceOutlineColor: '#111111',
-  showDifferenceOutlines: true,
-  showWetDry: true,
-  showOverlays: true,
-  showTitle: true,
-  showLegend: true,
-  showNorth: true,
-  showScale: true,
-  showWetDryKey: true,
-  titleTemplate: '{type} - {existing} vs {proposed}',
-  legendBound: null,
-  legendInterval: null,
-  legendFontSize: 19,
-  newlyWetColor: '#2cc88b',
-  newlyDryColor: '#e97768',
-  basemapOpacity: 0.72,
-  rotation: 0,
-  zoom: 1,
-  panX: 0,
-  panY: 0,
-  elementPositions: structuredClone(DEFAULT_ELEMENT_POSITIONS),
-  elementStyles: cloneDefaultElementStyles(),
-}
-
 const FRAME_ASPECTS = {
   landscape: 1650 / 1275,
   portrait: 1275 / 1650,
 } as const
-
-const DEFAULT_ANNOTATION_SETTINGS: AnnotationDefaults = {
-  text: 'Note',
-  color: '#b42318',
-  fillColor: '#ffffff',
-  lineWidth: 3,
-  fontSize: 20,
-  rotation: 0,
-  dashed: false,
-  background: true,
-  resultField: 'summary',
-}
 
 const SETTINGS_SECTIONS = [
   {
@@ -210,14 +175,6 @@ const RESULT_LABEL_OPTIONS: { value: ResultLabelField; label: string }[] = [
 const numeric = (value: string, fallback = 0) => {
   const parsed = Number.parseFloat(value)
   return Number.isFinite(parsed) ? parsed : fallback
-}
-
-function cloneDefaultSettings() {
-  return {
-    ...DEFAULT_SETTINGS,
-    elementPositions: structuredClone(DEFAULT_ELEMENT_POSITIONS),
-    elementStyles: cloneDefaultElementStyles(),
-  }
 }
 
 type AnnotationDrag = {
@@ -322,7 +279,9 @@ function defaultEditorView(annotation: MapAnnotation): AnnotationEditorView {
 function App() {
   const [engine] = useState(() => new HydraulicEngine())
   const [dataVersion, setDataVersion] = useState(0)
-  const [settings, setSettings] = useState<FigureSettings>(cloneDefaultSettings)
+  const [settings, setSettings] = useState<FigureSettings>(
+    createDefaultFigureSettings,
+  )
   const [existingRun, setExistingRun] = useState(0)
   const [proposedRun, setProposedRun] = useState(0)
   const [overlays, setOverlays] = useState<MapOverlay[]>([])
@@ -336,7 +295,7 @@ function App() {
   const [annotationEditorView, setAnnotationEditorView] =
     useState<AnnotationEditorView>('content')
   const [annotationDefaults, setAnnotationDefaults] =
-    useState<AnnotationDefaults>(DEFAULT_ANNOTATION_SETTINGS)
+    useState<AnnotationDefaults>(createDefaultAnnotationSettings)
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(
     null,
   )
@@ -1540,7 +1499,7 @@ function App() {
     setAnnotationPlacedView('list')
     setAnnotationEditorView('content')
     setLeftCollapsed(false)
-    setAnnotationDefaults(DEFAULT_ANNOTATION_SETTINGS)
+    setAnnotationDefaults(createDefaultAnnotationSettings())
     figureElementDragRef.current = null
     elementBoundsRef.current = []
     setElementDragging(false)
@@ -1550,7 +1509,7 @@ function App() {
     setNotices([])
     setExistingRun(0)
     setProposedRun(0)
-    setSettings(cloneDefaultSettings())
+    setSettings(createDefaultFigureSettings())
   }
 
   const downloadMap = async () => {
@@ -1588,15 +1547,13 @@ function App() {
   }
 
   const saveProject = () => {
-    const project = {
-      version: 7,
-      figure: 'fra-wse-difference',
+    const project = createHydraulicFigureProject({
       settings,
       overlays,
       annotations,
       annotationDefaults,
       selectedRuns: { existingRun, proposedRun },
-    }
+    })
     const blob = new Blob([JSON.stringify(project, null, 2)], {
       type: 'application/json',
     })
@@ -1613,26 +1570,7 @@ function App() {
     event.currentTarget.value = ''
     if (!file) return
     try {
-      const project = JSON.parse(await file.text()) as {
-        settings?: Omit<Partial<FigureSettings>, 'elementStyles'> & {
-          contourColor?: string
-          showContours?: boolean
-          elementStyles?: {
-            title?: Partial<MapElementStyles['title']>
-            diffLegend?: Partial<MapElementStyles['diffLegend']>
-            wetDry?: Partial<MapElementStyles['wetDry']>
-            north?: Partial<MapElementStyles['north']>
-            scale?: Partial<MapElementStyles['scale']>
-          }
-        }
-        overlays?: MapOverlay[]
-        annotations?: Array<
-          | MapAnnotation
-          | (Omit<MapAnnotation, 'kind'> & { kind: 'marker' })
-        >
-        annotationDefaults?: Partial<AnnotationDefaults>
-        selectedRuns?: { existingRun?: number; proposedRun?: number }
-      }
+      const project = parseHydraulicFigureProject(await file.text())
       if (project.settings) {
         const {
           contourColor: legacyContourColor,
@@ -1682,17 +1620,7 @@ function App() {
       }
       if (Array.isArray(project.overlays)) setOverlays(project.overlays)
       if (Array.isArray(project.annotations)) {
-        setAnnotations(
-          project.annotations
-            .filter(
-              (annotation): annotation is MapAnnotation =>
-                annotation.kind !== 'marker',
-            )
-            .map((annotation) => ({
-              ...annotation,
-              rotation: annotation.rotation ?? 0,
-            })),
-        )
+        setAnnotations(project.annotations)
       }
       if (project.annotationDefaults) {
         setAnnotationDefaults((current) => ({
@@ -1784,261 +1712,43 @@ function App() {
       <main
         className={`workspace${leftCollapsed ? ' inputs-collapsed' : ''}`}
       >
-        <aside
-          className={`sidebar left-sidebar${leftOpen ? ' is-mobile-open' : ''}${leftCollapsed ? ' is-collapsed' : ''}`}
-        >
-          {leftCollapsed ? (
-            <div className="left-sidebar-rail">
-              <button
-                className="icon-button left-rail-expand"
-                type="button"
-                title="Expand project data"
-                aria-label="Expand project data"
-                onClick={() => setLeftCollapsed(false)}
-              >
-                <ChevronRight size={18} aria-hidden="true" />
-              </button>
-              <div className="left-rail-conditions" aria-label="Input status">
-                <button
-                  className={`left-rail-condition${existingCondition?.projected && existingCondition.datasets ? ' ready' : ''}`}
-                  type="button"
-                  title="Expand Existing inputs"
-                  aria-label="Expand Existing inputs"
-                  onClick={() => setLeftCollapsed(false)}
-                >
-                  EX
-                </button>
-                <button
-                  className={`left-rail-condition${proposedCondition?.projected && proposedCondition.datasets ? ' ready' : ''}`}
-                  type="button"
-                  title="Expand Proposed inputs"
-                  aria-label="Expand Proposed inputs"
-                  onClick={() => setLeftCollapsed(false)}
-                >
-                  PR
-                </button>
-              </div>
-              <button
-                className="icon-button left-rail-overlays"
-                type="button"
-                title="Expand shapefile overlays"
-                aria-label="Expand shapefile overlays"
-                onClick={() => setLeftCollapsed(false)}
-              >
-                <Layers3 size={17} aria-hidden="true" />
-              </button>
-            </div>
-          ) : (
-            <>
-          <div className="sidebar-heading">
-            <div>
-              <span className="eyebrow">Inputs</span>
-              <h2>Project data</h2>
-            </div>
-            <div className="sidebar-heading-actions">
-              <button
-                className="icon-button desktop-collapse"
-                type="button"
-                title="Collapse project data"
-                aria-label="Collapse project data"
-                onClick={() => setLeftCollapsed(true)}
-              >
-                <ChevronLeft size={18} aria-hidden="true" />
-              </button>
-              <button
-                className="icon-button mobile-close"
-                type="button"
-                title="Close project data"
-                aria-label="Close project data"
-                onClick={() => setLeftOpen(false)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-
-          <section className="sidebar-block">
-            <div className="block-title">
-              <UploadCloud size={17} aria-hidden="true" />
-              <span>SMS mesh and results</span>
-              <span className="file-chip">.h5</span>
-            </div>
-            <FileDrop
-              accept=".h5"
-              title="Add geometry + datasets"
-              description="Existing and Proposed, any order"
-              disabled={busy}
-              testId="h5-file-drop"
-              onFiles={handleH5Files}
-            />
-            <div className="condition-list">
-              <ConditionStatus
-                label="Existing"
-                conditionKey="EX"
-                geometryName={existingCondition?.geometryFileName}
-                datasetName={existingCondition?.datasetFileName}
-                nodeCount={existingCondition?.projected?.N}
-                runCount={existingCondition?.datasets?.runs.length}
-                onRemove={
-                  existingCondition
-                    ? () => removeHydraulicCondition('EX')
-                    : undefined
-                }
-              />
-              <ConditionStatus
-                label="Proposed"
-                conditionKey="PR"
-                geometryName={proposedCondition?.geometryFileName}
-                datasetName={proposedCondition?.datasetFileName}
-                nodeCount={proposedCondition?.projected?.N}
-                runCount={proposedCondition?.datasets?.runs.length}
-                onRemove={
-                  proposedCondition
-                    ? () => removeHydraulicCondition('PR')
-                    : undefined
-                }
-              />
-            </div>
-          </section>
-
-          <section className="sidebar-block">
-            <div className="block-title">
-              <RefreshCcw size={17} aria-hidden="true" />
-              <span>Run pairing</span>
-            </div>
-            <label className="field">
-              <span>Existing run</span>
-              <select
-                value={existingRun}
-                disabled={existingRuns.length === 0}
-                onChange={(event) => {
-                  setExistingRun(Number(event.target.value))
-                  setScene(null)
-                }}
-              >
-                {existingRuns.length === 0 ? (
-                  <option>Waiting for Existing files</option>
-                ) : (
-                  existingRuns.map((selection) => (
-                    <option key={selection.index} value={selection.index}>
-                      {runDisplayName(selection.run.name)}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-            <label className="field">
-              <span>Proposed run</span>
-              <select
-                value={proposedRun}
-                disabled={proposedRuns.length === 0}
-                onChange={(event) => {
-                  setProposedRun(Number(event.target.value))
-                  setScene(null)
-                }}
-              >
-                {proposedRuns.length === 0 ? (
-                  <option>Waiting for Proposed files</option>
-                ) : (
-                  proposedRuns.map((selection) => (
-                    <option key={selection.index} value={selection.index}>
-                      {runDisplayName(selection.run.name)}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-          </section>
-
-          <section className="sidebar-block overlay-block">
-            <div className="block-title">
-              <Layers3 size={17} aria-hidden="true" />
-              <span>Map overlays</span>
-              <span className="file-chip">.zip</span>
-            </div>
-            <FileDrop
-              accept=".zip"
-              title="Add zipped shapefiles"
-              description="Centerlines, ROW, project limits"
-              disabled={busy}
-              testId="overlay-file-drop"
-              onFiles={handleOverlayFiles}
-            />
-            {overlays.length > 0 ? (
-              <Toggle
-                label="Show shapefile overlays"
-                checked={settings.showOverlays}
-                onChange={(checked) =>
-                  updateSettings('showOverlays', checked)
-                }
-              />
-            ) : null}
-            {overlays.length === 0 ? (
-              <p className="empty-note">No shapefile overlays loaded.</p>
-            ) : (
-              <div className="overlay-list">
-                {overlays.map((overlay) => (
-                  <div className="overlay-row" key={overlay.id}>
-                    <label className="overlay-visible">
-                      <input
-                        type="checkbox"
-                        checked={overlay.visible}
-                        onChange={(event) =>
-                          updateOverlay(overlay.id, {
-                            visible: event.target.checked,
-                          })
-                        }
-                      />
-                      <span title={overlay.name}>{overlay.name}</span>
-                    </label>
-                    <input
-                      type="color"
-                      value={overlay.color}
-                      aria-label={`${overlay.name} color`}
-                      onChange={(event) =>
-                        updateOverlay(overlay.id, { color: event.target.value })
-                      }
-                    />
-                    <input
-                      className="width-input"
-                      type="number"
-                      min="1"
-                      max="12"
-                      step="0.5"
-                      value={overlay.width}
-                      aria-label={`${overlay.name} line width`}
-                      onChange={(event) =>
-                        updateOverlay(overlay.id, {
-                          width: numeric(event.target.value, 3),
-                        })
-                      }
-                    />
-                    <button
-                      className="icon-button small danger"
-                      type="button"
-                      title={`Remove ${overlay.name}`}
-                      aria-label={`Remove ${overlay.name}`}
-                      onClick={() =>
-                        setOverlays((current) =>
-                          current.filter((item) => item.id !== overlay.id),
-                        )
-                      }
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <button className="text-button reset-project" type="button" onClick={resetProject}>
-            <RotateCcw size={15} aria-hidden="true" />
-            Reset project
-          </button>
-            </>
-          )}
-        </aside>
+        <ProjectDataPanel
+          mobileOpen={leftOpen}
+          collapsed={leftCollapsed}
+          busy={busy}
+          existingCondition={existingCondition}
+          proposedCondition={proposedCondition}
+          existingRuns={existingRuns}
+          proposedRuns={proposedRuns}
+          existingRun={existingRun}
+          proposedRun={proposedRun}
+          overlays={overlays}
+          showOverlays={settings.showOverlays}
+          onCollapse={() => setLeftCollapsed(true)}
+          onExpand={() => setLeftCollapsed(false)}
+          onMobileClose={() => setLeftOpen(false)}
+          onH5Files={handleH5Files}
+          onOverlayFiles={handleOverlayFiles}
+          onRemoveCondition={removeHydraulicCondition}
+          onExistingRunChange={(index) => {
+            setExistingRun(index)
+            setScene(null)
+          }}
+          onProposedRunChange={(index) => {
+            setProposedRun(index)
+            setScene(null)
+          }}
+          onShowOverlaysChange={(visible) =>
+            updateSettings('showOverlays', visible)
+          }
+          onUpdateOverlay={updateOverlay}
+          onRemoveOverlay={(id) =>
+            setOverlays((current) =>
+              current.filter((overlay) => overlay.id !== id),
+            )
+          }
+          onReset={resetProject}
+        />
 
         <section className="map-workspace">
           <div className="map-toolbar">
@@ -2214,7 +1924,7 @@ function App() {
                   onChange={(event) => {
                     updateSettings(
                       'dryDepth',
-                      numeric(event.target.value, DEFAULT_SETTINGS.dryDepth),
+                      numeric(event.target.value, 0),
                     )
                     setScene(null)
                   }}
@@ -3252,63 +2962,6 @@ function App() {
           }}
         />
       )}
-    </div>
-  )
-}
-
-type ConditionStatusProps = {
-  label: string
-  conditionKey: ConditionKey
-  geometryName?: string
-  datasetName?: string
-  nodeCount?: number
-  runCount?: number
-  onRemove?: () => void
-}
-
-function ConditionStatus({
-  label,
-  conditionKey,
-  geometryName,
-  datasetName,
-  nodeCount,
-  runCount,
-  onRemove,
-}: ConditionStatusProps) {
-  const complete = Boolean(geometryName && datasetName)
-  return (
-    <div className={`condition-row${complete ? ' complete' : ''}`}>
-      <div className="condition-name">
-        <span className={`condition-code ${conditionKey.toLowerCase()}`}>
-          {conditionKey}
-        </span>
-        <strong>{label}</strong>
-        {onRemove ? (
-          <button
-            className="icon-button tiny danger condition-remove"
-            type="button"
-            title={`Remove ${label} inputs`}
-            aria-label={`Remove ${label} inputs`}
-            onClick={onRemove}
-          >
-            <Trash2 size={13} aria-hidden="true" />
-          </button>
-        ) : null}
-      </div>
-      <div className="condition-badges">
-        <span
-          className={geometryName ? 'status-badge ready' : 'status-badge'}
-          title={geometryName}
-        >
-          {geometryName ? `${nodeCount?.toLocaleString()} nodes` : 'geometry'}
-        </span>
-        <span
-          className={datasetName ? 'status-badge ready' : 'status-badge'}
-          title={datasetName}
-        >
-          {datasetName ? `${runCount} runs` : 'datasets'}
-        </span>
-      </div>
     </div>
   )
 }

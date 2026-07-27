@@ -24,7 +24,9 @@ src/
   components/          Reusable workspace controls
   core/
     hydraulicEngine.ts SMS H5 parsing, run metadata, mesh matching, WSE logic
+    meshMatching.ts    Exact spatial matching and mesh-spacing tolerance
     mapRenderer.ts     Canvas map composition and report elements
+    projectFile.ts     Versioned save-file validation and migrations
     shapefile.ts       Zipped shapefile ingestion
     types.ts           Hydraulic and figure contracts
   App.tsx              FRA WSE Difference workspace
@@ -32,7 +34,9 @@ src/
 
 The `core` modules are intentionally independent of the React interface so
 future FRA, Appendix H, and Appendix K figure modules can share the same data
-and rendering contracts.
+and rendering contracts. See [Architecture](docs/ARCHITECTURE.md),
+[Hydraulic contract](docs/HYDRAULIC-CONTRACT.md), and
+[Testing](docs/TESTING.md) before extending those contracts.
 
 ## Development
 
@@ -43,9 +47,10 @@ npm install
 npm run dev
 ```
 
-Build and lint:
+Run the checked-in regression suite, build, and lint:
 
 ```bash
+npm test
 npm run build
 npm run lint
 ```
@@ -59,3 +64,5 @@ npm run test:site6
 ```
 
 GitHub Pages deploys automatically from `main`.
+The Pages workflow requires lint, regression tests, and the production build to
+pass before deployment.

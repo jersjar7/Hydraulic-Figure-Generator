@@ -55,6 +55,7 @@ export type ConditionData = {
   geometry?: Geometry
   projected?: ProjectedGeometry
   datasetFile?: unknown
+  datasetFilePath?: string
   datasets?: DatasetCatalog
 }
 

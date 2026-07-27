@@ -1,0 +1,419 @@
+import type {
+  AnnotationDefaults,
+  FigureSettings,
+  MapAnnotation,
+  MapElementPositions,
+  MapElementStyles,
+  MapOverlay,
+} from './types'
+
+export const PROJECT_FILE_VERSION = 8
+export const PROJECT_FIGURE = 'fra-wse-difference'
+
+type PartialElementStyles = {
+  [Key in keyof MapElementStyles]?: Partial<MapElementStyles[Key]>
+}
+
+export type ProjectSettings = Omit<
+  Partial<FigureSettings>,
+  'elementPositions' | 'elementStyles'
+> & {
+  contourColor?: string
+  showContours?: boolean
+  elementPositions?: Partial<MapElementPositions>
+  elementStyles?: PartialElementStyles
+}
+
+export type HydraulicFigureProject = {
+  version: number
+  figure: typeof PROJECT_FIGURE
+  settings?: ProjectSettings
+  overlays?: MapOverlay[]
+  annotations?: MapAnnotation[]
+  annotationDefaults?: Partial<AnnotationDefaults>
+  selectedRuns?: {
+    existingRun?: number
+    proposedRun?: number
+  }
+}
+
+type UnknownRecord = Record<string, unknown>
+type ValueParser = (value: unknown, path: string) => unknown
+
+function record(value: unknown, path: string): UnknownRecord {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`${path} must be an object.`)
+  }
+  return value as UnknownRecord
+}
+
+function text(value: unknown, path: string) {
+  if (typeof value !== 'string') throw new Error(`${path} must be text.`)
+  return value
+}
+
+function nonemptyText(value: unknown, path: string) {
+  const result = text(value, path)
+  if (!result.trim()) throw new Error(`${path} cannot be empty.`)
+  return result
+}
+
+function bool(value: unknown, path: string) {
+  if (typeof value !== 'boolean') throw new Error(`${path} must be true or false.`)
+  return value
+}
+
+function finite(value: unknown, path: string) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`${path} must be a finite number.`)
+  }
+  return value
+}
+
+function ranged(minimum: number, maximum = Number.POSITIVE_INFINITY): ValueParser {
+  return (value, path) => {
+    const result = finite(value, path)
+    if (result < minimum || result > maximum) {
+      throw new Error(`${path} must be between ${minimum} and ${maximum}.`)
+    }
+    return result
+  }
+}
+
+function integer(minimum = Number.NEGATIVE_INFINITY): ValueParser {
+  return (value, path) => {
+    const result = finite(value, path)
+    if (!Number.isInteger(result) || result < minimum) {
+      throw new Error(`${path} must be an integer of at least ${minimum}.`)
+    }
+    return result
+  }
+}
+
+function nullable(parser: ValueParser): ValueParser {
+  return (value, path) => (value === null ? null : parser(value, path))
+}
+
+function oneOf<const Values extends readonly (string | number)[]>(
+  values: Values,
+): ValueParser {
+  return (value, path) => {
+    if (!values.includes(value as never)) {
+      throw new Error(`${path} must be one of: ${values.join(', ')}.`)
+    }
+    return value
+  }
+}
+
+function shape(
+  value: unknown,
+  path: string,
+  fields: Record<string, ValueParser>,
+) {
+  const input = record(value, path)
+  const output: UnknownRecord = {}
+  for (const [key, parser] of Object.entries(fields)) {
+    if (!(key in input)) continue
+    output[key] = parser(input[key], `${path}.${key}`)
+  }
+  return output
+}
+
+const boxStyleFields = {
+  background: bool,
+  backgroundColor: text,
+  backgroundOpacity: ranged(0, 1),
+  borderColor: text,
+  borderWidth: ranged(0),
+}
+
+const elementStyleParsers: Record<keyof MapElementStyles, ValueParser> = {
+  title: (value, path) =>
+    shape(value, path, {
+      ...boxStyleFields,
+      fontSize: ranged(1),
+      fontWeight: oneOf([400, 600, 700] as const),
+      textColor: text,
+      alignment: oneOf(['left', 'center', 'right'] as const),
+      maxWidth: ranged(1),
+    }),
+  diffLegend: (value, path) =>
+    shape(value, path, {
+      ...boxStyleFields,
+      title: text,
+      units: text,
+      orientation: oneOf(['vertical', 'horizontal'] as const),
+      fontSize: ranged(1),
+      decimalPlaces: integer(0),
+      swatchSize: ranged(1),
+      textColor: text,
+    }),
+  wetDry: (value, path) =>
+    shape(value, path, {
+      ...boxStyleFields,
+      title: text,
+      wetLabel: text,
+      dryLabel: text,
+      orientation: oneOf(['vertical', 'horizontal'] as const),
+      fontSize: ranged(1),
+      swatchSize: ranged(1),
+      textColor: text,
+    }),
+  north: (value, path) =>
+    shape(value, path, {
+      ...boxStyleFields,
+      style: oneOf(['classic', 'simple', 'compass'] as const),
+      size: ranged(1),
+      color: text,
+      showLabel: bool,
+      rotationMode: oneOf(['true-north', 'page-up'] as const),
+    }),
+  scale: (value, path) =>
+    shape(value, path, {
+      ...boxStyleFields,
+      lengthMode: oneOf(['auto', 'manual'] as const),
+      manualLength: ranged(0),
+      units: oneOf(['us-survey-ft', 'ft', 'mi', 'm'] as const),
+      divisions: integer(1),
+      style: oneOf(['alternating', 'ticks'] as const),
+      decimalPlaces: integer(0),
+      fontSize: ranged(1),
+      lineColor: text,
+      fillColor: text,
+      textColor: text,
+    }),
+}
+
+function elementStyles(value: unknown, path: string) {
+  const input = record(value, path)
+  const output: UnknownRecord = {}
+  for (const [key, parser] of Object.entries(elementStyleParsers)) {
+    if (!(key in input)) continue
+    output[key] = parser(input[key], `${path}.${key}`)
+  }
+  return output
+}
+
+function elementPositions(value: unknown, path: string) {
+  const input = record(value, path)
+  const output: UnknownRecord = {}
+  for (const key of ['title', 'diffLegend', 'north', 'scale', 'wetDry']) {
+    if (!(key in input)) continue
+    output[key] = shape(input[key], `${path}.${key}`, {
+      anchor: oneOf(['tl', 'tc', 'tr', 'ml', 'mc', 'mr', 'bl', 'bc', 'br']),
+      offX: finite,
+      offY: finite,
+    })
+  }
+  return output
+}
+
+function settings(value: unknown, path: string): ProjectSettings {
+  return shape(value, path, {
+    orientation: oneOf(['landscape', 'portrait']),
+    dryDepth: ranged(0),
+    differenceOutlineColor: text,
+    showDifferenceOutlines: bool,
+    showWetDry: bool,
+    showOverlays: bool,
+    showTitle: bool,
+    showLegend: bool,
+    showNorth: bool,
+    showScale: bool,
+    showWetDryKey: bool,
+    titleTemplate: text,
+    legendBound: nullable(ranged(Number.EPSILON)),
+    legendInterval: nullable(ranged(Number.EPSILON)),
+    legendFontSize: ranged(1),
+    newlyWetColor: text,
+    newlyDryColor: text,
+    basemapOpacity: ranged(0, 1),
+    rotation: finite,
+    zoom: ranged(Number.EPSILON),
+    panX: finite,
+    panY: finite,
+    contourColor: text,
+    showContours: bool,
+    elementPositions,
+    elementStyles,
+  }) as ProjectSettings
+}
+
+function coordinate(value: unknown, path: string) {
+  return shape(value, path, { x: finite, y: finite }) as {
+    x: number
+    y: number
+  }
+}
+
+function annotation(value: unknown, path: string): MapAnnotation | null {
+  const input = record(value, path)
+  const kind = oneOf(
+    ['text', 'leader', 'arrow', 'line', 'result', 'marker'],
+  )(input.kind, `${path}.kind`)
+  if (kind === 'marker') return null
+  if (!Array.isArray(input.points)) throw new Error(`${path}.points must be an array.`)
+
+  const points = input.points.map((point, index) =>
+    coordinate(point, `${path}.points[${index}]`),
+  )
+  const minimumPoints = kind === 'text' || kind === 'result' ? 1 : 2
+  if (points.length < minimumPoints) {
+    throw new Error(`${path}.points requires at least ${minimumPoints} points.`)
+  }
+
+  const result = shape(input, path, {
+    id: nonemptyText,
+    kind: oneOf(['text', 'leader', 'arrow', 'line', 'result']),
+    text,
+    color: text,
+    fillColor: text,
+    lineWidth: ranged(0),
+    fontSize: ranged(1),
+    rotation: finite,
+    dashed: bool,
+    background: bool,
+    resultField: oneOf([
+      'summary',
+      'difference',
+      'existingWse',
+      'proposedWse',
+      'existingDepth',
+      'proposedDepth',
+    ]),
+    hydraulicExtremum: oneOf(['max-rise', 'max-reduction']),
+  })
+
+  return {
+    ...(result as Omit<MapAnnotation, 'points'>),
+    rotation: (result.rotation as number | undefined) ?? 0,
+    points,
+  }
+}
+
+function geoJson(value: unknown, path: string) {
+  const input = record(value, path)
+  if (input.type !== 'FeatureCollection') {
+    throw new Error(`${path}.type must be FeatureCollection.`)
+  }
+  if (!Array.isArray(input.features)) {
+    throw new Error(`${path}.features must be an array.`)
+  }
+  for (let index = 0; index < input.features.length; index += 1) {
+    const feature = record(input.features[index], `${path}.features[${index}]`)
+    if (feature.type !== 'Feature') {
+      throw new Error(`${path}.features[${index}].type must be Feature.`)
+    }
+    if (feature.geometry !== null) {
+      const geometry = record(
+        feature.geometry,
+        `${path}.features[${index}].geometry`,
+      )
+      nonemptyText(geometry.type, `${path}.features[${index}].geometry.type`)
+    }
+  }
+  return input
+}
+
+function overlay(value: unknown, path: string): MapOverlay {
+  const result = shape(value, path, {
+    id: nonemptyText,
+    name: nonemptyText,
+    color: text,
+    width: ranged(0),
+    visible: bool,
+    geojson: geoJson,
+  })
+  return result as MapOverlay
+}
+
+function annotationDefaults(value: unknown, path: string) {
+  return shape(value, path, {
+    text,
+    color: text,
+    fillColor: text,
+    lineWidth: ranged(0),
+    fontSize: ranged(1),
+    rotation: finite,
+    dashed: bool,
+    background: bool,
+    resultField: oneOf([
+      'summary',
+      'difference',
+      'existingWse',
+      'proposedWse',
+      'existingDepth',
+      'proposedDepth',
+    ]),
+  }) as Partial<AnnotationDefaults>
+}
+
+export function createHydraulicFigureProject(
+  project: Omit<HydraulicFigureProject, 'version' | 'figure'>,
+): HydraulicFigureProject {
+  return {
+    version: PROJECT_FILE_VERSION,
+    figure: PROJECT_FIGURE,
+    ...project,
+  }
+}
+
+export function parseHydraulicFigureProject(
+  source: string,
+): HydraulicFigureProject {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(source)
+  } catch {
+    throw new Error('The project file is not valid JSON.')
+  }
+
+  const input = record(parsed, 'Project')
+  const version =
+    input.version === undefined ? 1 : (integer(1)(input.version, 'Project.version') as number)
+  if (version > PROJECT_FILE_VERSION) {
+    throw new Error(
+      `This project uses version ${version}; this app supports through version ${PROJECT_FILE_VERSION}.`,
+    )
+  }
+  if (input.figure !== undefined && input.figure !== PROJECT_FIGURE) {
+    throw new Error(`This file is for a different figure type: ${String(input.figure)}.`)
+  }
+
+  const result: HydraulicFigureProject = {
+    version: PROJECT_FILE_VERSION,
+    figure: PROJECT_FIGURE,
+  }
+  if (input.settings !== undefined) {
+    result.settings = settings(input.settings, 'Project.settings')
+  }
+  if (input.overlays !== undefined) {
+    if (!Array.isArray(input.overlays)) {
+      throw new Error('Project.overlays must be an array.')
+    }
+    result.overlays = input.overlays.map((item, index) =>
+      overlay(item, `Project.overlays[${index}]`),
+    )
+  }
+  if (input.annotations !== undefined) {
+    if (!Array.isArray(input.annotations)) {
+      throw new Error('Project.annotations must be an array.')
+    }
+    result.annotations = input.annotations
+      .map((item, index) => annotation(item, `Project.annotations[${index}]`))
+      .filter((item): item is MapAnnotation => item !== null)
+  }
+  if (input.annotationDefaults !== undefined) {
+    result.annotationDefaults = annotationDefaults(
+      input.annotationDefaults,
+      'Project.annotationDefaults',
+    )
+  }
+  if (input.selectedRuns !== undefined) {
+    result.selectedRuns = shape(input.selectedRuns, 'Project.selectedRuns', {
+      existingRun: integer(0),
+      proposedRun: integer(0),
+    })
+  }
+  return result
+}

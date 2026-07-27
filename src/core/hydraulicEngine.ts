@@ -1,4 +1,8 @@
 import proj4 from 'proj4'
+import {
+  findNearestNode,
+  meshMatchToleranceSquared,
+} from './meshMatching'
 import type {
   Bounds,
   ConditionData,
@@ -117,9 +121,21 @@ type H5Node = {
 
 type H5File = {
   get(path: string): H5Node
+  close(): unknown
 }
 
 type ValueCacheEntry = Float32Array | { vx: Float32Array; vy: Float32Array }
+
+export function conditionNodeCountsMatch(condition: ConditionData) {
+  if (!condition.geometry || !condition.datasets) return false
+  const expected = condition.geometry.N
+  const nodeCounts = condition.datasets.runs.flatMap((run) =>
+    Object.values(run.params)
+      .map((param) => param.shape[1])
+      .filter((count): count is number => Number.isInteger(count)),
+  )
+  return nodeCounts.length > 0 && nodeCounts.every((count) => count === expected)
+}
 
 function conditionToken(text: string) {
   const existing = /(^|[^a-z0-9])(existing|ex)(?=[^a-z0-9]|$)/i.test(text)
@@ -339,98 +355,6 @@ function findParam(run: DatasetRun, pattern: RegExp) {
   return Object.keys(run.params).find((param) => pattern.test(param))
 }
 
-function buildIndex(projected: ProjectedGeometry) {
-  if (projected.index) return projected.index
-  const bbox = projected.bbox
-  const cell =
-    Math.max(bbox.x1 - bbox.x0, bbox.y1 - bbox.y0) /
-    Math.max(20, Math.sqrt(projected.N) / 2)
-  const grid = new Map<string, number[]>()
-
-  for (let index = 0; index < projected.N; index += 1) {
-    const cellX = Math.floor((projected.mx[index] - bbox.x0) / cell)
-    const cellY = Math.floor((projected.my[index] - bbox.y0) / cell)
-    const key = `${cellX},${cellY}`
-    const bucket = grid.get(key) ?? []
-    bucket.push(index)
-    grid.set(key, bucket)
-  }
-
-  projected.index = { b: bbox, cell, grid }
-  return projected.index
-}
-
-function nearestNodeInfo(
-  projected: ProjectedGeometry,
-  mx: number,
-  my: number,
-) {
-  const spatialIndex = buildIndex(projected)
-  const cellX = Math.floor((mx - spatialIndex.b.x0) / spatialIndex.cell)
-  const cellY = Math.floor((my - spatialIndex.b.y0) / spatialIndex.cell)
-  let nearestIndex = -1
-  let nearestDistanceSquared = Number.POSITIVE_INFINITY
-
-  for (let radius = 0; radius <= 5; radius += 1) {
-    let searched = 0
-    for (let xOffset = -radius; xOffset <= radius; xOffset += 1) {
-      for (let yOffset = -radius; yOffset <= radius; yOffset += 1) {
-        if (Math.max(Math.abs(xOffset), Math.abs(yOffset)) !== radius) continue
-        const bucket = spatialIndex.grid.get(
-          `${cellX + xOffset},${cellY + yOffset}`,
-        )
-        if (!bucket) continue
-        searched += bucket.length
-        for (const candidate of bucket) {
-          const dx = projected.mx[candidate] - mx
-          const dy = projected.my[candidate] - my
-          const distanceSquared = dx * dx + dy * dy
-          if (distanceSquared < nearestDistanceSquared) {
-            nearestDistanceSquared = distanceSquared
-            nearestIndex = candidate
-          }
-        }
-      }
-    }
-    if (nearestIndex >= 0 && searched > 0) break
-  }
-
-  return { index: nearestIndex, distance2: nearestDistanceSquared }
-}
-
-function meshMatchToleranceSquared(projected: ProjectedGeometry) {
-  if (projected.matchTolerance2) return projected.matchTolerance2
-  const edgeLengths: number[] = []
-
-  for (let triangle = 0; triangle < projected.tris.length; triangle += 3) {
-    const ids = [
-      projected.tris[triangle],
-      projected.tris[triangle + 1],
-      projected.tris[triangle + 2],
-    ]
-    for (let edge = 0; edge < 3; edge += 1) {
-      const first = ids[edge]
-      const second = ids[(edge + 1) % 3]
-      edgeLengths.push(
-        Math.hypot(
-          projected.mx[first] - projected.mx[second],
-          projected.my[first] - projected.my[second],
-        ),
-      )
-    }
-  }
-
-  edgeLengths.sort((first, second) => first - second)
-  const medianEdge =
-    edgeLengths[Math.floor(edgeLengths.length / 2)] ?? buildIndex(projected).cell
-  const tolerance = Math.max(
-    medianEdge * 2.25,
-    buildIndex(projected).cell * 0.75,
-  )
-  projected.matchTolerance2 = tolerance * tolerance
-  return projected.matchTolerance2
-}
-
 function maskedWetValues(
   values: Float32Array,
   depth: Float32Array,
@@ -483,22 +407,51 @@ export class HydraulicEngine {
 
   private fileSequence = 0
 
+  private h5Runtime: H5Runtime | null = null
+
+  private unlinkFile(path: string | undefined) {
+    if (!path || !this.h5Runtime) return
+    try {
+      this.h5Runtime.FS.unlink(path)
+    } catch {
+      // The in-memory file may already have been released.
+    }
+  }
+
+  private releaseDataset(condition: ConditionData) {
+    const file = condition.datasetFile as H5File | undefined
+    try {
+      file?.close()
+    } catch {
+      // Continue releasing the WASM path even if HDF5 reports a close error.
+    }
+    this.unlinkFile(condition.datasetFilePath)
+    condition.datasetFile = undefined
+    condition.datasetFilePath = undefined
+    condition.datasetFileName = undefined
+    condition.datasets = undefined
+  }
+
   async ingest(files: File[]) {
     const wasm = await getH5Runtime()
+    this.h5Runtime = wasm
     const notices: IngestNotice[] = []
 
     for (const file of files) {
+      let path: string | undefined
+      let h5File: H5File | undefined
+      let keepFileOpen = false
       try {
         const bytes = new Uint8Array(await file.arrayBuffer())
         this.fileSequence += 1
-        const path = `hydraulic_${this.fileSequence}_${file.name.replace(/[^\w.]/g, '_')}`
+        path = `hydraulic_${this.fileSequence}_${file.name.replace(/[^\w.]/g, '_')}`
         try {
           wasm.FS.unlink(path)
         } catch {
           // A new in-memory path normally has nothing to remove.
         }
         wasm.FS.writeFile(path, bytes)
-        const h5File = new wasm.File(path, 'r')
+        h5File = new wasm.File(path, 'r')
 
         if (isGeometryFile(h5File)) {
           const geometry = readGeometry(h5File)
@@ -525,9 +478,12 @@ export class HydraulicEngine {
             )
           }
           const condition = this.getCondition(key)
+          this.releaseDataset(condition)
           condition.datasetFileName = file.name
           condition.datasetFile = h5File
+          condition.datasetFilePath = path
           condition.datasets = datasets
+          keepFileOpen = true
           notices.push({
             level: 'success',
             text: `${conditionLabel(key)} datasets: ${datasets.runs.length} run${datasets.runs.length === 1 ? '' : 's'}`,
@@ -543,6 +499,28 @@ export class HydraulicEngine {
           level: 'error',
           text: `${file.name}: ${error instanceof Error ? error.message : String(error)}`,
         })
+      } finally {
+        if (!keepFileOpen) {
+          try {
+            h5File?.close()
+          } catch {
+            // Invalid files still need their WASM path released.
+          }
+          this.unlinkFile(path)
+        }
+      }
+    }
+
+    for (const condition of this.conditions.values()) {
+      if (
+        condition.geometry &&
+        condition.datasets &&
+        !conditionNodeCountsMatch(condition)
+      ) {
+        notices.push({
+          level: 'error',
+          text: `${conditionLabel(condition.key)} geometry and datasets have different node counts. Replace the mismatched input before generating.`,
+        })
       }
     }
 
@@ -551,11 +529,16 @@ export class HydraulicEngine {
   }
 
   reset() {
+    for (const condition of this.conditions.values()) {
+      this.releaseDataset(condition)
+    }
     this.conditions.clear()
     this.valueCache.clear()
   }
 
   removeCondition(key: ConditionKey) {
+    const condition = this.conditions.get(key)
+    if (condition) this.releaseDataset(condition)
     this.conditions.delete(key)
     this.valueCache.clear()
   }
@@ -574,7 +557,13 @@ export class HydraulicEngine {
 
   runOptions(key: ConditionKey) {
     const condition = this.conditions.get(key)
-    if (!condition?.projected || !condition.datasets) return []
+    if (
+      !condition?.projected ||
+      !condition.datasets ||
+      !conditionNodeCountsMatch(condition)
+    ) {
+      return []
+    }
     return condition.datasets.runs.map((run, index) => ({
       key,
       condition,
@@ -648,6 +637,16 @@ export class HydraulicEngine {
     if (!existingProjected || !proposedProjected) {
       throw new Error('Both selected conditions need geometry.')
     }
+    if (
+      existingWse.length !== existingProjected.N ||
+      existingDepth.length !== existingProjected.N ||
+      proposedWse.length !== proposedProjected.N ||
+      proposedDepth.length !== proposedProjected.N
+    ) {
+      throw new Error(
+        'Geometry and result datasets have different node counts. Replace the mismatched condition inputs.',
+      )
+    }
 
     const diff = new Float32Array(existingProjected.N)
     const wetDry = new Int8Array(existingProjected.N)
@@ -658,15 +657,18 @@ export class HydraulicEngine {
       dryDepth,
     )
     const existingMatchTolerance = meshMatchToleranceSquared(existingProjected)
+    const proposedMatchTolerance = meshMatchToleranceSquared(proposedProjected)
 
     for (let index = 0; index < existingProjected.N; index += 1) {
-      const match = nearestNodeInfo(
+      const match = findNearestNode(
         proposedProjected,
         existingProjected.mx[index],
         existingProjected.my[index],
-      ).index
+      )
+      const comparable =
+        match.index >= 0 && match.distance2 <= proposedMatchTolerance
       const existingValue = existingWse[index]
-      const proposedValue = match >= 0 ? proposedWse[match] : -999
+      const proposedValue = comparable ? proposedWse[match.index] : -999
       diff[index] =
         VALID(existingValue) && VALID(proposedValue)
           ? proposedValue - existingValue
@@ -675,14 +677,14 @@ export class HydraulicEngine {
       const existingWet =
         VALID(existingDepth[index]) && existingDepth[index] > dryDepth
       const proposedWet =
-        match >= 0 &&
-        VALID(proposedDepth[match]) &&
-        proposedDepth[match] > dryDepth
+        comparable &&
+        VALID(proposedDepth[match.index]) &&
+        proposedDepth[match.index] > dryDepth
       wetDry[index] = !existingWet && proposedWet ? 1 : existingWet && !proposedWet ? -1 : 0
     }
 
     for (let index = 0; index < proposedProjected.N; index += 1) {
-      const match = nearestNodeInfo(
+      const match = findNearestNode(
         existingProjected,
         proposedProjected.mx[index],
         proposedProjected.my[index],
