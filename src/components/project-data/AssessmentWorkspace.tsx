@@ -94,24 +94,24 @@ export function AssessmentWorkspace({
         )}
       </section>
 
-      {generated ? (
-        <section className="workflow-block stationing-workflow-block">
-          <div className="block-title">
-            <Route size={17} aria-hidden="true" />
-            <span>Centerline stationing</span>
+      <section className="workflow-block stationing-workflow-block">
+        <div className="block-title">
+          <Route size={17} aria-hidden="true" />
+          <span>Centerline stationing</span>
+        </div>
+        <AssessmentStationingControls {...stationing} />
+        {stationed ? (
+          <div className="assessment-status-summary">
+            <span>{stationed.includedCount} included</span>
+            <span
+              className={stationed.reviewCount > 0 ? 'warning' : 'ready'}
+            >
+              {stationed.reviewCount} review
+            </span>
+            <span>{stationed.excludedCount} excluded</span>
           </div>
-          <AssessmentStationingControls {...stationing} />
-          {stationed ? (
-            <div className="assessment-status-summary">
-              <span>{stationed.includedCount} included</span>
-              <span
-                className={stationed.reviewCount > 0 ? 'warning' : 'ready'}
-              >
-                {stationed.reviewCount} review
-              </span>
-              <span>{stationed.excludedCount} excluded</span>
-            </div>
-          ) : null}
+        ) : null}
+        {generated ? (
           <button
             className="button secondary compact full assessment-review-button"
             type="button"
@@ -120,8 +120,8 @@ export function AssessmentWorkspace({
             <ListChecks size={15} aria-hidden="true" />
             Open review
           </button>
-        </section>
-      ) : null}
+        ) : null}
+      </section>
     </>
   )
 }

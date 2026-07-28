@@ -22,6 +22,40 @@ describe('hydraulic figure project files', () => {
         assessmentLabelOffset: 28,
         assessmentLabelSide: 'alternate',
         basemapOpacity: 0.5,
+        centerlineStationing: {
+          visible: true,
+          showMinorTicks: true,
+          showMajorTicks: true,
+          showLabels: true,
+          minorInterval: 25,
+          majorInterval: 100,
+          labelInterval: 100,
+          rangeStart: 1000,
+          rangeEnd: 1500,
+          minorTickLength: 10,
+          majorTickLength: 18,
+          minorLineWidth: 1.25,
+          majorLineWidth: 2,
+          tickSide: 'both',
+          tickColor: '#d92d20',
+          labelColor: '#172b3a',
+          labelFontSize: 18,
+          labelOffset: 25,
+          labelSide: 'auto',
+          labelOrientation: 'horizontal',
+          labelHalo: true,
+          prefix: 'STA ',
+          decimalPlaces: 0,
+          showEndpoints: true,
+          showDirectionArrow: true,
+          overrides: {
+            'station:1100.000000': {
+              visible: true,
+              labelPoint: { x: 10, y: 20 },
+              text: 'Bridge',
+            },
+          },
+        },
       },
       selectedRuns: { existingRun: 1, proposedRun: 2 },
       scenarioSelection: {
@@ -227,6 +261,19 @@ describe('hydraulic figure project files', () => {
           }),
         ),
       /labelPoint.x/,
+    )
+    assert.throws(
+      () =>
+        parseHydraulicFigureProject(
+          JSON.stringify({
+            version: PROJECT_FILE_VERSION,
+            figure: 'fra-wse-difference',
+            settings: {
+              centerlineStationing: { minorInterval: 0 },
+            },
+          }),
+        ),
+      /minorInterval/,
     )
   })
 })

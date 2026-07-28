@@ -8,6 +8,7 @@ import {
   Droplets,
   Eye,
   EyeOff,
+  Milestone,
   RotateCcw,
   Ruler,
   Type,
@@ -18,9 +19,12 @@ import type {
   ElementBoxStyle,
   ElementPosition,
   FigureSettings,
+  FigureElementPanelKey,
+  CenterlineStationTick,
   MapElementKey,
   MapElementStyles,
 } from '../core/types'
+import { CenterlineStationingPanel } from '../features/stationing/CenterlineStationingPanel'
 
 const ELEMENTS = [
   { key: 'title', label: 'Title', icon: Type },
@@ -28,6 +32,7 @@ const ELEMENTS = [
   { key: 'wetDry', label: 'Wet/dry key', icon: Droplets },
   { key: 'north', label: 'North arrow', icon: Compass },
   { key: 'scale', label: 'Scale bar', icon: Ruler },
+  { key: 'stationing', label: 'Centerline stationing', icon: Milestone },
 ] as const
 
 const ANCHORS: { value: Anchor; label: string }[] = [
@@ -44,8 +49,8 @@ const ANCHORS: { value: Anchor; label: string }[] = [
 
 type Props = {
   settings: FigureSettings
-  activeElement: MapElementKey
-  onActiveElementChange(key: MapElementKey): void
+  activeElement: FigureElementPanelKey
+  onActiveElementChange(key: FigureElementPanelKey): void
   onVisibilityChange(key: MapElementKey, visible: boolean): void
   onTitleTemplateChange(value: string): void
   onStyleChange(
@@ -55,6 +60,19 @@ type Props = {
   onPositionChange(key: MapElementKey, patch: Partial<ElementPosition>): void
   onNudge(key: MapElementKey, dx: number, dy: number): void
   onResetElement(key: MapElementKey): void
+  stationTicks: CenterlineStationTick[]
+  selectedStationLabelId: string | null
+  hasCenterline: boolean
+  onStationingChange(
+    patch: Partial<FigureSettings['centerlineStationing']>,
+  ): void
+  onStationLabelSelect(id: string | null): void
+  onStationLabelOverrideChange(
+    id: string,
+    override: FigureSettings['centerlineStationing']['overrides'][string] | null,
+  ): void
+  onNudgeStationLabel(dx: number, dy: number): void
+  onResetStationing(): void
 }
 
 function numberValue(value: string, fallback: number) {
@@ -267,13 +285,27 @@ export function FigureElementsPanel({
   onPositionChange,
   onNudge,
   onResetElement,
+  stationTicks,
+  selectedStationLabelId,
+  hasCenterline,
+  onStationingChange,
+  onStationLabelSelect,
+  onStationLabelOverrideChange,
+  onNudgeStationLabel,
+  onResetStationing,
 }: Props) {
   const activeIndex = ELEMENTS.findIndex(
     (element) => element.key === activeElement,
   )
   const activeDefinition = ELEMENTS[activeIndex]
-  const position = settings.elementPositions[activeElement]
-  const visible = visibleFor(settings, activeElement)
+  const activeMapElement =
+    activeElement === 'stationing' ? null : activeElement
+  const position = activeMapElement
+    ? settings.elementPositions[activeMapElement]
+    : null
+  const visible = activeMapElement
+    ? visibleFor(settings, activeMapElement)
+    : settings.centerlineStationing.visible
 
   const handleTabKeyDown = (
     event: KeyboardEvent<HTMLButtonElement>,
@@ -298,14 +330,14 @@ export function FigureElementsPanel({
       [nextIndex]?.focus()
   }
 
-  const commonHeader = (
+  const commonHeader = activeMapElement ? (
     <>
       <div className="element-menu-header">
         <strong>{activeDefinition.label}</strong>
         <button
           className="button secondary compact element-reset"
           type="button"
-          onClick={() => onResetElement(activeElement)}
+          onClick={() => onResetElement(activeMapElement)}
         >
           <RotateCcw size={13} aria-hidden="true" />
           Reset
@@ -315,11 +347,11 @@ export function FigureElementsPanel({
         label="Show on figure"
         checked={visible}
         onChange={(nextVisible) =>
-          onVisibilityChange(activeElement, nextVisible)
+          onVisibilityChange(activeMapElement, nextVisible)
         }
       />
     </>
-  )
+  ) : null
 
   return (
     <>
@@ -330,7 +362,10 @@ export function FigureElementsPanel({
       >
         {ELEMENTS.map((element, index) => {
           const Icon = element.icon
-          const elementVisible = visibleFor(settings, element.key)
+          const elementVisible =
+            element.key === 'stationing'
+              ? settings.centerlineStationing.visible
+              : visibleFor(settings, element.key)
           return (
             <button
               className={`element-tab${activeElement === element.key ? ' active' : ''}`}
@@ -359,9 +394,23 @@ export function FigureElementsPanel({
       </div>
 
       <div className="element-settings-panel">
-        {commonHeader}
+        {activeElement === 'stationing' ? (
+          <CenterlineStationingPanel
+            settings={settings.centerlineStationing}
+            ticks={stationTicks}
+            selectedLabelId={selectedStationLabelId}
+            hasCenterline={hasCenterline}
+            onChange={onStationingChange}
+            onSelectLabel={onStationLabelSelect}
+            onOverrideChange={onStationLabelOverrideChange}
+            onNudgeSelected={onNudgeStationLabel}
+            onReset={onResetStationing}
+          />
+        ) : (
+          <>
+            {commonHeader}
 
-        {activeElement === 'title' ? (
+        {activeMapElement === 'title' ? (
           <>
             <SectionHeading>Content</SectionHeading>
             <label className="field">
@@ -465,7 +514,7 @@ export function FigureElementsPanel({
           </>
         ) : null}
 
-        {activeElement === 'diffLegend' ? (
+        {activeMapElement === 'diffLegend' ? (
           <>
             <SectionHeading>Content</SectionHeading>
             <div className="field-grid two">
@@ -572,7 +621,7 @@ export function FigureElementsPanel({
           </>
         ) : null}
 
-        {activeElement === 'wetDry' ? (
+        {activeMapElement === 'wetDry' ? (
           <>
             <SectionHeading>Content</SectionHeading>
             <label className="field">
@@ -675,7 +724,7 @@ export function FigureElementsPanel({
           </>
         ) : null}
 
-        {activeElement === 'north' ? (
+        {activeMapElement === 'north' ? (
           <>
             <SectionHeading>Symbol</SectionHeading>
             <div className="field-grid two">
@@ -752,7 +801,7 @@ export function FigureElementsPanel({
           </>
         ) : null}
 
-        {activeElement === 'scale' ? (
+        {activeMapElement === 'scale' ? (
           <>
             <SectionHeading>Scale</SectionHeading>
             <div className="field-grid two">
@@ -906,16 +955,18 @@ export function FigureElementsPanel({
 
         <SectionHeading>Appearance</SectionHeading>
         <BoxControls
-          style={settings.elementStyles[activeElement]}
-          onChange={(patch) => onStyleChange(activeElement, patch)}
+          style={settings.elementStyles[activeMapElement!]}
+          onChange={(patch) => onStyleChange(activeMapElement!, patch)}
         />
         <SectionHeading>Placement</SectionHeading>
         <PositionControls
-          position={position}
+          position={position!}
           label={activeDefinition.label}
-          onChange={(patch) => onPositionChange(activeElement, patch)}
-          onNudge={(dx, dy) => onNudge(activeElement, dx, dy)}
+          onChange={(patch) => onPositionChange(activeMapElement!, patch)}
+          onNudge={(dx, dy) => onNudge(activeMapElement!, dx, dy)}
         />
+          </>
+        )}
       </div>
     </>
   )

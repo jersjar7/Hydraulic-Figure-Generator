@@ -56,6 +56,7 @@ import {
 } from './core/defaults'
 import {
   extractCenterlineCandidates,
+  generateCenterlineStationTicks,
   stationAssessmentLines,
 } from './core/centerlineStationing'
 import {
@@ -77,10 +78,12 @@ import {
   FRAMES,
   hitTestAnnotation,
   hitTestAssessmentCallout,
+  hitTestStationLabel,
   mapPointToCanvas,
   moveAnnotationPoints,
   renderWseDifferenceMap,
   sampleHydraulicResult,
+  stationLabelPosition,
   type AnnotationHitPart,
 } from './core/mapRenderer'
 import {
@@ -95,6 +98,7 @@ import type {
   AnnotationTool,
   Bounds,
   ConditionKey,
+  FigureElementPanelKey,
   FigureSettings,
   IngestNotice,
   MapAnnotation,
@@ -104,6 +108,7 @@ import type {
   MapElementStyles,
   MapOverlay,
   ResultLabelField,
+  StationLabelOverride,
   WseAssessmentLine,
   WseExtremumKind,
   WseDifferenceScene,
@@ -198,6 +203,15 @@ type AssessmentCalloutDrag = {
   startPointer: MapCoordinate
   originalRenderedPoint: MapCoordinate
   originalOverridePoint?: MapCoordinate
+  moved: boolean
+}
+
+type StationLabelDrag = {
+  id: string
+  startScreen: { x: number; y: number }
+  startPointer: MapCoordinate
+  originalRenderedPoint: MapCoordinate
+  originalOverride: StationLabelOverride | undefined
   moved: boolean
 }
 
@@ -377,6 +391,7 @@ function App() {
   const [annotationDragging, setAnnotationDragging] = useState(false)
   const [assessmentCalloutDragging, setAssessmentCalloutDragging] =
     useState(false)
+  const [stationLabelDragging, setStationLabelDragging] = useState(false)
   const [notices, setNotices] = useState<IngestNotice[]>([])
   const [scene, setScene] = useState<WseDifferenceScene | null>(null)
   const [busy, setBusy] = useState(false)
@@ -386,7 +401,9 @@ function App() {
   const [activeSettingsSection, setActiveSettingsSection] =
     useState<SettingsSectionKey>('calculation')
   const [activeElement, setActiveElement] =
-    useState<MapElementKey>('title')
+    useState<FigureElementPanelKey>('title')
+  const [selectedStationLabelId, setSelectedStationLabelId] =
+    useState<string | null>(null)
   const [hoveredElement, setHoveredElement] =
     useState<MapElementKey | null>(null)
   const [elementDragging, setElementDragging] = useState(false)
@@ -400,6 +417,7 @@ function App() {
   const renderSequence = useRef(0)
   const annotationDragRef = useRef<AnnotationDrag | null>(null)
   const assessmentCalloutDragRef = useRef<AssessmentCalloutDrag | null>(null)
+  const stationLabelDragRef = useRef<StationLabelDrag | null>(null)
   const annotationListItemRefs = useRef(
     new globalThis.Map<string, HTMLButtonElement>(),
   )
@@ -459,6 +477,39 @@ function App() {
     centerlineCandidates.find(
       (candidate) => candidate.id === assessmentState.centerlineId,
     ) ?? null
+  const centerlineStationTicks = useMemo(() => {
+    if (!selectedCenterline) return []
+    try {
+      return generateCenterlineStationTicks(
+        selectedCenterline,
+        assessmentState.direction,
+        assessmentState.startStation,
+        settings.centerlineStationing,
+      )
+    } catch {
+      return []
+    }
+  }, [
+    assessmentState.direction,
+    assessmentState.startStation,
+    selectedCenterline,
+    settings.centerlineStationing,
+  ])
+  const centerlineStationLayer = useMemo(
+    () =>
+      selectedCenterline
+        ? {
+            centerline: selectedCenterline,
+            direction: assessmentState.direction,
+            ticks: centerlineStationTicks,
+          }
+        : undefined,
+    [
+      assessmentState.direction,
+      centerlineStationTicks,
+      selectedCenterline,
+    ],
+  )
   const stationedAssessmentLines = useMemo(
     () =>
       selectedCenterline
@@ -479,12 +530,18 @@ function App() {
     ],
   )
   const assessmentExportLayer = useMemo<AssessmentMapLayer>(() => {
-    if (!stationedAssessmentLines) return { lines: assessmentLines.lines }
+    if (!stationedAssessmentLines) {
+      return {
+        lines: assessmentLines.lines,
+        centerlineStationing: centerlineStationLayer,
+      }
+    }
     const included = stationedAssessmentLines.items.filter(
       (item) => item.status === 'included' && item.selectedIntersection,
     )
     return {
       lines: included.map((item) => item.line),
+      centerlineStationing: centerlineStationLayer,
       wseCallouts: included
         .filter(
           (item) =>
@@ -502,12 +559,19 @@ function App() {
   }, [
     assessmentLines.lines,
     assessmentState.overrides,
+    centerlineStationLayer,
     stationedAssessmentLines,
   ])
   const assessmentDisplayLayer = useMemo<AssessmentMapLayer>(() => {
     const displayLayer = {
       ...assessmentExportLayer,
       selectedCalloutId: assessmentState.selectedLineId,
+      centerlineStationing: assessmentExportLayer.centerlineStationing
+        ? {
+            ...assessmentExportLayer.centerlineStationing,
+            selectedLabelId: selectedStationLabelId,
+          }
+        : undefined,
     }
     if (
       assessmentState.panelView !== 'review' ||
@@ -538,6 +602,7 @@ function App() {
     assessmentExportLayer,
     assessmentState.panelView,
     assessmentState.selectedLineId,
+    selectedStationLabelId,
     stationedAssessmentLines,
   ])
 
@@ -569,6 +634,17 @@ function App() {
 
   useEffect(() => {
     if (
+      selectedStationLabelId &&
+      !centerlineStationTicks.some(
+        (tick) => tick.id === selectedStationLabelId && tick.label,
+      )
+    ) {
+      setSelectedStationLabelId(null)
+    }
+  }, [centerlineStationTicks, selectedStationLabelId])
+
+  useEffect(() => {
+    if (
       annotationPanelView === 'placed' &&
       annotationPlacedView === 'detail' &&
       !selectedAnnotation
@@ -587,6 +663,36 @@ function App() {
     value: FigureSettings[Key],
   ) => {
     setSettings((current) => ({ ...current, [key]: value }))
+  }
+
+  const updateCenterlineStationing = (
+    patch: Partial<FigureSettings['centerlineStationing']>,
+  ) => {
+    setSettings((current) => ({
+      ...current,
+      centerlineStationing: {
+        ...current.centerlineStationing,
+        ...patch,
+      },
+    }))
+  }
+
+  const updateStationLabelOverride = (
+    id: string,
+    override: StationLabelOverride | null,
+  ) => {
+    setSettings((current) => {
+      const overrides = { ...current.centerlineStationing.overrides }
+      if (override) overrides[id] = override
+      else delete overrides[id]
+      return {
+        ...current,
+        centerlineStationing: {
+          ...current.centerlineStationing,
+          overrides,
+        },
+      }
+    })
   }
 
   const handleSettingsTabKeyDown = (
@@ -842,6 +948,7 @@ function App() {
     if (
       !annotationDragging &&
       !assessmentCalloutDragging &&
+      !stationLabelDragging &&
       !elementDragging
     ) {
       setBusy(true)
@@ -855,7 +962,10 @@ function App() {
       assessmentDisplayLayer,
       annotations,
       selectedAnnotationId,
-      activeSettingsSection === 'elements' ? activeElement : null,
+      activeSettingsSection === 'elements' &&
+        activeElement !== 'stationing'
+        ? activeElement
+        : null,
       controller.signal,
     )
       .then((elementBounds) => {
@@ -884,6 +994,7 @@ function App() {
           renderSequence.current === sequence &&
           !annotationDragging &&
           !assessmentCalloutDragging &&
+          !stationLabelDragging &&
           !elementDragging
         ) {
           setBusy(false)
@@ -894,6 +1005,7 @@ function App() {
     annotations,
     assessmentDisplayLayer,
     assessmentCalloutDragging,
+    stationLabelDragging,
     annotationDragging,
     activeElement,
     activeSettingsSection,
@@ -1465,6 +1577,37 @@ function App() {
       }
     }
 
+    if (annotationTool === 'select') {
+      const stationHit = hitTestStationLabel(
+        centerlineStationLayer,
+        bounds,
+        settings,
+        screenPoint.x,
+        screenPoint.y,
+      )
+      if (stationHit) {
+        const originalOverride =
+          settings.centerlineStationing.overrides[stationHit.id]
+        setActiveSettingsSection('elements')
+        setActiveElement('stationing')
+        setSelectedStationLabelId(stationHit.id)
+        setRightOpen(true)
+        stationLabelDragRef.current = {
+          id: stationHit.id,
+          startScreen: screenPoint,
+          startPointer: mapPoint,
+          originalRenderedPoint: stationHit.labelPoint,
+          originalOverride: originalOverride
+            ? { ...originalOverride }
+            : undefined,
+          moved: false,
+        }
+        setStationLabelDragging(true)
+        event.currentTarget.setPointerCapture(event.pointerId)
+        return
+      }
+    }
+
     if (
       annotationTool === 'select' ||
       assessmentState.panelView === 'review'
@@ -1642,6 +1785,43 @@ function App() {
     })
   }
 
+  const moveStationLabelDrag = (screenPoint: {
+    x: number
+    y: number
+  }) => {
+    const drag = stationLabelDragRef.current
+    if (!drag) return
+    if (
+      !drag.moved &&
+      Math.hypot(
+        screenPoint.x - drag.startScreen.x,
+        screenPoint.y - drag.startScreen.y,
+      ) < 3
+    ) {
+      return
+    }
+    drag.moved = true
+    const pointer = canvasPointToMap(
+      screenPoint.x,
+      screenPoint.y,
+      engine.commonBounds(),
+      settings,
+    )
+    updateStationLabelOverride(drag.id, {
+      ...drag.originalOverride,
+      labelPoint: {
+        x:
+          drag.originalRenderedPoint.x +
+          pointer.x -
+          drag.startPointer.x,
+        y:
+          drag.originalRenderedPoint.y +
+          pointer.y -
+          drag.startPointer.y,
+      },
+    })
+  }
+
   const handleCanvasPointerMove = (
     event: ReactPointerEvent<HTMLCanvasElement>,
   ) => {
@@ -1650,8 +1830,21 @@ function App() {
       moveFigureElementDrag(screenPoint)
       return
     }
+    if (stationLabelDragRef.current) {
+      moveStationLabelDrag(pointerCanvasPoint(event))
+      stationLabelDragRef.current = null
+      setStationLabelDragging(false)
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      }
+      return
+    }
     if (assessmentCalloutDragRef.current) {
       moveAssessmentCalloutDrag(screenPoint)
+      return
+    }
+    if (stationLabelDragRef.current) {
+      moveStationLabelDrag(screenPoint)
       return
     }
     if (activeSettingsSection === 'elements') {
@@ -1759,6 +1952,19 @@ function App() {
       })
       assessmentCalloutDragRef.current = null
       setAssessmentCalloutDragging(false)
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      }
+      return
+    }
+    const stationDrag = stationLabelDragRef.current
+    if (stationDrag) {
+      updateStationLabelOverride(
+        stationDrag.id,
+        stationDrag.originalOverride ?? null,
+      )
+      stationLabelDragRef.current = null
+      setStationLabelDragging(false)
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId)
       }
@@ -1960,6 +2166,41 @@ function App() {
     })
   }
 
+  const nudgeStationLabel = (dx: number, dy: number) => {
+    if (!selectedStationLabelId || !centerlineStationLayer) return
+    const currentPoint = stationLabelPosition(
+      centerlineStationLayer,
+      engine.commonBounds(),
+      settings,
+      selectedStationLabelId,
+    )
+    if (!currentPoint) return
+    const screenPoint = mapPointToCanvas(
+      currentPoint,
+      engine.commonBounds(),
+      settings,
+    )
+    const nextPoint = canvasPointToMap(
+      screenPoint.x + dx,
+      screenPoint.y + dy,
+      engine.commonBounds(),
+      settings,
+    )
+    updateStationLabelOverride(selectedStationLabelId, {
+      ...settings.centerlineStationing.overrides[selectedStationLabelId],
+      labelPoint: nextPoint,
+    })
+  }
+
+  const resetCenterlineStationing = () => {
+    const defaults = createDefaultFigureSettings().centerlineStationing
+    setSettings((current) => ({
+      ...current,
+      centerlineStationing: structuredClone(defaults),
+    }))
+    setSelectedStationLabelId(null)
+  }
+
   const resetView = () => {
     setSettings((current) => ({
       ...current,
@@ -1985,6 +2226,9 @@ function App() {
     setAnnotationDefaults(createDefaultAnnotationSettings())
     assessmentCalloutDragRef.current = null
     setAssessmentCalloutDragging(false)
+    stationLabelDragRef.current = null
+    setStationLabelDragging(false)
+    setSelectedStationLabelId(null)
     figureElementDragRef.current = null
     elementBoundsRef.current = []
     setElementDragging(false)
@@ -2094,6 +2338,13 @@ function App() {
             current.showDifferenceOutlines,
           showWetDryKey:
             projectSettings.showWetDryKey ?? current.showWetDryKey,
+          centerlineStationing: {
+            ...current.centerlineStationing,
+            ...(projectSettings.centerlineStationing ?? {}),
+            overrides: {
+              ...(projectSettings.centerlineStationing?.overrides ?? {}),
+            },
+          },
           elementPositions: {
             ...current.elementPositions,
             ...(projectSettings.elementPositions ?? {}),
@@ -2133,6 +2384,7 @@ function App() {
         }))
       }
       setSelectedAnnotationId(null)
+      setSelectedStationLabelId(null)
       setAnnotationStart(null)
       setAnnotationPanelView('create')
       setAnnotationPlacedView('list')
@@ -2258,9 +2510,21 @@ function App() {
             stationed: stationedAssessmentLines,
             onOpen: assessmentWorkflow.openReview,
             onBack: assessmentWorkflow.closeReview,
-            onCenterlineChange: assessmentWorkflow.setCenterline,
-            onDirectionChange: assessmentWorkflow.setDirection,
-            onStartStationChange: assessmentWorkflow.setStartStation,
+            onCenterlineChange: (id) => {
+              assessmentWorkflow.setCenterline(id)
+              updateCenterlineStationing({ overrides: {} })
+              setSelectedStationLabelId(null)
+            },
+            onDirectionChange: (direction) => {
+              assessmentWorkflow.setDirection(direction)
+              updateCenterlineStationing({ overrides: {} })
+              setSelectedStationLabelId(null)
+            },
+            onStartStationChange: (station) => {
+              assessmentWorkflow.setStartStation(station)
+              updateCenterlineStationing({ overrides: {} })
+              setSelectedStationLabelId(null)
+            },
             onReviewTabChange: assessmentWorkflow.setReviewTab,
             onSelectLine: (id) =>
               assessmentWorkflow.selectLine(
@@ -2377,6 +2641,9 @@ function App() {
                 }
                 data-assessment-callout-dragging={
                   assessmentCalloutDragging ? 'true' : undefined
+                }
+                data-station-label-dragging={
+                  stationLabelDragging ? 'true' : undefined
                 }
                 data-element-hover={hoveredElement ?? undefined}
                 data-element-dragging={
@@ -2815,6 +3082,16 @@ function App() {
                 onPositionChange={updateElementPosition}
                 onNudge={nudgeElement}
                 onResetElement={resetElement}
+                stationTicks={centerlineStationTicks}
+                selectedStationLabelId={selectedStationLabelId}
+                hasCenterline={Boolean(selectedCenterline)}
+                onStationingChange={updateCenterlineStationing}
+                onStationLabelSelect={setSelectedStationLabelId}
+                onStationLabelOverrideChange={
+                  updateStationLabelOverride
+                }
+                onNudgeStationLabel={nudgeStationLabel}
+                onResetStationing={resetCenterlineStationing}
               />
             </ControlSection>
             ) : null}

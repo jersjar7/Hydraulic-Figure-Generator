@@ -16,6 +16,9 @@ The first figure module is the FRA WSE Difference map:
   elevation intervals, independently styled from difference boundaries.
 - Filters and stations assessment lines against an imported hydraulic
   centerline, with explicit review for ambiguous crossings.
+- Generates model-CRS centerline station ticks with independent minor, major,
+  and label intervals; range, side, format, endpoint, and direction controls;
+  plus draggable, editable, individually hideable labels.
 - Labels included assessment lines with their WSE, with global and per-line
   visibility plus draggable, leader-anchored positions.
 - Classifies newly inundated and newly dry areas using a configurable dry-depth
@@ -42,6 +45,7 @@ src/
     types.ts           Hydraulic and figure contracts
   features/
     assessment-lines/  Stationing controls, bounded review state, and interface
+    stationing/        Centerline station figure-element controls
   App.tsx              FRA WSE Difference workspace
 ```
 

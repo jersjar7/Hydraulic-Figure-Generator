@@ -3,6 +3,7 @@ import { describe, it } from 'node:test'
 import {
   extractCenterlineCandidates,
   formatStation,
+  generateCenterlineStationTicks,
   stationAssessmentLines,
 } from '../src/core/centerlineStationing'
 import type {
@@ -211,5 +212,82 @@ describe('assessment-line centerline stationing', () => {
     assert.equal(formatStation(99.6), '1+00')
     assert.equal(formatStation(1070), '10+70')
     assert.equal(formatStation(-99.6), '-1+00')
+  })
+
+  it('generates independent minor, major, and label schedules', () => {
+    const ticks = generateCenterlineStationTicks(
+      centerline(),
+      'a-to-b',
+      1_000,
+      {
+        minorInterval: 25,
+        majorInterval: 50,
+        labelInterval: 100,
+      },
+    )
+
+    assert.deepEqual(
+      ticks.map((tick) => tick.stationFeet),
+      [1_000, 1_025, 1_050, 1_075, 1_100],
+    )
+    assert.deepEqual(
+      ticks.filter((tick) => tick.major).map((tick) => tick.stationFeet),
+      [1_000, 1_050, 1_100],
+    )
+    assert.deepEqual(
+      ticks.filter((tick) => tick.label).map((tick) => tick.stationFeet),
+      [1_000, 1_100],
+    )
+  })
+
+  it('clips station marks to a requested station range', () => {
+    const ticks = generateCenterlineStationTicks(
+      centerline(),
+      'a-to-b',
+      1_000,
+      {
+        minorInterval: 10,
+        majorInterval: 20,
+        labelInterval: 20,
+        rangeStart: 1_025,
+        rangeEnd: 1_075,
+      },
+    )
+
+    assert.deepEqual(
+      ticks.map((tick) => tick.stationFeet),
+      [1_030, 1_040, 1_050, 1_060, 1_070],
+    )
+  })
+
+  it('places increasing stations in the reverse physical direction from B', () => {
+    const ticks = generateCenterlineStationTicks(
+      centerline(),
+      'b-to-a',
+      1_000,
+      {
+        minorInterval: 25,
+        majorInterval: 50,
+        labelInterval: 100,
+      },
+    )
+    const start = ticks.find((tick) => tick.stationFeet === 1_000)
+    const end = ticks.find((tick) => tick.stationFeet === 1_100)
+
+    assert.equal(start?.mapPoint.x, 100)
+    assert.equal(end?.mapPoint.x, 0)
+    assert.ok((start?.mapTangent.x ?? 0) < 0)
+  })
+
+  it('rejects zero intervals before generating marks', () => {
+    assert.throws(
+      () =>
+        generateCenterlineStationTicks(centerline(), 'a-to-b', 0, {
+          minorInterval: 0,
+          majorInterval: 100,
+          labelInterval: 100,
+        }),
+      /Minor tick interval/,
+    )
   })
 })

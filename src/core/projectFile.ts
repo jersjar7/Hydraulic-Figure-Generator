@@ -1,15 +1,17 @@
 import type {
   AnnotationDefaults,
   AssessmentLineOverrides,
+  CenterlineStationingSettings,
   CenterlineDirection,
   FigureSettings,
   MapAnnotation,
   MapElementPositions,
   MapElementStyles,
   MapOverlay,
+  StationLabelOverrides,
 } from './types'
 
-export const PROJECT_FILE_VERSION = 12
+export const PROJECT_FILE_VERSION = 13
 export const PROJECT_FIGURE = 'fra-wse-difference'
 
 type PartialElementStyles = {
@@ -18,10 +20,15 @@ type PartialElementStyles = {
 
 export type ProjectSettings = Omit<
   Partial<FigureSettings>,
-  'elementPositions' | 'elementStyles'
+  'centerlineStationing' | 'elementPositions' | 'elementStyles'
 > & {
   contourColor?: string
   showContours?: boolean
+  centerlineStationing?: Partial<
+    Omit<CenterlineStationingSettings, 'overrides'>
+  > & {
+    overrides?: StationLabelOverrides
+  }
   elementPositions?: Partial<MapElementPositions>
   elementStyles?: PartialElementStyles
 }
@@ -235,6 +242,54 @@ function elementPositions(value: unknown, path: string) {
   return output
 }
 
+function stationLabelOverrides(value: unknown, path: string) {
+  const input = record(value, path)
+  const output: StationLabelOverrides = {}
+  for (const [stationId, stationOverride] of Object.entries(input)) {
+    output[stationId] = shape(
+      stationOverride,
+      `${path}.${stationId}`,
+      {
+        visible: bool,
+        labelPoint: coordinate,
+        text,
+      },
+    )
+  }
+  return output
+}
+
+function centerlineStationing(value: unknown, path: string) {
+  return shape(value, path, {
+    visible: bool,
+    showMinorTicks: bool,
+    showMajorTicks: bool,
+    showLabels: bool,
+    minorInterval: ranged(Number.EPSILON),
+    majorInterval: ranged(Number.EPSILON),
+    labelInterval: ranged(Number.EPSILON),
+    rangeStart: nullable(finite),
+    rangeEnd: nullable(finite),
+    minorTickLength: ranged(1, 100),
+    majorTickLength: ranged(1, 160),
+    minorLineWidth: ranged(0.25, 12),
+    majorLineWidth: ranged(0.25, 16),
+    tickSide: oneOf(['both', 'left', 'right']),
+    tickColor: text,
+    labelColor: text,
+    labelFontSize: ranged(6, 72),
+    labelOffset: ranged(0, 160),
+    labelSide: oneOf(['left', 'right', 'alternate', 'auto']),
+    labelOrientation: oneOf(['horizontal', 'aligned']),
+    labelHalo: bool,
+    prefix: text,
+    decimalPlaces: oneOf([0, 1, 2]),
+    showEndpoints: bool,
+    showDirectionArrow: bool,
+    overrides: stationLabelOverrides,
+  })
+}
+
 function settings(value: unknown, path: string): ParsedProjectSettings {
   return shape(value, path, {
     orientation: oneOf(['landscape', 'portrait']),
@@ -273,6 +328,7 @@ function settings(value: unknown, path: string): ParsedProjectSettings {
     zoom: ranged(Number.EPSILON),
     panX: finite,
     panY: finite,
+    centerlineStationing,
     contourColor: text,
     showContours: bool,
     elementPositions,

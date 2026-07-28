@@ -141,6 +141,8 @@ export type ElementPosition = {
 
 export type MapElementKey = 'title' | 'diffLegend' | 'north' | 'scale' | 'wetDry'
 
+export type FigureElementPanelKey = MapElementKey | 'stationing'
+
 export type MapElementPositions = Record<MapElementKey, ElementPosition>
 
 export type ElementBoxStyle = {
@@ -251,6 +253,67 @@ export type CenterlineCandidate = {
   lengthFeet: number
 }
 
+export type StationTickSide = 'both' | 'left' | 'right'
+
+export type StationLabelSide = 'left' | 'right' | 'alternate' | 'auto'
+
+export type StationLabelOrientation = 'horizontal' | 'aligned'
+
+export type StationLabelOverride = {
+  visible?: boolean
+  labelPoint?: MapCoordinate
+  text?: string
+}
+
+export type StationLabelOverrides = Record<string, StationLabelOverride>
+
+export type CenterlineStationingSettings = {
+  visible: boolean
+  showMinorTicks: boolean
+  showMajorTicks: boolean
+  showLabels: boolean
+  minorInterval: number
+  majorInterval: number
+  labelInterval: number
+  rangeStart: number | null
+  rangeEnd: number | null
+  minorTickLength: number
+  majorTickLength: number
+  minorLineWidth: number
+  majorLineWidth: number
+  tickSide: StationTickSide
+  tickColor: string
+  labelColor: string
+  labelFontSize: number
+  labelOffset: number
+  labelSide: StationLabelSide
+  labelOrientation: StationLabelOrientation
+  labelHalo: boolean
+  prefix: string
+  decimalPlaces: 0 | 1 | 2
+  showEndpoints: boolean
+  showDirectionArrow: boolean
+  overrides: StationLabelOverrides
+}
+
+export type CenterlineStationTick = {
+  id: string
+  stationFeet: number
+  centerlineOffsetFeet: number
+  mapPoint: MapCoordinate
+  mapTangent: MapCoordinate
+  minor: boolean
+  major: boolean
+  label: boolean
+}
+
+export type CenterlineStationLayer = {
+  centerline: CenterlineCandidate
+  direction: CenterlineDirection
+  ticks: CenterlineStationTick[]
+  selectedLabelId?: string | null
+}
+
 export type AssessmentLineOverride = {
   included?: boolean
   intersectionIndex?: number
@@ -304,6 +367,7 @@ export type AssessmentWseCallout = {
 
 export type AssessmentMapLayer = {
   lines: WseAssessmentLine[]
+  centerlineStationing?: CenterlineStationLayer
   wseCallouts?: AssessmentWseCallout[]
   selectedCalloutId?: string | null
   selectedLine?: WseAssessmentLine | null
@@ -399,6 +463,7 @@ export type FigureSettings = {
   zoom: number
   panX: number
   panY: number
+  centerlineStationing: CenterlineStationingSettings
   elementPositions: MapElementPositions
   elementStyles: MapElementStyles
 }

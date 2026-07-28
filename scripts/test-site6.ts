@@ -6,8 +6,10 @@ import { createCanvas, loadImage } from '@napi-rs/canvas'
 import { cloneDefaultElementStyles } from '../src/core/figureElements'
 import {
   extractCenterlineCandidates,
+  generateCenterlineStationTicks,
   stationAssessmentLines,
 } from '../src/core/centerlineStationing'
+import { createDefaultFigureSettings } from '../src/core/defaults'
 import {
   findWseDifferenceExtrema,
   formatWseExtremumLabel,
@@ -20,10 +22,12 @@ import {
   formatHydraulicResultLabel,
   hitTestAnnotation,
   hitTestAssessmentCallout,
+  hitTestStationLabel,
   mapPointToCanvas,
   moveAnnotationPoints,
   renderWseDifferenceMap,
   sampleHydraulicResult,
+  stationLabelPosition,
 } from '../src/core/mapRenderer'
 import { readShapefileOverlays } from '../src/core/shapefile'
 import type {
@@ -306,8 +310,35 @@ if (
     })}`,
   )
 }
+const stationTicks = generateCenterlineStationTicks(
+  centerlineCandidates[0],
+  'a-to-b',
+  0,
+  {
+    minorInterval: 25,
+    majorInterval: 100,
+    labelInterval: 100,
+  },
+)
+if (
+  stationTicks.length !== 25 ||
+  stationTicks.filter((tick) => tick.label).length !== 7
+) {
+  throw new Error(
+    `Site 6 station tick generation changed (${stationTicks.length} ticks, ${stationTicks.filter((tick) => tick.label).length} labels).`,
+  )
+}
+const selectedStationLabelId = stationTicks.find(
+  (tick) => tick.label,
+)?.id
 const assessmentMapLayer: AssessmentMapLayer = {
   lines: includedStationedLines.map((item) => item.line),
+  centerlineStationing: {
+    centerline: centerlineCandidates[0],
+    direction: 'a-to-b',
+    ticks: stationTicks,
+    selectedLabelId: selectedStationLabelId,
+  },
   wseCallouts: includedStationedLines.map((item) => ({
     lineId: item.line.id,
     text: `WSE ${item.line.level.toFixed(1)} ft`,
@@ -358,6 +389,12 @@ const renderSettings: FigureSettings = {
   zoom: 1,
   panX: 0,
   panY: 0,
+  centerlineStationing: {
+    ...createDefaultFigureSettings().centerlineStationing,
+    visible: true,
+    showEndpoints: true,
+    showDirectionArrow: true,
+  },
   elementPositions: structuredClone(DEFAULT_ELEMENT_POSITIONS),
   elementStyles: cloneDefaultElementStyles(),
 }
@@ -689,6 +726,33 @@ for (let index = 0; index < imageData.length; index += 16) {
 if (coloredPixels < 10_000) {
   throw new Error(`Rendered map appears blank (${coloredPixels} colored samples).`)
 }
+if (!selectedStationLabelId) {
+  throw new Error('No Site 6 station label was available for selection testing.')
+}
+const stationLabelPoint = stationLabelPosition(
+  assessmentMapLayer.centerlineStationing,
+  engine.commonBounds(),
+  renderSettings,
+  selectedStationLabelId,
+)
+if (!stationLabelPoint) {
+  throw new Error('The selected Site 6 station label was not laid out.')
+}
+const stationLabelScreen = mapPointToCanvas(
+  stationLabelPoint,
+  engine.commonBounds(),
+  renderSettings,
+)
+const stationLabelHit = hitTestStationLabel(
+  assessmentMapLayer.centerlineStationing,
+  engine.commonBounds(),
+  renderSettings,
+  stationLabelScreen.x,
+  stationLabelScreen.y,
+)
+if (stationLabelHit?.id !== selectedStationLabelId) {
+  throw new Error('The rendered Site 6 station label was not selectable.')
+}
 if (testBasemap && coloredPixels < 100_000) {
   throw new Error(
     `Rendered basemap appears blank (${coloredPixels} colored samples).`,
@@ -950,6 +1014,8 @@ console.log(
           excluded: stationedAssessmentLines.excludedCount,
           stationRange,
         },
+        stationTicks: stationTicks.length,
+        stationLabels: stationTicks.filter((tick) => tick.label).length,
       },
       render: {
         outputPath,
@@ -967,6 +1033,7 @@ console.log(
         basemap: testBasemap,
         differenceOutlinePixels,
         assessmentLinePixels: renderedAssessmentPixels,
+        selectedStationLabelId,
       },
     },
     null,
