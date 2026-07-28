@@ -3618,7 +3618,7 @@ function App() {
             {!ready ? (
               <span className="generate-hint">
                 <AlertCircle size={14} aria-hidden="true" />
-                Add both conditions first
+                Add Baseline and Comparison scenarios first
               </span>
             ) : null}
           </div>
