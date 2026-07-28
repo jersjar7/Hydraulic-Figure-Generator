@@ -17,6 +17,8 @@ DOM components, or application state.
 
 - `HydraulicEngine` owns loaded H5 resources and hydraulic run access.
 - `meshMatching.ts` owns spatial-index and comparison-point rules.
+- `assessmentLines.ts` turns an Existing WSE surface into reusable,
+  level-aware map polylines. It does not own their UI or cartographic style.
 - `mapRenderer.ts` receives a complete scene and settings snapshot and renders
   it without mutating application state.
 - `projectFile.ts` is the only boundary for persisted project JSON.
@@ -47,6 +49,11 @@ this order, preserving tests after every step:
 Prefer one reducer or feature hook per workflow over adding more independent
 top-level state variables. A new figure type should live under
 `src/features/<figure-name>/` and register with the workspace shell.
+
+Global project inputs and reusable analysis objects belong in the left panel.
+The center workspace owns the selected output, while the right panel owns
+settings for that output. Future chart and table features should consume the
+shared assessment-line collection instead of duplicating it.
 
 ## Resource Ownership
 

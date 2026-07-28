@@ -10,6 +10,8 @@ The first figure module is the FRA WSE Difference map:
 - Pairs selectable hydraulic runs.
 - Calculates Proposed minus Existing WSE where both conditions have results.
 - Classifies WSE differences to match the legend and outlines each class boundary.
+- Generates reusable Existing WSE assessment lines at whole-foot or half-foot
+  elevation intervals, independently styled from difference boundaries.
 - Classifies newly inundated and newly dry areas using a configurable dry-depth
   threshold.
 - Reads zipped shapefile overlays.
@@ -24,6 +26,7 @@ src/
   components/          Reusable workspace controls
   core/
     hydraulicEngine.ts SMS H5 parsing, run metadata, mesh matching, WSE logic
+    assessmentLines.ts Existing WSE contour generation and polyline stitching
     meshMatching.ts    Exact spatial matching and mesh-spacing tolerance
     mapRenderer.ts     Canvas map composition and report elements
     projectFile.ts     Versioned save-file validation and migrations

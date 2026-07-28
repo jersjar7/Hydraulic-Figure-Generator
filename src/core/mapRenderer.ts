@@ -17,6 +17,7 @@ import type {
   ScaleElementStyle,
   TitleElementStyle,
   WetDryElementStyle,
+  WseAssessmentLine,
   WseDifferenceScene,
 } from './types'
 import { runDisplayName } from './hydraulicEngine'
@@ -653,6 +654,32 @@ function drawOverlays(
         overlay.width,
       )
     }
+  }
+  context.restore()
+}
+
+function drawAssessmentLines(
+  context: CanvasRenderingContext2D,
+  lines: WseAssessmentLine[],
+  view: View,
+  color: string,
+  width: number,
+) {
+  if (lines.length === 0) return
+  context.save()
+  context.strokeStyle = color
+  context.lineWidth = width
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
+  for (const line of lines) {
+    if (line.points.length < 2) continue
+    context.beginPath()
+    line.points.forEach((point, index) => {
+      const [x, y] = view.toLocal(point.x, point.y)
+      if (index === 0) context.moveTo(x, y)
+      else context.lineTo(x, y)
+    })
+    context.stroke()
   }
   context.restore()
 }
@@ -1777,6 +1804,7 @@ export async function renderWseDifferenceMap(
   commonBounds: Bounds,
   settings: FigureSettings,
   overlays: MapOverlay[],
+  assessmentLines: WseAssessmentLine[] = [],
   annotations: MapAnnotation[] = [],
   selectedAnnotationId: string | null = null,
   selectedElementKey: MapElementKey | null = null,
@@ -1848,6 +1876,15 @@ export async function renderWseDifferenceMap(
       scene.projected.tris,
       scene.diff,
       settings.differenceOutlineColor,
+    )
+  }
+  if (settings.showAssessmentLines) {
+    drawAssessmentLines(
+      context,
+      assessmentLines,
+      view,
+      settings.assessmentLineColor,
+      settings.assessmentLineWidth,
     )
   }
   if (settings.showOverlays) drawOverlays(context, overlays, view)

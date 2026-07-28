@@ -12,6 +12,10 @@ describe('hydraulic figure project files', () => {
       settings: {
         orientation: 'portrait',
         dryDepth: 0,
+        assessmentLineInterval: 0.5,
+        assessmentLineColor: '#d92d20',
+        assessmentLineWidth: 2,
+        showAssessmentLines: true,
         basemapOpacity: 0.5,
       },
       selectedRuns: { existingRun: 1, proposedRun: 2 },
@@ -94,6 +98,17 @@ describe('hydraulic figure project files', () => {
           }),
         ),
       /basemapOpacity/,
+    )
+    assert.throws(
+      () =>
+        parseHydraulicFigureProject(
+          JSON.stringify({
+            version: PROJECT_FILE_VERSION,
+            figure: 'fra-wse-difference',
+            settings: { assessmentLineInterval: 0 },
+          }),
+        ),
+      /assessmentLineInterval/,
     )
     assert.throws(
       () =>

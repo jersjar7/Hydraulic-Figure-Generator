@@ -73,6 +73,18 @@ Newly inundated means Proposed is wet where Existing is dry or has no
 comparable result. Newly dry means Existing is wet and comparable Proposed is
 dry.
 
+## Existing WSE Assessment Lines
+
+Assessment lines are generated from the final-timestep Existing-condition WSE
+surface. Only triangles whose three nodes have valid WSE and depth greater than
+the dry-depth threshold are contoured. The user may generate lines at 1.0-foot
+or 0.5-foot elevation intervals.
+
+Triangle contour segments are stitched into reusable map-coordinate polylines.
+Each line retains its Existing WSE elevation and length in feet. These objects
+are independent from the optional WSE-difference class outlines and are the
+hydraulic basis for future observation-line charts and summary tables.
+
 ## CRS And Units
 
 Both model geometries must include readable WKT coordinate systems and refer to

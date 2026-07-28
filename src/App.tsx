@@ -96,6 +96,7 @@ import type {
   MapElementStyles,
   MapOverlay,
   ResultLabelField,
+  WseAssessmentLineCollection,
   WseExtremumKind,
   WseDifferenceScene,
 } from './core/types'
@@ -175,6 +176,16 @@ const RESULT_LABEL_OPTIONS: { value: ResultLabelField; label: string }[] = [
 const numeric = (value: string, fallback = 0) => {
   const parsed = Number.parseFloat(value)
   return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function emptyAssessmentLines(interval: number): WseAssessmentLineCollection {
+  return {
+    interval,
+    minimumLevel: null,
+    maximumLevel: null,
+    levelCount: 0,
+    lines: [],
+  }
 }
 
 type AnnotationDrag = {
@@ -281,6 +292,9 @@ function App() {
   const [dataVersion, setDataVersion] = useState(0)
   const [settings, setSettings] = useState<FigureSettings>(
     createDefaultFigureSettings,
+  )
+  const [assessmentLines, setAssessmentLines] = useState(() =>
+    emptyAssessmentLines(1),
   )
   const [existingRun, setExistingRun] = useState(0)
   const [proposedRun, setProposedRun] = useState(0)
@@ -410,6 +424,7 @@ function App() {
   const handleH5Files = async (files: File[]) => {
     setBusy(true)
     setScene(null)
+    setAssessmentLines(emptyAssessmentLines(settings.assessmentLineInterval))
     try {
       const incoming = await engine.ingest(
         files.filter((file) => /\.h5$/i.test(file.name)),
@@ -443,7 +458,44 @@ function App() {
       setProposedRun(0)
     }
     setScene(null)
+    if (key === 'EX') {
+      setAssessmentLines(emptyAssessmentLines(settings.assessmentLineInterval))
+    }
     setDataVersion((value) => value + 1)
+  }
+
+  const generateAssessmentLines = () => {
+    setBusy(true)
+    try {
+      const collection = engine.buildExistingWseAssessmentLines(
+        existingRun,
+        settings.dryDepth,
+        settings.assessmentLineInterval,
+      )
+      if (collection.lines.length === 0) {
+        throw new Error(
+          'No Existing WSE assessment lines were found at this interval and dry-depth threshold.',
+        )
+      }
+      setAssessmentLines(collection)
+      appendNotices([
+        {
+          level: 'success',
+          text: `Generated ${collection.lines.length.toLocaleString()} Existing WSE assessment lines across ${collection.levelCount.toLocaleString()} elevation levels.`,
+        },
+      ])
+      return collection
+    } catch (error) {
+      appendNotices([
+        {
+          level: 'error',
+          text: error instanceof Error ? error.message : String(error),
+        },
+      ])
+      return null
+    } finally {
+      setBusy(false)
+    }
   }
 
   const generateMap = () => {
@@ -460,10 +512,16 @@ function App() {
         )
       }
       setScene(nextScene)
+      const nextAssessmentLines = engine.buildExistingWseAssessmentLines(
+        existingRun,
+        settings.dryDepth,
+        settings.assessmentLineInterval,
+      )
+      setAssessmentLines(nextAssessmentLines)
       appendNotices([
         {
           level: 'success',
-          text: `WSE difference ready from ${nextScene.validDifferenceNodes.toLocaleString()} comparable Existing nodes.`,
+          text: `WSE difference ready from ${nextScene.validDifferenceNodes.toLocaleString()} comparable Existing nodes with ${nextAssessmentLines.lines.length.toLocaleString()} Existing WSE assessment lines.`,
         },
       ])
       setLeftOpen(false)
@@ -497,6 +555,7 @@ function App() {
       engine.commonBounds(),
       settings,
       overlays,
+      assessmentLines.lines,
       annotations,
       selectedAnnotationId,
       activeSettingsSection === 'elements' ? activeElement : null,
@@ -535,6 +594,7 @@ function App() {
     return () => controller.abort()
   }, [
     annotations,
+    assessmentLines.lines,
     annotationDragging,
     activeElement,
     activeSettingsSection,
@@ -1506,6 +1566,7 @@ function App() {
     setHoveredElement(null)
     setActiveElement('title')
     setScene(null)
+    setAssessmentLines(emptyAssessmentLines(1))
     setNotices([])
     setExistingRun(0)
     setProposedRun(0)
@@ -1523,6 +1584,7 @@ function App() {
         engine.commonBounds(),
         settings,
         overlays,
+        assessmentLines.lines,
         annotations,
       )
       exportCanvas.toBlob((blob) => {
@@ -1617,6 +1679,12 @@ function App() {
             return merged
           })(),
         }))
+        setAssessmentLines(
+          emptyAssessmentLines(
+            project.settings.assessmentLineInterval ??
+              settings.assessmentLineInterval,
+          ),
+        )
       }
       if (Array.isArray(project.overlays)) setOverlays(project.overlays)
       if (Array.isArray(project.annotations)) {
@@ -1637,6 +1705,11 @@ function App() {
       setExistingRun(project.selectedRuns?.existingRun ?? 0)
       setProposedRun(project.selectedRuns?.proposedRun ?? 0)
       setScene(null)
+      if (!project.settings) {
+        setAssessmentLines(
+          emptyAssessmentLines(settings.assessmentLineInterval),
+        )
+      }
       appendNotices([
         {
           level: 'success',
@@ -1722,6 +1795,7 @@ function App() {
           proposedRuns={proposedRuns}
           existingRun={existingRun}
           proposedRun={proposedRun}
+          assessmentLines={assessmentLines}
           overlays={overlays}
           showOverlays={settings.showOverlays}
           onCollapse={() => setLeftCollapsed(true)}
@@ -1733,11 +1807,24 @@ function App() {
           onExistingRunChange={(index) => {
             setExistingRun(index)
             setScene(null)
+            setAssessmentLines(
+              emptyAssessmentLines(settings.assessmentLineInterval),
+            )
           }}
           onProposedRunChange={(index) => {
             setProposedRun(index)
             setScene(null)
           }}
+          onAssessmentIntervalChange={(interval) => {
+            updateSettings('assessmentLineInterval', interval)
+            setAssessmentLines(emptyAssessmentLines(interval))
+          }}
+          onGenerateAssessmentLines={generateAssessmentLines}
+          onClearAssessmentLines={() =>
+            setAssessmentLines(
+              emptyAssessmentLines(settings.assessmentLineInterval),
+            )
+          }
           onShowOverlaysChange={(visible) =>
             updateSettings('showOverlays', visible)
           }
@@ -1927,6 +2014,9 @@ function App() {
                       numeric(event.target.value, 0),
                     )
                     setScene(null)
+                    setAssessmentLines(
+                      emptyAssessmentLines(settings.assessmentLineInterval),
+                    )
                   }}
                 />
               </label>
@@ -1939,6 +2029,47 @@ function App() {
                 checked={settings.showWetDry}
                 onChange={(checked) => updateSettings('showWetDry', checked)}
               />
+              <Toggle
+                label="Existing WSE assessment lines"
+                checked={settings.showAssessmentLines}
+                onChange={(checked) =>
+                  updateSettings('showAssessmentLines', checked)
+                }
+              />
+              <div className="field-grid two">
+                <label className="field color-field">
+                  <span>Assessment color</span>
+                  <input
+                    type="color"
+                    value={settings.assessmentLineColor}
+                    onChange={(event) =>
+                      updateSettings(
+                        'assessmentLineColor',
+                        event.target.value,
+                      )
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>
+                    Line width
+                    <small>px</small>
+                  </span>
+                  <input
+                    type="number"
+                    min="0.25"
+                    max="12"
+                    step="0.25"
+                    value={settings.assessmentLineWidth}
+                    onChange={(event) =>
+                      updateSettings(
+                        'assessmentLineWidth',
+                        numeric(event.target.value, 2),
+                      )
+                    }
+                  />
+                </label>
+              </div>
               <Toggle
                 label="WSE difference outlines"
                 checked={settings.showDifferenceOutlines}

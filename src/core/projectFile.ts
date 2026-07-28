@@ -7,7 +7,7 @@ import type {
   MapOverlay,
 } from './types'
 
-export const PROJECT_FILE_VERSION = 8
+export const PROJECT_FILE_VERSION = 9
 export const PROJECT_FIGURE = 'fra-wse-difference'
 
 type PartialElementStyles = {
@@ -212,6 +212,10 @@ function settings(value: unknown, path: string): ProjectSettings {
   return shape(value, path, {
     orientation: oneOf(['landscape', 'portrait']),
     dryDepth: ranged(0),
+    assessmentLineInterval: ranged(Number.EPSILON),
+    assessmentLineColor: text,
+    assessmentLineWidth: ranged(0.25, 12),
+    showAssessmentLines: bool,
     differenceOutlineColor: text,
     showDifferenceOutlines: bool,
     showWetDry: bool,

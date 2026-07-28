@@ -4,6 +4,7 @@ import {
   Layers3,
   RefreshCcw,
   RotateCcw,
+  Spline,
   Trash2,
   UploadCloud,
   X,
@@ -14,6 +15,7 @@ import type {
   ConditionKey,
   MapOverlay,
   RunSelection,
+  WseAssessmentLineCollection,
 } from '../core/types'
 import { FileDrop } from './FileDrop'
 
@@ -27,6 +29,7 @@ type ProjectDataPanelProps = {
   proposedRuns: RunSelection[]
   existingRun: number
   proposedRun: number
+  assessmentLines: WseAssessmentLineCollection
   overlays: MapOverlay[]
   showOverlays: boolean
   onCollapse(): void
@@ -37,6 +40,9 @@ type ProjectDataPanelProps = {
   onRemoveCondition(key: ConditionKey): void
   onExistingRunChange(index: number): void
   onProposedRunChange(index: number): void
+  onAssessmentIntervalChange(interval: number): void
+  onGenerateAssessmentLines(): void
+  onClearAssessmentLines(): void
   onShowOverlaysChange(visible: boolean): void
   onUpdateOverlay(id: string, patch: Partial<MapOverlay>): void
   onRemoveOverlay(id: string): void
@@ -106,6 +112,7 @@ export function ProjectDataPanel({
   proposedRuns,
   existingRun,
   proposedRun,
+  assessmentLines,
   overlays,
   showOverlays,
   onCollapse,
@@ -116,6 +123,9 @@ export function ProjectDataPanel({
   onRemoveCondition,
   onExistingRunChange,
   onProposedRunChange,
+  onAssessmentIntervalChange,
+  onGenerateAssessmentLines,
+  onClearAssessmentLines,
   onShowOverlaysChange,
   onUpdateOverlay,
   onRemoveOverlay,
@@ -164,6 +174,15 @@ export function ProjectDataPanel({
             onClick={onExpand}
           >
             <Layers3 size={17} aria-hidden="true" />
+          </button>
+          <button
+            className={`icon-button left-rail-analysis${assessmentLines.lines.length > 0 ? ' ready' : ''}`}
+            type="button"
+            title="Expand Existing WSE assessment lines"
+            aria-label="Expand Existing WSE assessment lines"
+            onClick={onExpand}
+          >
+            <Spline size={17} aria-hidden="true" />
           </button>
         </div>
       ) : (
@@ -270,6 +289,67 @@ export function ProjectDataPanel({
                 )}
               </select>
             </label>
+          </section>
+
+          <section className="sidebar-block assessment-block">
+            <div className="block-title">
+              <Spline size={17} aria-hidden="true" />
+              <span>Assessment lines</span>
+              <span className="file-chip">WSE</span>
+            </div>
+            <label className="field">
+              <span>Existing WSE interval</span>
+              <select
+                value={assessmentLines.interval}
+                disabled={busy}
+                onChange={(event) =>
+                  onAssessmentIntervalChange(Number(event.target.value))
+                }
+              >
+                <option value="1">Whole foot (1.0 ft)</option>
+                <option value="0.5">Half foot (0.5 ft)</option>
+              </select>
+            </label>
+            <button
+              className="button secondary compact full"
+              type="button"
+              disabled={busy || existingRuns.length === 0}
+              onClick={onGenerateAssessmentLines}
+            >
+              <RefreshCcw size={15} aria-hidden="true" />
+              {assessmentLines.lines.length > 0
+                ? 'Regenerate lines'
+                : 'Generate from Existing WSE'}
+            </button>
+            {assessmentLines.lines.length > 0 ? (
+              <div className="assessment-summary">
+                <div>
+                  <strong>
+                    {assessmentLines.lines.length.toLocaleString()} lines
+                  </strong>
+                  <span>
+                    {assessmentLines.levelCount.toLocaleString()} levels
+                    {assessmentLines.minimumLevel !== null &&
+                    assessmentLines.maximumLevel !== null
+                      ? ` · ${assessmentLines.minimumLevel.toFixed(1)}–${assessmentLines.maximumLevel.toFixed(1)} ft`
+                      : ''}
+                  </span>
+                </div>
+                <button
+                  className="icon-button small danger"
+                  type="button"
+                  title="Clear assessment lines"
+                  aria-label="Clear assessment lines"
+                  onClick={onClearAssessmentLines}
+                >
+                  <X size={14} aria-hidden="true" />
+                </button>
+              </div>
+            ) : (
+              <p className="empty-note">
+                No reusable Existing WSE lines generated.
+              </p>
+            )}
           </section>
 
           <section className="sidebar-block overlay-block">

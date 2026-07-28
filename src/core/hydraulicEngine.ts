@@ -1,4 +1,5 @@
 import proj4 from 'proj4'
+import { generateWseAssessmentLines } from './assessmentLines'
 import {
   findNearestNode,
   meshMatchToleranceSquared,
@@ -16,6 +17,7 @@ import type {
   RunSelection,
   WseExtremumKind,
   WseDifferenceScene,
+  WseAssessmentLineCollection,
 } from './types'
 
 const VALID = (value: number) =>
@@ -715,6 +717,38 @@ export class HydraulicEngine {
       maxAbs: legend.maxAbs,
       validDifferenceNodes: legend.valid,
     }
+  }
+
+  buildExistingWseAssessmentLines(
+    existingIndex: number,
+    dryDepth: number,
+    interval: number,
+  ): WseAssessmentLineCollection {
+    const existing = this.runOptions('EX')[existingIndex]
+    if (!existing) {
+      throw new Error('Select an Existing run before generating assessment lines.')
+    }
+    const wseParam = findParam(existing.run, /Water_?Elev|WSE/i)
+    const depthParam = findParam(existing.run, /Water_?Depth/i)
+    if (!wseParam || !depthParam) {
+      throw new Error(
+        'The selected Existing run needs Water_Elev_ft and Water_Depth_ft datasets.',
+      )
+    }
+    const projected = existing.condition.projected
+    if (!projected) {
+      throw new Error('Existing geometry is required for assessment lines.')
+    }
+    return generateWseAssessmentLines({
+      x: projected.mx,
+      y: projected.my,
+      triangles: projected.tris,
+      wse: this.scalarValues(existing, wseParam),
+      depth: this.scalarValues(existing, depthParam),
+      dryDepth,
+      interval,
+      feetPerMapUnit: projected.ftPerMerc,
+    })
   }
 
   private scalarValues(selection: RunSelection, paramName: string) {

@@ -89,6 +89,36 @@ if (existingIndex < 0 || proposedIndex < 0) {
 }
 
 const scene = engine.buildWseDifference(existingIndex, proposedIndex, 0)
+const assessmentLines = engine.buildExistingWseAssessmentLines(
+  existingIndex,
+  0,
+  1,
+)
+const halfFootAssessmentLines = engine.buildExistingWseAssessmentLines(
+  existingIndex,
+  0,
+  0.5,
+)
+if (
+  assessmentLines.lines.length === 0 ||
+  assessmentLines.levelCount === 0 ||
+  assessmentLines.lines.some(
+    (line) =>
+      line.points.length < 2 ||
+      line.lengthFeet <= 0 ||
+      line.source !== 'existing-wse',
+  )
+) {
+  throw new Error('Existing WSE assessment-line generation is empty or malformed.')
+}
+if (
+  halfFootAssessmentLines.lines.length <= assessmentLines.lines.length ||
+  halfFootAssessmentLines.levelCount <= assessmentLines.levelCount
+) {
+  throw new Error(
+    'Half-foot assessment lines did not add Site 6 elevations and paths.',
+  )
+}
 const extrema = findWseDifferenceExtrema(scene)
 const validDifferences = Array.from(scene.diff).filter(
   (value) => Number.isFinite(value) && value > -900,
@@ -119,12 +149,26 @@ const expectedComparison = {
   validProposedWetNodes: 3558,
   maxWseRise: 0.7870330810546875,
   maxWseReduction: -2.9294357299804688,
+  assessmentLines: 33,
+  assessmentLevels: 20,
+  assessmentMinimumLevel: 47,
+  assessmentMaximumLevel: 71,
+  halfFootAssessmentLines: 60,
+  halfFootAssessmentLevels: 39,
 }
 if (
   scene.validDifferenceNodes !== expectedComparison.validDifferenceNodes ||
   validProposedWetNodes !== expectedComparison.validProposedWetNodes ||
   Math.abs(extrema.rise.value - expectedComparison.maxWseRise) > 1e-6 ||
-  Math.abs(extrema.reduction.value - expectedComparison.maxWseReduction) > 1e-6
+  Math.abs(extrema.reduction.value - expectedComparison.maxWseReduction) > 1e-6 ||
+  assessmentLines.lines.length !== expectedComparison.assessmentLines ||
+  assessmentLines.levelCount !== expectedComparison.assessmentLevels ||
+  assessmentLines.minimumLevel !== expectedComparison.assessmentMinimumLevel ||
+  assessmentLines.maximumLevel !== expectedComparison.assessmentMaximumLevel ||
+  halfFootAssessmentLines.lines.length !==
+    expectedComparison.halfFootAssessmentLines ||
+  halfFootAssessmentLines.levelCount !==
+    expectedComparison.halfFootAssessmentLevels
 ) {
   throw new Error(
     `Site 6 hydraulic comparison changed: ${JSON.stringify({
@@ -133,6 +177,12 @@ if (
         validProposedWetNodes,
         maxWseRise: extrema.rise.value,
         maxWseReduction: extrema.reduction.value,
+        assessmentLines: assessmentLines.lines.length,
+        assessmentLevels: assessmentLines.levelCount,
+        assessmentMinimumLevel: assessmentLines.minimumLevel,
+        assessmentMaximumLevel: assessmentLines.maximumLevel,
+        halfFootAssessmentLines: halfFootAssessmentLines.lines.length,
+        halfFootAssessmentLevels: halfFootAssessmentLines.levelCount,
       },
       expected: expectedComparison,
     })}`,
@@ -165,6 +215,10 @@ if (
 const renderSettings: FigureSettings = {
   orientation: 'landscape',
   dryDepth: 0,
+  assessmentLineInterval: 1,
+  assessmentLineColor: '#d92d20',
+  assessmentLineWidth: 2,
+  showAssessmentLines: true,
   differenceOutlineColor: '#111111',
   showDifferenceOutlines: true,
   showWetDry: true,
@@ -482,6 +536,7 @@ const landscapeElementBounds = await renderWseDifferenceMap(
   engine.commonBounds(),
   renderSettings,
   overlayResult.overlays,
+  assessmentLines.lines,
   annotations,
   'leader',
   'title',
@@ -540,6 +595,7 @@ await Promise.all([
     engine.commonBounds(),
     outlineTestSettings,
     [],
+    assessmentLines.lines,
   ),
   renderWseDifferenceMap(
     noOutlineCanvas as unknown as HTMLCanvasElement,
@@ -547,6 +603,7 @@ await Promise.all([
     engine.commonBounds(),
     { ...outlineTestSettings, showDifferenceOutlines: false },
     [],
+    assessmentLines.lines,
   ),
 ])
 const outlinePixels = outlineCanvas
@@ -570,6 +627,53 @@ for (let index = 0; index < outlinePixels.length; index += 4) {
 if (differenceOutlinePixels < 1_000) {
   throw new Error(
     `WSE-difference class outlines appear missing (${differenceOutlinePixels} changed pixels).`,
+  )
+}
+
+const assessmentTestSettings: FigureSettings = {
+  ...outlineTestSettings,
+  showDifferenceOutlines: false,
+  showAssessmentLines: true,
+}
+const assessmentCanvas = createCanvas(1650, 1275)
+const noAssessmentCanvas = createCanvas(1650, 1275)
+await Promise.all([
+  renderWseDifferenceMap(
+    assessmentCanvas as unknown as HTMLCanvasElement,
+    scene,
+    engine.commonBounds(),
+    assessmentTestSettings,
+    [],
+    assessmentLines.lines,
+  ),
+  renderWseDifferenceMap(
+    noAssessmentCanvas as unknown as HTMLCanvasElement,
+    scene,
+    engine.commonBounds(),
+    { ...assessmentTestSettings, showAssessmentLines: false },
+    [],
+    assessmentLines.lines,
+  ),
+])
+const assessmentPixels = assessmentCanvas
+  .getContext('2d')
+  .getImageData(0, 0, assessmentCanvas.width, assessmentCanvas.height).data
+const noAssessmentPixels = noAssessmentCanvas
+  .getContext('2d')
+  .getImageData(0, 0, noAssessmentCanvas.width, noAssessmentCanvas.height).data
+let renderedAssessmentPixels = 0
+for (let index = 0; index < assessmentPixels.length; index += 4) {
+  const colorChange =
+    Math.abs(assessmentPixels[index] - noAssessmentPixels[index]) +
+    Math.abs(assessmentPixels[index + 1] - noAssessmentPixels[index + 1]) +
+    Math.abs(assessmentPixels[index + 2] - noAssessmentPixels[index + 2])
+  if (colorChange > 45) {
+    renderedAssessmentPixels += 1
+  }
+}
+if (renderedAssessmentPixels < 500) {
+  throw new Error(
+    `Existing WSE assessment lines appear missing (${renderedAssessmentPixels} changed pixels).`,
   )
 }
 
@@ -600,6 +704,7 @@ const portraitElementBounds = await renderWseDifferenceMap(
   engine.commonBounds(),
   portraitSettings,
   overlayResult.overlays,
+  assessmentLines.lines,
   annotations,
 )
 if (
@@ -641,6 +746,14 @@ console.log(
         automaticLegendBound: scene.maxAbs,
         maxWseRise: extrema.rise.value,
         maxWseReduction: extrema.reduction.value,
+        assessmentLines: assessmentLines.lines.length,
+        assessmentLevels: assessmentLines.levelCount,
+        assessmentElevationRange: [
+          assessmentLines.minimumLevel,
+          assessmentLines.maximumLevel,
+        ],
+        halfFootAssessmentLines: halfFootAssessmentLines.lines.length,
+        halfFootAssessmentLevels: halfFootAssessmentLines.levelCount,
       },
       overlay: {
         layers: overlayResult.overlays.map((overlay) => overlay.name),
@@ -661,6 +774,7 @@ console.log(
         )?.text,
         basemap: testBasemap,
         differenceOutlinePixels,
+        assessmentLinePixels: renderedAssessmentPixels,
       },
     },
     null,

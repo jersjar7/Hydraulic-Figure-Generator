@@ -217,6 +217,22 @@ export type MapCoordinate = {
   y: number
 }
 
+export type WseAssessmentLine = {
+  id: string
+  source: 'existing-wse'
+  level: number
+  points: MapCoordinate[]
+  lengthFeet: number
+}
+
+export type WseAssessmentLineCollection = {
+  interval: number
+  minimumLevel: number | null
+  maximumLevel: number | null
+  levelCount: number
+  lines: WseAssessmentLine[]
+}
+
 export type AnnotationTool =
   | 'select'
   | 'text'
@@ -269,6 +285,10 @@ export type AnnotationDefaults = {
 export type FigureSettings = {
   orientation: 'landscape' | 'portrait'
   dryDepth: number
+  assessmentLineInterval: number
+  assessmentLineColor: string
+  assessmentLineWidth: number
+  showAssessmentLines: boolean
   differenceOutlineColor: string
   showDifferenceOutlines: boolean
   showWetDry: boolean

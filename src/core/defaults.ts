@@ -6,6 +6,10 @@ export function createDefaultFigureSettings(): FigureSettings {
   return {
     orientation: 'landscape',
     dryDepth: 0,
+    assessmentLineInterval: 1,
+    assessmentLineColor: '#d92d20',
+    assessmentLineWidth: 2,
+    showAssessmentLines: true,
     differenceOutlineColor: '#111111',
     showDifferenceOutlines: true,
     showWetDry: true,
