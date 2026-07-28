@@ -14,6 +14,8 @@ The first figure module is the FRA WSE Difference map:
   elevation intervals, independently styled from difference boundaries.
 - Filters and stations assessment lines against an imported hydraulic
   centerline, with explicit review for ambiguous crossings.
+- Labels included assessment lines with their WSE, with global and per-line
+  visibility plus draggable, leader-anchored positions.
 - Classifies newly inundated and newly dry areas using a configurable dry-depth
   threshold.
 - Reads zipped shapefile overlays.

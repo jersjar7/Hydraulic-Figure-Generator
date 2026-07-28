@@ -95,9 +95,12 @@ configured starting station.
 One centerline intersection is included automatically. No intersection is
 excluded. Multiple intersections or a collinear overlap require review. A user
 may select one of multiple intersections or explicitly exclude a line.
-Only included lines receive station labels and appear in exported figures.
-Review highlighting, endpoint badges, and numbered intersection markers are
-editor aids and are not exported.
+Only included lines appear in exported figures. Their optional map callouts
+show the assessment-line WSE, not the centerline station. Each leader remains
+anchored to the selected centerline intersection while its label may be moved,
+hidden, or reset independently. Global visibility and label style controls
+apply to all assessment callouts. Review highlighting, endpoint badges, and
+numbered intersection markers are editor aids and are not exported.
 
 These objects are independent from the optional WSE-difference class outlines
 and are the hydraulic basis for future observation-line charts and summary

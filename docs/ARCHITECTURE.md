@@ -80,3 +80,6 @@ whenever the persisted shape changes.
 Generated assessment geometry is reproducible and is not stored in the project.
 The selected centerline, downstream direction, starting station, and per-line
 review decisions are stored, then reapplied after the H5 files are regenerated.
+Per-line WSE callout visibility and engineer-positioned label coordinates are
+stored with those review decisions; leader targets remain derived from the
+selected centerline intersections.

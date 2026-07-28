@@ -55,7 +55,6 @@ import {
 } from './core/defaults'
 import {
   extractCenterlineCandidates,
-  formatStation,
   stationAssessmentLines,
 } from './core/centerlineStationing'
 import {
@@ -76,6 +75,7 @@ import {
   formatHydraulicResultLabel,
   FRAMES,
   hitTestAnnotation,
+  hitTestAssessmentCallout,
   mapPointToCanvas,
   moveAnnotationPoints,
   renderWseDifferenceMap,
@@ -198,6 +198,19 @@ type FigureElementDrag = {
   start: { x: number; y: number }
   originalPosition: FigureSettings['elementPositions'][MapElementKey]
   originalBounds: MapElementBounds
+}
+
+type AssessmentCalloutDrag = {
+  lineId: string
+  startScreen: { x: number; y: number }
+  startPointer: MapCoordinate
+  originalRenderedPoint: MapCoordinate
+  originalOverridePoint?: MapCoordinate
+  moved: boolean
+}
+
+function assessmentWseLabel(level: number) {
+  return `WSE ${level.toFixed(1)} ft`
 }
 
 function draggedAnnotationPoints(
@@ -363,6 +376,8 @@ function App() {
     null,
   )
   const [annotationDragging, setAnnotationDragging] = useState(false)
+  const [assessmentCalloutDragging, setAssessmentCalloutDragging] =
+    useState(false)
   const [notices, setNotices] = useState<IngestNotice[]>([])
   const [scene, setScene] = useState<WseDifferenceScene | null>(null)
   const [busy, setBusy] = useState(false)
@@ -385,6 +400,7 @@ function App() {
   const projectInputRef = useRef<HTMLInputElement>(null)
   const renderSequence = useRef(0)
   const annotationDragRef = useRef<AnnotationDrag | null>(null)
+  const assessmentCalloutDragRef = useRef<AssessmentCalloutDrag | null>(null)
   const annotationListItemRefs = useRef(
     new globalThis.Map<string, HTMLButtonElement>(),
   )
@@ -455,27 +471,42 @@ function App() {
     )
     return {
       lines: included.map((item) => item.line),
-      stationLabels: included.map((item) => ({
-        lineId: item.line.id,
-        text: formatStation(item.selectedIntersection!.stationFeet),
-        point: item.selectedIntersection!.mapPoint,
-        tangent: item.selectedIntersection!.mapTangent,
-      })),
+      wseCallouts: included
+        .filter(
+          (item) =>
+            assessmentState.overrides[item.line.id]?.labelVisible !== false,
+        )
+        .map((item) => ({
+          lineId: item.line.id,
+          text: assessmentWseLabel(item.line.level),
+          target: item.selectedIntersection!.mapPoint,
+          tangent: item.selectedIntersection!.mapTangent,
+          labelPoint:
+            assessmentState.overrides[item.line.id]?.labelPoint,
+        })),
     }
-  }, [assessmentLines.lines, stationedAssessmentLines])
+  }, [
+    assessmentLines.lines,
+    assessmentState.overrides,
+    stationedAssessmentLines,
+  ])
   const assessmentDisplayLayer = useMemo<AssessmentMapLayer>(() => {
+    const displayLayer = {
+      ...assessmentExportLayer,
+      selectedCalloutId: assessmentState.selectedLineId,
+    }
     if (
       assessmentState.panelView !== 'review' ||
       !stationedAssessmentLines
     ) {
-      return assessmentExportLayer
+      return displayLayer
     }
     const selectedItem =
       stationedAssessmentLines.items.find(
         (item) => item.line.id === assessmentState.selectedLineId,
       ) ?? null
     return {
-      ...assessmentExportLayer,
+      ...displayLayer,
       selectedLine: selectedItem?.line ?? null,
       endpoints: {
         a: stationedAssessmentLines.centerline.mapPoints[0],
@@ -699,7 +730,13 @@ function App() {
     const sequence = ++renderSequence.current
     const renderCanvas = document.createElement('canvas')
     const controller = new AbortController()
-    if (!annotationDragging && !elementDragging) setBusy(true)
+    if (
+      !annotationDragging &&
+      !assessmentCalloutDragging &&
+      !elementDragging
+    ) {
+      setBusy(true)
+    }
     void renderWseDifferenceMap(
       renderCanvas,
       scene,
@@ -737,6 +774,7 @@ function App() {
         if (
           renderSequence.current === sequence &&
           !annotationDragging &&
+          !assessmentCalloutDragging &&
           !elementDragging
         ) {
           setBusy(false)
@@ -746,6 +784,7 @@ function App() {
   }, [
     annotations,
     assessmentDisplayLayer,
+    assessmentCalloutDragging,
     annotationDragging,
     activeElement,
     activeSettingsSection,
@@ -1290,6 +1329,13 @@ function App() {
     if (!scene) return
     event.preventDefault()
     const screenPoint = pointerCanvasPoint(event)
+    const bounds = engine.commonBounds()
+    const mapPoint = canvasPointToMap(
+      screenPoint.x,
+      screenPoint.y,
+      bounds,
+      settings,
+    )
 
     if (activeSettingsSection === 'elements') {
       const elementHit = figureElementAt(screenPoint)
@@ -1305,6 +1351,37 @@ function App() {
         }
         setElementDragging(true)
         setHoveredElement(elementHit.key)
+        event.currentTarget.setPointerCapture(event.pointerId)
+        return
+      }
+    }
+
+    if (
+      annotationTool === 'select' ||
+      assessmentState.panelView === 'review'
+    ) {
+      const calloutHit = hitTestAssessmentCallout(
+        assessmentDisplayLayer,
+        bounds,
+        settings,
+        screenPoint.x,
+        screenPoint.y,
+      )
+      if (calloutHit) {
+        const originalOverridePoint =
+          assessmentState.overrides[calloutHit.lineId]?.labelPoint
+        assessmentWorkflow.selectLine(calloutHit.lineId)
+        assessmentCalloutDragRef.current = {
+          lineId: calloutHit.lineId,
+          startScreen: screenPoint,
+          startPointer: mapPoint,
+          originalRenderedPoint: calloutHit.labelPoint,
+          originalOverridePoint: originalOverridePoint
+            ? { ...originalOverridePoint }
+            : undefined,
+          moved: false,
+        }
+        setAssessmentCalloutDragging(true)
         event.currentTarget.setPointerCapture(event.pointerId)
         return
       }
@@ -1331,14 +1408,6 @@ function App() {
     }
 
     if (annotationTool === 'extrema') return
-
-    const bounds = engine.commonBounds()
-    const mapPoint = canvasPointToMap(
-      screenPoint.x,
-      screenPoint.y,
-      bounds,
-      settings,
-    )
 
     if (annotationTool === 'select') {
       const hit = hitTestAnnotation(
@@ -1422,12 +1491,52 @@ function App() {
     setAnnotationStart(null)
   }
 
+  const moveAssessmentCalloutDrag = (screenPoint: {
+    x: number
+    y: number
+  }) => {
+    const drag = assessmentCalloutDragRef.current
+    if (!drag) return
+    if (
+      !drag.moved &&
+      Math.hypot(
+        screenPoint.x - drag.startScreen.x,
+        screenPoint.y - drag.startScreen.y,
+      ) < 3
+    ) {
+      return
+    }
+    drag.moved = true
+    const pointer = canvasPointToMap(
+      screenPoint.x,
+      screenPoint.y,
+      engine.commonBounds(),
+      settings,
+    )
+    assessmentWorkflow.setOverride(drag.lineId, {
+      labelPoint: {
+        x:
+          drag.originalRenderedPoint.x +
+          pointer.x -
+          drag.startPointer.x,
+        y:
+          drag.originalRenderedPoint.y +
+          pointer.y -
+          drag.startPointer.y,
+      },
+    })
+  }
+
   const handleCanvasPointerMove = (
     event: ReactPointerEvent<HTMLCanvasElement>,
   ) => {
     const screenPoint = pointerCanvasPoint(event)
     if (figureElementDragRef.current) {
       moveFigureElementDrag(screenPoint)
+      return
+    }
+    if (assessmentCalloutDragRef.current) {
+      moveAssessmentCalloutDrag(screenPoint)
       return
     }
     if (activeSettingsSection === 'elements') {
@@ -1462,6 +1571,15 @@ function App() {
       moveFigureElementDrag(pointerCanvasPoint(event))
       figureElementDragRef.current = null
       setElementDragging(false)
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      }
+      return
+    }
+    if (assessmentCalloutDragRef.current) {
+      moveAssessmentCalloutDrag(pointerCanvasPoint(event))
+      assessmentCalloutDragRef.current = null
+      setAssessmentCalloutDragging(false)
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId)
       }
@@ -1507,6 +1625,18 @@ function App() {
       updateElementPosition(elementDrag.key, elementDrag.originalPosition)
       figureElementDragRef.current = null
       setElementDragging(false)
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      }
+      return
+    }
+    const assessmentDrag = assessmentCalloutDragRef.current
+    if (assessmentDrag) {
+      assessmentWorkflow.setOverride(assessmentDrag.lineId, {
+        labelPoint: assessmentDrag.originalOverridePoint,
+      })
+      assessmentCalloutDragRef.current = null
+      setAssessmentCalloutDragging(false)
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId)
       }
@@ -1731,6 +1861,8 @@ function App() {
     setAnnotationEditorView('content')
     setLeftCollapsed(false)
     setAnnotationDefaults(createDefaultAnnotationSettings())
+    assessmentCalloutDragRef.current = null
+    setAssessmentCalloutDragging(false)
     figureElementDragRef.current = null
     elementBoundsRef.current = []
     setElementDragging(false)
@@ -1975,6 +2107,7 @@ function App() {
             startStation: assessmentState.startStation,
             reviewTab: assessmentState.reviewTab,
             selectedLineId: assessmentState.selectedLineId,
+            overrides: assessmentState.overrides,
             stationed: stationedAssessmentLines,
             onOpen: assessmentWorkflow.openReview,
             onBack: assessmentWorkflow.closeReview,
@@ -2099,6 +2232,9 @@ function App() {
                 data-annotation-tool={annotationTool}
                 data-annotation-dragging={
                   annotationDragging ? 'true' : undefined
+                }
+                data-assessment-callout-dragging={
+                  assessmentCalloutDragging ? 'true' : undefined
                 }
                 data-element-hover={hoveredElement ?? undefined}
                 data-element-dragging={
@@ -2260,10 +2396,10 @@ function App() {
                 </label>
               </div>
               <Toggle
-                label="Assessment station labels"
-                checked={settings.showAssessmentStationLabels}
+                label="Assessment WSE callouts"
+                checked={settings.showAssessmentLabels}
                 onChange={(checked) =>
-                  updateSettings('showAssessmentStationLabels', checked)
+                  updateSettings('showAssessmentLabels', checked)
                 }
               />
               <div className="field-grid two">
@@ -2271,10 +2407,10 @@ function App() {
                   <span>Label color</span>
                   <input
                     type="color"
-                    value={settings.assessmentStationLabelColor}
+                    value={settings.assessmentLabelColor}
                     onChange={(event) =>
                       updateSettings(
-                        'assessmentStationLabelColor',
+                        'assessmentLabelColor',
                         event.target.value,
                       )
                     }
@@ -2290,10 +2426,10 @@ function App() {
                     min="6"
                     max="72"
                     step="1"
-                    value={settings.assessmentStationLabelFontSize}
+                    value={settings.assessmentLabelFontSize}
                     onChange={(event) =>
                       updateSettings(
-                        'assessmentStationLabelFontSize',
+                        'assessmentLabelFontSize',
                         numeric(event.target.value, 18),
                       )
                     }
@@ -2309,11 +2445,11 @@ function App() {
                     min="0"
                     max="120"
                     step="1"
-                    value={settings.assessmentStationLabelOffset}
+                    value={settings.assessmentLabelOffset}
                     onChange={(event) =>
                       updateSettings(
-                        'assessmentStationLabelOffset',
-                        numeric(event.target.value, 16),
+                        'assessmentLabelOffset',
+                        numeric(event.target.value, 28),
                       )
                     }
                   />
@@ -2321,11 +2457,11 @@ function App() {
                 <label className="field">
                   <span>Label side</span>
                   <select
-                    value={settings.assessmentStationLabelSide}
+                    value={settings.assessmentLabelSide}
                     onChange={(event) =>
                       updateSettings(
-                        'assessmentStationLabelSide',
-                        event.target.value as FigureSettings['assessmentStationLabelSide'],
+                        'assessmentLabelSide',
+                        event.target.value as FigureSettings['assessmentLabelSide'],
                       )
                     }
                   >

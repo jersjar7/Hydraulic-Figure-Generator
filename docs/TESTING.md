@@ -25,7 +25,9 @@ They cover:
 - Rejection of future, wrong-figure, malformed, and unsafe project files.
 - Assessment-line contour stitching, directed centerline stationing, ambiguous
   crossings, explicit exclusions, and station formatting.
-- Persistence validation for centerline and per-line review decisions.
+- Assessment WSE callout hit testing, global visibility, and positioned labels.
+- Persistence validation for centerline, per-line review decisions, and callout
+  visibility and placement.
 
 Add a focused test for every bug fixed in a core module. Prefer small synthetic
 geometry where the expected engineering result can be calculated by hand.
@@ -41,8 +43,8 @@ npm run test:site6
 ```
 
 It pins the accepted node counts, WSE extrema, centerline length, station range,
-and included/review/excluded assessment-line counts. It also verifies station
-labels with a raster-pixel comparison. Those golden values should change only
+and included/review/excluded assessment-line counts. It also verifies WSE
+callouts with a raster-pixel comparison. Those golden values should change only
 after an intentional hydraulic-method update and visual review of both
 generated PNGs.
 

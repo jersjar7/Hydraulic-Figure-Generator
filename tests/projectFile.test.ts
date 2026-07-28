@@ -16,11 +16,11 @@ describe('hydraulic figure project files', () => {
         assessmentLineColor: '#d92d20',
         assessmentLineWidth: 2,
         showAssessmentLines: true,
-        showAssessmentStationLabels: true,
-        assessmentStationLabelColor: '#172b3a',
-        assessmentStationLabelFontSize: 18,
-        assessmentStationLabelOffset: 16,
-        assessmentStationLabelSide: 'alternate',
+        showAssessmentLabels: true,
+        assessmentLabelColor: '#172b3a',
+        assessmentLabelFontSize: 18,
+        assessmentLabelOffset: 28,
+        assessmentLabelSide: 'alternate',
         basemapOpacity: 0.5,
       },
       selectedRuns: { existingRun: 1, proposedRun: 2 },
@@ -32,8 +32,13 @@ describe('hydraulic figure project files', () => {
           'existing-wse:52:0': {
             included: true,
             intersectionIndex: 1,
+            labelVisible: true,
+            labelPoint: { x: 123, y: 456 },
           },
-          'existing-wse:53:0': { included: false },
+          'existing-wse:53:0': {
+            included: false,
+            labelVisible: false,
+          },
         },
       },
     })
@@ -45,6 +50,29 @@ describe('hydraulic figure project files', () => {
     assert.deepEqual(loaded.settings, saved.settings)
     assert.deepEqual(loaded.selectedRuns, saved.selectedRuns)
     assert.deepEqual(loaded.assessment, saved.assessment)
+  })
+
+  it('migrates version 10 assessment station-label settings to WSE callouts', () => {
+    const loaded = parseHydraulicFigureProject(
+      JSON.stringify({
+        version: 10,
+        figure: 'fra-wse-difference',
+        settings: {
+          showAssessmentStationLabels: false,
+          assessmentStationLabelColor: '#224466',
+          assessmentStationLabelFontSize: 16,
+          assessmentStationLabelOffset: 24,
+          assessmentStationLabelSide: 'left',
+        },
+      }),
+    )
+
+    assert.equal(loaded.settings?.showAssessmentLabels, false)
+    assert.equal(loaded.settings?.assessmentLabelColor, '#224466')
+    assert.equal(loaded.settings?.assessmentLabelFontSize, 16)
+    assert.equal(loaded.settings?.assessmentLabelOffset, 24)
+    assert.equal(loaded.settings?.assessmentLabelSide, 'left')
+    assert.equal('showAssessmentStationLabels' in (loaded.settings ?? {}), false)
   })
 
   it('migrates supported legacy settings and removes marker annotations', () => {
@@ -159,6 +187,21 @@ describe('hydraulic figure project files', () => {
           }),
         ),
       /intersectionIndex/,
+    )
+    assert.throws(
+      () =>
+        parseHydraulicFigureProject(
+          JSON.stringify({
+            version: PROJECT_FILE_VERSION,
+            figure: 'fra-wse-difference',
+            assessment: {
+              overrides: {
+                'existing-wse:52:0': { labelPoint: { x: 'left', y: 2 } },
+              },
+            },
+          }),
+        ),
+      /labelPoint.x/,
     )
   })
 })

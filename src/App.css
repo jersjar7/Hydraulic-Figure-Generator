@@ -685,6 +685,13 @@ input[type="color"] {
   color: #9a5c10;
 }
 
+.assessment-label-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 3px;
+  margin-top: -3px;
+}
+
 .assessment-intersection-select {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -1906,6 +1913,10 @@ input[type="range"] {
 }
 
 .map-canvas[data-annotation-dragging="true"] {
+  cursor: grabbing;
+}
+
+.map-canvas[data-assessment-callout-dragging="true"] {
   cursor: grabbing;
 }
 

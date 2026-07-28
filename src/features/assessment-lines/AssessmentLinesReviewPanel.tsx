@@ -2,6 +2,9 @@ import {
   Check,
   ChevronLeft,
   CircleOff,
+  Eye,
+  EyeOff,
+  RotateCcw,
   Route,
   TriangleAlert,
   X,
@@ -9,6 +12,7 @@ import {
 import { formatStation } from '../../core/centerlineStationing'
 import type {
   AssessmentLineOverride,
+  AssessmentLineOverrides,
   CenterlineCandidate,
   CenterlineDirection,
   StationedAssessmentLine,
@@ -23,6 +27,7 @@ export type AssessmentLinesReviewPanelProps = {
   startStation: number
   reviewTab: AssessmentReviewTab
   selectedLineId: string | null
+  overrides: AssessmentLineOverrides
   stationed: StationedAssessmentLineCollection | null
   onBack(): void
   onMobileClose(): void
@@ -65,6 +70,7 @@ export function AssessmentLinesReviewPanel({
   startStation,
   reviewTab,
   selectedLineId,
+  overrides,
   stationed,
   onBack,
   onMobileClose,
@@ -212,6 +218,8 @@ export function AssessmentLinesReviewPanel({
           visibleItems.map((item) => {
             const selected = item.line.id === selectedLineId
             const station = itemStation(item)
+            const lineOverride = overrides[item.line.id]
+            const labelVisible = lineOverride?.labelVisible !== false
             return (
               <div
                 className={`assessment-review-row${selected ? ' selected' : ''}`}
@@ -232,6 +240,52 @@ export function AssessmentLinesReviewPanel({
                     <em key={warning}>{warning}</em>
                   ))}
                 </button>
+
+                {item.status === 'included' ? (
+                  <div className="assessment-label-actions">
+                    <button
+                      className="icon-button tiny"
+                      type="button"
+                      title={
+                        labelVisible
+                          ? 'Hide this WSE callout'
+                          : 'Show this WSE callout'
+                      }
+                      aria-label={
+                        labelVisible
+                          ? 'Hide this WSE callout'
+                          : 'Show this WSE callout'
+                      }
+                      aria-pressed={labelVisible}
+                      onClick={() =>
+                        onSetOverride(item.line.id, {
+                          labelVisible: !labelVisible,
+                        })
+                      }
+                    >
+                      {labelVisible ? (
+                        <Eye size={14} aria-hidden="true" />
+                      ) : (
+                        <EyeOff size={14} aria-hidden="true" />
+                      )}
+                    </button>
+                    {lineOverride?.labelPoint ? (
+                      <button
+                        className="icon-button tiny"
+                        type="button"
+                        title="Reset WSE callout position"
+                        aria-label="Reset WSE callout position"
+                        onClick={() =>
+                          onSetOverride(item.line.id, {
+                            labelPoint: undefined,
+                          })
+                        }
+                      >
+                        <RotateCcw size={14} aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 {item.status === 'review' &&
                 item.intersections.length > 1 ? (

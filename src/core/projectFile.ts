@@ -9,7 +9,7 @@ import type {
   MapOverlay,
 } from './types'
 
-export const PROJECT_FILE_VERSION = 10
+export const PROJECT_FILE_VERSION = 11
 export const PROJECT_FIGURE = 'fra-wse-difference'
 
 type PartialElementStyles = {
@@ -45,6 +45,14 @@ export type AssessmentWorkflowProject = {
   direction?: CenterlineDirection
   startStation?: number
   overrides?: AssessmentLineOverrides
+}
+
+type ParsedProjectSettings = ProjectSettings & {
+  showAssessmentStationLabels?: boolean
+  assessmentStationLabelColor?: string
+  assessmentStationLabelFontSize?: number
+  assessmentStationLabelOffset?: number
+  assessmentStationLabelSide?: 'left' | 'right' | 'alternate'
 }
 
 type UnknownRecord = Record<string, unknown>
@@ -218,7 +226,7 @@ function elementPositions(value: unknown, path: string) {
   return output
 }
 
-function settings(value: unknown, path: string): ProjectSettings {
+function settings(value: unknown, path: string): ParsedProjectSettings {
   return shape(value, path, {
     orientation: oneOf(['landscape', 'portrait']),
     dryDepth: ranged(0),
@@ -226,6 +234,11 @@ function settings(value: unknown, path: string): ProjectSettings {
     assessmentLineColor: text,
     assessmentLineWidth: ranged(0.25, 12),
     showAssessmentLines: bool,
+    showAssessmentLabels: bool,
+    assessmentLabelColor: text,
+    assessmentLabelFontSize: ranged(6, 72),
+    assessmentLabelOffset: ranged(0, 120),
+    assessmentLabelSide: oneOf(['left', 'right', 'alternate']),
     showAssessmentStationLabels: bool,
     assessmentStationLabelColor: text,
     assessmentStationLabelFontSize: ranged(6, 72),
@@ -255,7 +268,34 @@ function settings(value: unknown, path: string): ProjectSettings {
     showContours: bool,
     elementPositions,
     elementStyles,
-  }) as ProjectSettings
+  }) as ParsedProjectSettings
+}
+
+function migrateAssessmentLabelSettings(
+  parsed: ParsedProjectSettings,
+): ProjectSettings {
+  const {
+    showAssessmentStationLabels,
+    assessmentStationLabelColor,
+    assessmentStationLabelFontSize,
+    assessmentStationLabelOffset,
+    assessmentStationLabelSide,
+    ...current
+  } = parsed
+  const migrated: ProjectSettings = { ...current }
+  const showLabels =
+    current.showAssessmentLabels ?? showAssessmentStationLabels
+  const color = current.assessmentLabelColor ?? assessmentStationLabelColor
+  const fontSize =
+    current.assessmentLabelFontSize ?? assessmentStationLabelFontSize
+  const offset = current.assessmentLabelOffset ?? assessmentStationLabelOffset
+  const side = current.assessmentLabelSide ?? assessmentStationLabelSide
+  if (showLabels !== undefined) migrated.showAssessmentLabels = showLabels
+  if (color !== undefined) migrated.assessmentLabelColor = color
+  if (fontSize !== undefined) migrated.assessmentLabelFontSize = fontSize
+  if (offset !== undefined) migrated.assessmentLabelOffset = offset
+  if (side !== undefined) migrated.assessmentLabelSide = side
+  return migrated
 }
 
 function coordinate(value: unknown, path: string) {
@@ -374,6 +414,8 @@ function assessmentOverrides(value: unknown, path: string) {
     const parsed = shape(lineOverride, `${path}.${lineId}`, {
       included: bool,
       intersectionIndex: integer(0),
+      labelVisible: bool,
+      labelPoint: coordinate,
     }) as AssessmentLineOverrides[string]
     output[lineId] = parsed
   }
@@ -429,7 +471,9 @@ export function parseHydraulicFigureProject(
     figure: PROJECT_FIGURE,
   }
   if (input.settings !== undefined) {
-    result.settings = settings(input.settings, 'Project.settings')
+    result.settings = migrateAssessmentLabelSettings(
+      settings(input.settings, 'Project.settings'),
+    )
   }
   if (input.overlays !== undefined) {
     if (!Array.isArray(input.overlays)) {

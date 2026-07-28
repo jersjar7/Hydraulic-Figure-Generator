@@ -6,7 +6,6 @@ import { createCanvas, loadImage } from '@napi-rs/canvas'
 import { cloneDefaultElementStyles } from '../src/core/figureElements'
 import {
   extractCenterlineCandidates,
-  formatStation,
   stationAssessmentLines,
 } from '../src/core/centerlineStationing'
 import {
@@ -20,6 +19,7 @@ import {
   duplicateAnnotation,
   formatHydraulicResultLabel,
   hitTestAnnotation,
+  hitTestAssessmentCallout,
   mapPointToCanvas,
   moveAnnotationPoints,
   renderWseDifferenceMap,
@@ -300,10 +300,10 @@ if (
 }
 const assessmentMapLayer: AssessmentMapLayer = {
   lines: includedStationedLines.map((item) => item.line),
-  stationLabels: includedStationedLines.map((item) => ({
+  wseCallouts: includedStationedLines.map((item) => ({
     lineId: item.line.id,
-    text: formatStation(item.selectedIntersection!.stationFeet),
-    point: item.selectedIntersection!.mapPoint,
+    text: `WSE ${item.line.level.toFixed(1)} ft`,
+    target: item.selectedIntersection!.mapPoint,
     tangent: item.selectedIntersection!.mapTangent,
   })),
 }
@@ -325,11 +325,11 @@ const renderSettings: FigureSettings = {
   assessmentLineColor: '#d92d20',
   assessmentLineWidth: 2,
   showAssessmentLines: true,
-  showAssessmentStationLabels: true,
-  assessmentStationLabelColor: '#172b3a',
-  assessmentStationLabelFontSize: 18,
-  assessmentStationLabelOffset: 16,
-  assessmentStationLabelSide: 'alternate',
+  showAssessmentLabels: true,
+  assessmentLabelColor: '#172b3a',
+  assessmentLabelFontSize: 18,
+  assessmentLabelOffset: 28,
+  assessmentLabelSide: 'alternate',
   differenceOutlineColor: '#111111',
   showDifferenceOutlines: true,
   showWetDry: true,
@@ -793,7 +793,7 @@ await renderWseDifferenceMap(
   noAssessmentLabelCanvas as unknown as HTMLCanvasElement,
   scene,
   engine.commonBounds(),
-  { ...assessmentTestSettings, showAssessmentStationLabels: false },
+  { ...assessmentTestSettings, showAssessmentLabels: false },
   [],
   assessmentMapLayer,
 )
@@ -821,8 +821,36 @@ for (let index = 0; index < assessmentPixels.length; index += 4) {
 }
 if (renderedAssessmentLabelPixels < 150) {
   throw new Error(
-    `Assessment station labels appear missing (${renderedAssessmentLabelPixels} changed pixels).`,
+    `Assessment WSE callouts appear missing (${renderedAssessmentLabelPixels} changed pixels).`,
   )
+}
+
+const positionedCalloutPoint = canvasPointToMap(
+  320,
+  240,
+  engine.commonBounds(),
+  assessmentTestSettings,
+)
+const positionedCalloutLayer: AssessmentMapLayer = {
+  lines: assessmentMapLayer.lines,
+  wseCallouts: assessmentMapLayer.wseCallouts?.slice(0, 1).map((callout) => ({
+    ...callout,
+    labelPoint: positionedCalloutPoint,
+  })),
+}
+const positionedCalloutHit = hitTestAssessmentCallout(
+  positionedCalloutLayer,
+  engine.commonBounds(),
+  assessmentTestSettings,
+  320,
+  240,
+)
+if (
+  !positionedCalloutHit ||
+  positionedCalloutHit.lineId !==
+    positionedCalloutLayer.wseCallouts?.[0]?.lineId
+) {
+  throw new Error('An engineer-positioned assessment WSE callout was not selectable.')
 }
 
 const outputPath =

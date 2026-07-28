@@ -710,100 +710,193 @@ function drawAssessmentSelection(
   context.restore()
 }
 
-function drawAssessmentStationLabels(
-  context: CanvasRenderingContext2D,
+type AssessmentCalloutLayout = {
+  lineId: string
+  text: string
+  targetX: number
+  targetY: number
+  labelX: number
+  labelY: number
+  labelPoint: MapCoordinate
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+function layoutAssessmentCallouts(
   layer: AssessmentMapLayer,
   view: View,
   settings: FigureSettings,
+  frame: Frame,
+  measureText: (text: string) => number,
 ) {
-  if (!settings.showAssessmentStationLabels) return
-  const labels = layer.stationLabels ?? []
-  context.save()
-  context.font = `600 ${settings.assessmentStationLabelFontSize}px Arial, sans-serif`
-  context.textAlign = 'center'
-  context.textBaseline = 'middle'
-  context.lineWidth = 1
+  const layouts: AssessmentCalloutLayout[] = []
   const placedBoxes: { x: number; y: number; width: number; height: number }[] =
     []
+  const callouts = layer.wseCallouts ?? []
+  const paddingX = 7
+  const paddingY = 4
 
-  labels.forEach((label, index) => {
-    const [x, y] = view.toScreen(label.point.x, label.point.y)
-    const [tangentX, tangentY] = view.toScreen(
-      label.point.x + label.tangent.x,
-      label.point.y + label.tangent.y,
+  callouts.forEach((callout, index) => {
+    const [targetX, targetY] = view.toScreen(
+      callout.target.x,
+      callout.target.y,
     )
-    const dx = tangentX - x
-    const dy = tangentY - y
-    const length = Math.hypot(dx, dy) || 1
-    const preferredSide =
-      settings.assessmentStationLabelSide === 'left'
-        ? 1
-        : settings.assessmentStationLabelSide === 'right'
-          ? -1
-          : index % 2 === 0
-            ? 1
-            : -1
-    const paddingX = 6
-    const paddingY = 4
-    const metrics = context.measureText(label.text)
-    const width = metrics.width + paddingX * 2
-    const height = settings.assessmentStationLabelFontSize + paddingY * 2
-    let labelX = x
-    let labelY = y
+    const width = measureText(callout.text) + paddingX * 2
+    const height = settings.assessmentLabelFontSize + paddingY * 2
+    let labelX = targetX
+    let labelY = targetY
     let box = { x: 0, y: 0, width, height }
-    let placed = false
 
-    for (let attempt = 0; attempt < 8 && !placed; attempt += 1) {
-      const side =
-        attempt % 2 === 0 ? preferredSide : -preferredSide
-      const step = Math.floor(attempt / 2)
-      const offset =
-        (settings.assessmentStationLabelOffset +
-          step * (height + 5)) *
-        side
-      labelX = x + (-dy / length) * offset
-      labelY = y + (dx / length) * offset
+    if (callout.labelPoint) {
+      ;[labelX, labelY] = view.toScreen(
+        callout.labelPoint.x,
+        callout.labelPoint.y,
+      )
       box = {
         x: labelX - width / 2,
         y: labelY - height / 2,
         width,
         height,
       }
-      const insideFrame =
-        box.x >= 4 &&
-        box.y >= 4 &&
-        box.x + box.width <= context.canvas.width - 4 &&
-        box.y + box.height <= context.canvas.height - 4
-      const overlaps = placedBoxes.some(
-        (other) =>
-          box.x < other.x + other.width + 4 &&
-          box.x + box.width + 4 > other.x &&
-          box.y < other.y + other.height + 4 &&
-          box.y + box.height + 4 > other.y,
+    } else {
+      const [tangentX, tangentY] = view.toScreen(
+        callout.target.x + callout.tangent.x,
+        callout.target.y + callout.tangent.y,
       )
-      placed = insideFrame && !overlaps
+      const dx = tangentX - targetX
+      const dy = tangentY - targetY
+      const length = Math.hypot(dx, dy) || 1
+      const preferredSide =
+        settings.assessmentLabelSide === 'left'
+          ? 1
+          : settings.assessmentLabelSide === 'right'
+            ? -1
+            : index % 2 === 0
+              ? 1
+              : -1
+      let placed = false
+      for (let attempt = 0; attempt < 10 && !placed; attempt += 1) {
+        const side =
+          attempt % 2 === 0 ? preferredSide : -preferredSide
+        const step = Math.floor(attempt / 2)
+        const offset =
+          (settings.assessmentLabelOffset + step * (height + 5)) *
+          side
+        labelX = targetX + (-dy / length) * offset
+        labelY = targetY + (dx / length) * offset
+        box = {
+          x: labelX - width / 2,
+          y: labelY - height / 2,
+          width,
+          height,
+        }
+        const insideFrame =
+          box.x >= 4 &&
+          box.y >= 4 &&
+          box.x + box.width <= frame.width - 4 &&
+          box.y + box.height <= frame.height - 4
+        const overlaps = placedBoxes.some(
+          (other) =>
+            box.x < other.x + other.width + 4 &&
+            box.x + box.width + 4 > other.x &&
+            box.y < other.y + other.height + 4 &&
+            box.y + box.height + 4 > other.y,
+        )
+        placed = insideFrame && !overlaps
+      }
     }
-    placedBoxes.push(box)
 
-    context.strokeStyle = 'rgba(91, 108, 122, 0.72)'
+    placedBoxes.push(box)
+    layouts.push({
+      lineId: callout.lineId,
+      text: callout.text,
+      targetX,
+      targetY,
+      labelX,
+      labelY,
+      labelPoint:
+        callout.labelPoint ?? view.screenToMerc(labelX, labelY),
+      ...box,
+    })
+  })
+  return layouts
+}
+
+function leaderBoxEdge(layout: AssessmentCalloutLayout) {
+  const dx = layout.targetX - layout.labelX
+  const dy = layout.targetY - layout.labelY
+  if (dx === 0 && dy === 0) {
+    return { x: layout.labelX, y: layout.labelY }
+  }
+  const scale = 1 / Math.max(
+    Math.abs(dx) / Math.max(layout.width / 2, 1),
+    Math.abs(dy) / Math.max(layout.height / 2, 1),
+  )
+  return {
+    x: layout.labelX + dx * scale,
+    y: layout.labelY + dy * scale,
+  }
+}
+
+function drawAssessmentCallouts(
+  context: CanvasRenderingContext2D,
+  layer: AssessmentMapLayer,
+  view: View,
+  settings: FigureSettings,
+  frame: Frame,
+) {
+  if (!settings.showAssessmentLabels) return
+  context.save()
+  context.font = `600 ${settings.assessmentLabelFontSize}px Arial, sans-serif`
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  context.lineWidth = 1
+  const layouts = layoutAssessmentCallouts(
+    layer,
+    view,
+    settings,
+    frame,
+    (text) => context.measureText(text).width,
+  )
+
+  for (const layout of layouts) {
+    const edge = leaderBoxEdge(layout)
+    context.strokeStyle = 'rgba(61, 78, 94, 0.82)'
     context.beginPath()
-    context.moveTo(x, y)
-    context.lineTo(labelX, labelY)
+    context.moveTo(layout.targetX, layout.targetY)
+    context.lineTo(edge.x, edge.y)
     context.stroke()
-    context.fillStyle = 'rgba(255, 255, 255, 0.9)'
+
+    context.fillStyle = 'rgba(255, 255, 255, 0.92)'
     context.beginPath()
     context.roundRect(
-      labelX - width / 2,
-      labelY - height / 2,
-      width,
-      height,
+      layout.x,
+      layout.y,
+      layout.width,
+      layout.height,
       3,
     )
     context.fill()
     context.stroke()
-    context.fillStyle = settings.assessmentStationLabelColor
-    context.fillText(label.text, labelX, labelY + 0.5)
-  })
+    context.fillStyle = settings.assessmentLabelColor
+    context.fillText(layout.text, layout.labelX, layout.labelY + 0.5)
+
+    if (layout.lineId === layer.selectedCalloutId) {
+      context.save()
+      context.strokeStyle = '#0877b9'
+      context.lineWidth = 2
+      context.setLineDash([6, 4])
+      context.strokeRect(
+        layout.x - 3,
+        layout.y - 3,
+        layout.width + 6,
+        layout.height + 6,
+      )
+      context.restore()
+    }
+  }
   context.restore()
 }
 
@@ -1107,6 +1200,45 @@ export function mapPointToCanvas(
   const view = makeView(bounds, FRAMES[settings.orientation], settings)
   const [x, y] = view.toScreen(point.x, point.y)
   return { x, y }
+}
+
+export type AssessmentCalloutHit = {
+  lineId: string
+  labelPoint: MapCoordinate
+}
+
+export function hitTestAssessmentCallout(
+  layer: AssessmentMapLayer,
+  bounds: Bounds,
+  settings: FigureSettings,
+  x: number,
+  y: number,
+): AssessmentCalloutHit | null {
+  if (!settings.showAssessmentLabels) return null
+  const frame = FRAMES[settings.orientation]
+  const view = makeView(bounds, frame, settings)
+  const layouts = layoutAssessmentCallouts(
+    layer,
+    view,
+    settings,
+    frame,
+    (text) => text.length * settings.assessmentLabelFontSize * 0.62,
+  )
+  for (let index = layouts.length - 1; index >= 0; index -= 1) {
+    const layout = layouts[index]
+    if (
+      x >= layout.x - 4 &&
+      x <= layout.x + layout.width + 4 &&
+      y >= layout.y - 4 &&
+      y <= layout.y + layout.height + 4
+    ) {
+      return {
+        lineId: layout.lineId,
+        labelPoint: layout.labelPoint,
+      }
+    }
+  }
+  return null
 }
 
 function pointToSegmentDistance(
@@ -2069,7 +2201,13 @@ export async function renderWseDifferenceMap(
   context.restore()
 
   if (settings.showAssessmentLines) {
-    drawAssessmentStationLabels(context, assessmentLayer, view, settings)
+    drawAssessmentCallouts(
+      context,
+      assessmentLayer,
+      view,
+      settings,
+      frame,
+    )
     drawAssessmentReviewMarkers(context, assessmentLayer, view)
   }
   drawAnnotations(context, annotations, view)

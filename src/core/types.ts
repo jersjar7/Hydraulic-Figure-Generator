@@ -250,6 +250,8 @@ export type CenterlineCandidate = {
 export type AssessmentLineOverride = {
   included?: boolean
   intersectionIndex?: number
+  labelVisible?: boolean
+  labelPoint?: MapCoordinate
 }
 
 export type AssessmentLineOverrides = Record<string, AssessmentLineOverride>
@@ -288,16 +290,18 @@ export type StationedAssessmentLineCollection = {
   excludedCount: number
 }
 
-export type AssessmentStationLabel = {
+export type AssessmentWseCallout = {
   lineId: string
   text: string
-  point: MapCoordinate
+  target: MapCoordinate
   tangent: MapCoordinate
+  labelPoint?: MapCoordinate
 }
 
 export type AssessmentMapLayer = {
   lines: WseAssessmentLine[]
-  stationLabels?: AssessmentStationLabel[]
+  wseCallouts?: AssessmentWseCallout[]
+  selectedCalloutId?: string | null
   selectedLine?: WseAssessmentLine | null
   endpoints?: {
     a: MapCoordinate
@@ -366,11 +370,11 @@ export type FigureSettings = {
   assessmentLineColor: string
   assessmentLineWidth: number
   showAssessmentLines: boolean
-  showAssessmentStationLabels: boolean
-  assessmentStationLabelColor: string
-  assessmentStationLabelFontSize: number
-  assessmentStationLabelOffset: number
-  assessmentStationLabelSide: 'left' | 'right' | 'alternate'
+  showAssessmentLabels: boolean
+  assessmentLabelColor: string
+  assessmentLabelFontSize: number
+  assessmentLabelOffset: number
+  assessmentLabelSide: 'left' | 'right' | 'alternate'
   differenceOutlineColor: string
   showDifferenceOutlines: boolean
   showWetDry: boolean
