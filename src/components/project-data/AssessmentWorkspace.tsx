@@ -10,7 +10,8 @@ import {
 
 type AssessmentWorkspaceProps = {
   busy: boolean
-  hasExistingRuns: boolean
+  hasSourceRuns: boolean
+  sourceLabel: string
   assessmentLines: WseAssessmentLineCollection
   stationed: StationedAssessmentLineCollection | null
   stationing: AssessmentStationingControlsProps
@@ -22,7 +23,8 @@ type AssessmentWorkspaceProps = {
 
 export function AssessmentWorkspace({
   busy,
-  hasExistingRuns,
+  hasSourceRuns,
+  sourceLabel,
   assessmentLines,
   stationed,
   stationing,
@@ -38,7 +40,7 @@ export function AssessmentWorkspace({
       <section className="workflow-block assessment-block">
         <div className="block-title">
           <Spline size={17} aria-hidden="true" />
-          <span>Existing WSE lines</span>
+          <span>{sourceLabel} WSE lines</span>
           <span className="file-chip">WSE</span>
         </div>
         <label className="field">
@@ -57,11 +59,11 @@ export function AssessmentWorkspace({
         <button
           className="button secondary compact full"
           type="button"
-          disabled={busy || !hasExistingRuns}
+          disabled={busy || !hasSourceRuns}
           onClick={onGenerateAssessmentLines}
         >
           <RefreshCcw size={15} aria-hidden="true" />
-          {generated ? 'Regenerate lines' : 'Generate from Existing WSE'}
+          {generated ? 'Regenerate lines' : `Generate from ${sourceLabel} WSE`}
         </button>
         {generated ? (
           <div className="assessment-summary">

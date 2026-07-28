@@ -1422,6 +1422,8 @@ export function hitTestAnnotation(
 }
 
 type HydraulicResultSample = {
+  baselineLabel: string
+  comparisonLabel: string
   existingWse: number | null
   proposedWse: number | null
   difference: number | null
@@ -1465,6 +1467,8 @@ export function sampleHydraulicResult(
   if (!existingNear && !proposedNear) return null
 
   return {
+    baselineLabel: scene.existing.condition.label,
+    comparisonLabel: scene.proposed.condition.label,
     existingWse: existingNear
       ? validResult(scene.existingWse[existing.index])
       : null,
@@ -1497,20 +1501,20 @@ export function formatHydraulicResultLabel(
     return `WSE difference: ${formattedResult(sample.difference, true)}`
   }
   if (field === 'existingWse') {
-    return `Existing WSE: ${formattedResult(sample.existingWse)}`
+    return `${sample.baselineLabel} WSE: ${formattedResult(sample.existingWse)}`
   }
   if (field === 'proposedWse') {
-    return `Proposed WSE: ${formattedResult(sample.proposedWse)}`
+    return `${sample.comparisonLabel} WSE: ${formattedResult(sample.proposedWse)}`
   }
   if (field === 'existingDepth') {
-    return `Existing depth: ${formattedResult(sample.existingDepth)}`
+    return `${sample.baselineLabel} depth: ${formattedResult(sample.existingDepth)}`
   }
   if (field === 'proposedDepth') {
-    return `Proposed depth: ${formattedResult(sample.proposedDepth)}`
+    return `${sample.comparisonLabel} depth: ${formattedResult(sample.proposedDepth)}`
   }
   return [
-    `Existing WSE: ${formattedResult(sample.existingWse)}`,
-    `Proposed WSE: ${formattedResult(sample.proposedWse)}`,
+    `${sample.baselineLabel} WSE: ${formattedResult(sample.existingWse)}`,
+    `${sample.comparisonLabel} WSE: ${formattedResult(sample.proposedWse)}`,
     `Difference: ${formattedResult(sample.difference, true)}`,
   ].join('\n')
 }
@@ -2080,6 +2084,10 @@ function resolveTitle(scene: WseDifferenceScene, template: string) {
     .replaceAll('{type}', 'WSE Difference Map')
     .replaceAll('{existing}', runDisplayName(scene.existing.run.name))
     .replaceAll('{proposed}', runDisplayName(scene.proposed.run.name))
+    .replaceAll('{baseline}', scene.existing.condition.label)
+    .replaceAll('{comparison}', scene.proposed.condition.label)
+    .replaceAll('{baselineRun}', runDisplayName(scene.existing.run.name))
+    .replaceAll('{comparisonRun}', runDisplayName(scene.proposed.run.name))
     .replace(/\s{2,}/g, ' ')
     .trim()
 }

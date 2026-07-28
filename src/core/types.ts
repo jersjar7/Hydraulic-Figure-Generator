@@ -1,4 +1,6 @@
-export type ConditionKey = 'EX' | 'PR'
+export type ConditionKey = string
+
+export type ConditionKind = 'natural' | 'existing' | 'proposed' | 'other'
 
 export type Bounds = {
   x0: number
@@ -50,6 +52,8 @@ export type ProjectedGeometry = Geometry & {
 
 export type ConditionData = {
   key: ConditionKey
+  label: string
+  kind: ConditionKind
   geometryFileName?: string
   datasetFileName?: string
   geometry?: Geometry
@@ -219,7 +223,7 @@ export type MapCoordinate = {
 
 export type WseAssessmentLine = {
   id: string
-  source: 'existing-wse'
+  source: string
   level: number
   points: MapCoordinate[]
   modelPoints: MapCoordinate[]

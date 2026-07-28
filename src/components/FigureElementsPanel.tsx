@@ -374,6 +374,10 @@ export function FigureElementsPanel({
             </label>
             <div className="template-tokens" aria-label="Available title fields">
               <code>{'{type}'}</code>
+              <code>{'{baseline}'}</code>
+              <code>{'{baselineRun}'}</code>
+              <code>{'{comparison}'}</code>
+              <code>{'{comparisonRun}'}</code>
               <code>{'{existing}'}</code>
               <code>{'{proposed}'}</code>
             </div>

@@ -9,7 +9,7 @@ import type {
   MapOverlay,
 } from './types'
 
-export const PROJECT_FILE_VERSION = 11
+export const PROJECT_FILE_VERSION = 12
 export const PROJECT_FIGURE = 'fra-wse-difference'
 
 type PartialElementStyles = {
@@ -37,7 +37,16 @@ export type HydraulicFigureProject = {
     existingRun?: number
     proposedRun?: number
   }
+  scenarioSelection?: ScenarioSelectionProject
   assessment?: AssessmentWorkflowProject
+}
+
+export type ScenarioSelectionProject = {
+  baselineId?: string
+  comparisonId?: string
+  assessmentId?: string
+  runByScenario?: Record<string, number>
+  labels?: Record<string, string>
 }
 
 export type AssessmentWorkflowProject = {
@@ -434,6 +443,35 @@ function assessmentWorkflow(
   }) as AssessmentWorkflowProject
 }
 
+function keyedRecord(
+  value: unknown,
+  path: string,
+  parser: ValueParser,
+) {
+  const input = record(value, path)
+  const output: Record<string, unknown> = {}
+  for (const [key, item] of Object.entries(input)) {
+    if (!key.trim()) throw new Error(`${path} contains an empty scenario ID.`)
+    output[key] = parser(item, `${path}.${key}`)
+  }
+  return output
+}
+
+function scenarioSelection(
+  value: unknown,
+  path: string,
+): ScenarioSelectionProject {
+  return shape(value, path, {
+    baselineId: nonemptyText,
+    comparisonId: nonemptyText,
+    assessmentId: nonemptyText,
+    runByScenario: (item, itemPath) =>
+      keyedRecord(item, itemPath, integer(0)),
+    labels: (item, itemPath) =>
+      keyedRecord(item, itemPath, nonemptyText),
+  }) as ScenarioSelectionProject
+}
+
 export function createHydraulicFigureProject(
   project: Omit<HydraulicFigureProject, 'version' | 'figure'>,
 ): HydraulicFigureProject {
@@ -502,6 +540,22 @@ export function parseHydraulicFigureProject(
       existingRun: integer(0),
       proposedRun: integer(0),
     })
+  }
+  if (input.scenarioSelection !== undefined) {
+    result.scenarioSelection = scenarioSelection(
+      input.scenarioSelection,
+      'Project.scenarioSelection',
+    )
+  } else if (result.selectedRuns) {
+    result.scenarioSelection = {
+      baselineId: 'EX',
+      comparisonId: 'PR',
+      assessmentId: 'EX',
+      runByScenario: {
+        EX: result.selectedRuns.existingRun ?? 0,
+        PR: result.selectedRuns.proposedRun ?? 0,
+      },
+    }
   }
   if (input.assessment !== undefined) {
     result.assessment = assessmentWorkflow(

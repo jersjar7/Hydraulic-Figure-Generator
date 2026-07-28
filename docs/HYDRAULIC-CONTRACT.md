@@ -37,15 +37,15 @@ blocked.
 The reported difference is:
 
 ```text
-Proposed WSE - Existing WSE
+Comparison WSE - Baseline WSE
 ```
 
 Positive values are WSE rise. Negative values are WSE reduction.
 
 ## Mesh Matching
 
-Existing and Proposed meshes may differ. Each Existing node is compared with
-the exact nearest Proposed node found by the spatial index. A match is accepted
+Baseline and Comparison meshes may differ. Each Baseline node is compared with
+the exact nearest Comparison node found by the spatial index. A match is accepted
 only when its distance is within a tolerance derived from the median edge
 length of the target mesh:
 
@@ -53,7 +53,7 @@ length of the target mesh:
 max(2.25 * median edge length, 0.75 * spatial-index cell size)
 ```
 
-The reverse Proposed-to-Existing check uses the Existing mesh tolerance for
+The reverse Comparison-to-Baseline check uses the Baseline mesh tolerance for
 newly inundated classification. The current method is nearest-node matching,
 not triangle interpolation. Any future switch to barycentric interpolation is a
 hydraulic-method change and must update golden acceptance values.
@@ -69,13 +69,14 @@ Water Depth > dry-depth threshold
 The default threshold is `0.00 ft`, so any positive modeled depth is wet.
 The threshold remains configurable for project-specific numerical noise.
 
-Newly inundated means Proposed is wet where Existing is dry or has no
-comparable result. Newly dry means Existing is wet and comparable Proposed is
+Newly inundated means Comparison is wet where Baseline is dry or has no
+comparable result. Newly dry means Baseline is wet and comparable Comparison is
 dry.
 
-## Existing WSE Assessment Lines
+## Assessment-Source WSE Lines
 
-Assessment lines are generated from the final-timestep Existing-condition WSE
+Assessment lines are generated from the final-timestep WSE surface of the
+scenario assigned to the Assessment source role.
 surface. Only triangles whose three nodes have valid WSE and depth greater than
 the dry-depth threshold are contoured. The user may generate lines at 1.0-foot
 or 0.5-foot elevation intervals.
@@ -86,7 +87,7 @@ model coordinates for engineering measurements. Length and station values
 assume the SMS model horizontal units are feet.
 
 An imported line shapefile may be selected as the hydraulic centerline. Its
-WGS84 GeoJSON coordinates are transformed back into the Existing model CRS
+WGS84 GeoJSON coordinates are transformed back into the assessment-source model CRS
 before intersection and station calculations. Endpoint A is the first imported
 vertex and endpoint B is the last. The user explicitly chooses which endpoint
 is downstream; stationing increases upstream from that endpoint and from the
@@ -108,7 +109,7 @@ tables.
 
 ## CRS And Units
 
-Both model geometries must include readable WKT coordinate systems and refer to
+All role-assigned model geometries must include readable WKT coordinate systems and refer to
 the same physical project area. Shapefiles are transformed independently from
 their `.prj` definition. Elevation and depth labels assume feet because the
 required SMS datasets are the `_ft` exports.

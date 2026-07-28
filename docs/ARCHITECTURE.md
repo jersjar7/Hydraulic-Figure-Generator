@@ -17,7 +17,7 @@ DOM components, or application state.
 
 - `HydraulicEngine` owns loaded H5 resources and hydraulic run access.
 - `meshMatching.ts` owns spatial-index and comparison-point rules.
-- `assessmentLines.ts` turns an Existing WSE surface into reusable,
+- `assessmentLines.ts` turns the selected assessment-source WSE surface into reusable,
   level-aware map polylines. It does not own their UI or cartographic style.
 - `centerlineStationing.ts` transforms imported line overlays into the model
   CRS, intersects them with assessment paths, and assigns directed stations.
@@ -31,13 +31,22 @@ DOM components, or application state.
 New figure modules should consume these contracts rather than read H5 files or
 draw shared map elements independently.
 
-## Condition Roles
+## Scenario Roles
 
-The first figure compares two semantic roles: Existing (`EX`) and Proposed
-(`PR`). These keys describe the WSE Difference calculation, not every possible
-model condition. Natural, future, or alternative scenarios should be introduced
-through a generic scenario catalog before adding multi-condition figures; do
-not keep extending filename regular expressions as the scenario model.
+`HydraulicEngine` stores a catalog of named scenarios. Existing (`EX`),
+Proposed/FHD (`PR`), and Natural (`NA`) are recognized conventions, while
+matching custom filename stems create additional stable scenario IDs. The WSE
+Difference workspace assigns three independent roles from that catalog:
+
+- Baseline is the minuend reference surface.
+- Comparison is subtracted against the Baseline (`Comparison - Baseline`).
+- Assessment source supplies reusable WSE assessment lines.
+
+Run selection is keyed by scenario ID rather than by role. A scenario can move
+between roles without losing its selected run. Do not add fixed React state or
+engine methods for each new scenario name; extend detection only for a genuine
+industry naming convention and let other alternatives use the generic stem
+contract.
 
 ## Frontend Growth
 
@@ -63,7 +72,7 @@ grow the workspace sidebar.
 
 The left panel is a four-view project workflow:
 
-- Models owns H5 conditions and run pairing.
+- Models owns the H5 scenario catalog, role assignment, and run selection.
 - Layers owns imported shapefile overlays.
 - Assess owns assessment-line generation and centerline stationing.
 - Review owns bounded included/review/excluded collections and per-line
@@ -89,6 +98,10 @@ Saved projects have both a `version` and a `figure` discriminator. Load all
 project JSON through `parseHydraulicFigureProject`; never cast parsed JSON
 directly into application types. Add an explicit migration and regression test
 whenever the persisted shape changes.
+
+Version 12 stores scenario role IDs, per-scenario run selections, and user
+scenario labels. Version 11 Existing/Proposed run selections migrate to
+Baseline `EX`, Comparison `PR`, and assessment source `EX`.
 
 Generated assessment geometry is reproducible and is not stored in the project.
 The selected centerline, downstream direction, starting station, and per-line

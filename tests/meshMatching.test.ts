@@ -111,6 +111,8 @@ describe('condition compatibility', () => {
   it('accepts only dataset catalogs matching the geometry node count', () => {
     const condition = {
       key: 'EX',
+      label: 'Existing',
+      kind: 'existing',
       geometry: geometryRecord,
       datasets: catalog(3),
     } satisfies ConditionData

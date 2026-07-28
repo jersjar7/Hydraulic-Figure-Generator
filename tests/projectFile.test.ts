@@ -24,6 +24,13 @@ describe('hydraulic figure project files', () => {
         basemapOpacity: 0.5,
       },
       selectedRuns: { existingRun: 1, proposedRun: 2 },
+      scenarioSelection: {
+        baselineId: 'EX',
+        comparisonId: 'NA',
+        assessmentId: 'EX',
+        runByScenario: { EX: 1, NA: 0 },
+        labels: { EX: 'Existing', NA: 'Natural' },
+      },
       assessment: {
         centerlineId: 'overlay-1:0:0',
         direction: 'b-to-a',
@@ -49,7 +56,25 @@ describe('hydraulic figure project files', () => {
     assert.equal(loaded.figure, 'fra-wse-difference')
     assert.deepEqual(loaded.settings, saved.settings)
     assert.deepEqual(loaded.selectedRuns, saved.selectedRuns)
+    assert.deepEqual(loaded.scenarioSelection, saved.scenarioSelection)
     assert.deepEqual(loaded.assessment, saved.assessment)
+  })
+
+  it('migrates version 11 Existing and Proposed run selections to scenario roles', () => {
+    const loaded = parseHydraulicFigureProject(
+      JSON.stringify({
+        version: 11,
+        figure: 'fra-wse-difference',
+        selectedRuns: { existingRun: 2, proposedRun: 3 },
+      }),
+    )
+
+    assert.deepEqual(loaded.scenarioSelection, {
+      baselineId: 'EX',
+      comparisonId: 'PR',
+      assessmentId: 'EX',
+      runByScenario: { EX: 2, PR: 3 },
+    })
   })
 
   it('migrates version 10 assessment station-label settings to WSE callouts', () => {

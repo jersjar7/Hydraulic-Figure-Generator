@@ -21,6 +21,7 @@ type GraphNode = {
 }
 
 export type WseAssessmentLineInput = {
+  source?: string
   mapX: Float64Array
   mapY: Float64Array
   modelX: Float64Array
@@ -259,6 +260,7 @@ export function generateWseAssessmentLines(
   const extent = Math.max(maximumX - minimumX, maximumY - minimumY, 1)
   const stitchTolerance = extent * 1e-8
   const lines: WseAssessmentLine[] = []
+  const source = input.source?.trim() || 'existing-wse'
 
   for (const level of levels) {
     const paths = stitchSegments(
@@ -270,8 +272,8 @@ export function generateWseAssessmentLines(
     )
     paths.forEach(({ mapPoints, modelPoints }, pathIndex) => {
       lines.push({
-        id: `existing-wse:${level.toFixed(6)}:${pathIndex}`,
-        source: 'existing-wse',
+        id: `${source}:${level.toFixed(6)}:${pathIndex}`,
+        source,
         level,
         points: mapPoints,
         modelPoints,

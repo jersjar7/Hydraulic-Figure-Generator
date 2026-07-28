@@ -24,7 +24,8 @@ export function createDefaultFigureSettings(): FigureSettings {
     showNorth: true,
     showScale: true,
     showWetDryKey: true,
-    titleTemplate: '{type} - {existing} vs {proposed}',
+    titleTemplate:
+      '{type} - {baseline}: {baselineRun} vs {comparison}: {comparisonRun}',
     legendBound: null,
     legendInterval: null,
     legendFontSize: 19,

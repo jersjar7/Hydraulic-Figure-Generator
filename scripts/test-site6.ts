@@ -94,7 +94,7 @@ const notices = await engine.ingest(files as unknown as globalThis.File[])
 if (notices.some((notice) => notice.level === 'error')) {
   throw new Error(notices.map((notice) => notice.text).join('\n'))
 }
-if (!engine.isReady()) {
+if (!engine.isReady('EX', 'PR')) {
   throw new Error('The engine did not assemble complete Existing and Proposed conditions.')
 }
 
@@ -110,13 +110,21 @@ if (existingIndex < 0 || proposedIndex < 0) {
   throw new Error('A 100-year run was not found in both conditions.')
 }
 
-const scene = engine.buildWseDifference(existingIndex, proposedIndex, 0)
-const assessmentLines = engine.buildExistingWseAssessmentLines(
+const scene = engine.buildWseDifference(
+  'EX',
+  existingIndex,
+  'PR',
+  proposedIndex,
+  0,
+)
+const assessmentLines = engine.buildWseAssessmentLines(
+  'EX',
   existingIndex,
   0,
   1,
 )
-const halfFootAssessmentLines = engine.buildExistingWseAssessmentLines(
+const halfFootAssessmentLines = engine.buildWseAssessmentLines(
+  'EX',
   existingIndex,
   0,
   0.5,

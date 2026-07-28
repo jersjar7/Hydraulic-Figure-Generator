@@ -7,52 +7,68 @@ import type {
 } from '../../core/types'
 import { FileDrop } from '../FileDrop'
 
+export type ScenarioRole = 'baseline' | 'comparison' | 'assessment'
+
 type ModelsWorkspaceProps = {
   busy: boolean
-  existingCondition?: ConditionData
-  proposedCondition?: ConditionData
-  existingRuns: RunSelection[]
-  proposedRuns: RunSelection[]
-  existingRun: number
-  proposedRun: number
+  scenarios: ConditionData[]
+  baselineId: ConditionKey
+  comparisonId: ConditionKey
+  assessmentId: ConditionKey
+  runByScenario: Record<ConditionKey, number>
   onH5Files(files: File[]): void
   onRemoveCondition(key: ConditionKey): void
-  onExistingRunChange(index: number): void
-  onProposedRunChange(index: number): void
+  onRenameCondition(key: ConditionKey, label: string): void
+  onRoleChange(role: ScenarioRole, key: ConditionKey): void
+  onRunChange(key: ConditionKey, index: number): void
+  runsFor(key: ConditionKey): RunSelection[]
+}
+
+function complete(condition: ConditionData) {
+  return Boolean(
+    condition.geometryFileName &&
+      condition.datasetFileName &&
+      condition.projected &&
+      condition.datasets,
+  )
 }
 
 function ConditionStatus({
-  label,
-  conditionKey,
   condition,
   onRemove,
+  onRename,
 }: {
-  label: string
-  conditionKey: ConditionKey
-  condition?: ConditionData
+  condition: ConditionData
   onRemove(): void
+  onRename(label: string): void
 }) {
-  const geometryName = condition?.geometryFileName
-  const datasetName = condition?.datasetFileName
-  const complete = Boolean(geometryName && datasetName)
+  const geometryName = condition.geometryFileName
+  const datasetName = condition.datasetFileName
   return (
-    <div className={`condition-row${complete ? ' complete' : ''}`}>
+    <div className={`condition-row${complete(condition) ? ' complete' : ''}`}>
       <div className="condition-name">
-        <span className={`condition-code ${conditionKey.toLowerCase()}`}>
-          {conditionKey}
+        <span className={`condition-code ${condition.kind}`}>
+          {condition.key.slice(0, 3)}
         </span>
-        <strong>{label}</strong>
-        {condition ? (
-          <button
-            className="icon-button tiny danger condition-remove"
-            type="button"
-            title={`Remove ${label} inputs`}
-            aria-label={`Remove ${label} inputs`}
-            onClick={onRemove}
-          >
-            <Trash2 size={13} aria-hidden="true" />
-          </button>
-        ) : null}
+        <input
+          key={`${condition.key}:${condition.label}`}
+          className="condition-label-input"
+          aria-label={`${condition.key} scenario name`}
+          defaultValue={condition.label}
+          onBlur={(event) => onRename(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur()
+          }}
+        />
+        <button
+          className="icon-button tiny danger condition-remove"
+          type="button"
+          title={`Remove ${condition.label} inputs`}
+          aria-label={`Remove ${condition.label} inputs`}
+          onClick={onRemove}
+        >
+          <Trash2 size={13} aria-hidden="true" />
+        </button>
       </div>
       <div className="condition-badges">
         <span
@@ -60,110 +76,205 @@ function ConditionStatus({
           title={geometryName}
         >
           {geometryName
-            ? `${condition?.projected?.N.toLocaleString()} nodes`
+            ? `${condition.projected?.N.toLocaleString()} nodes`
             : 'geometry'}
         </span>
         <span
           className={datasetName ? 'status-badge ready' : 'status-badge'}
           title={datasetName}
         >
-          {datasetName ? `${condition?.datasets?.runs.length} runs` : 'datasets'}
+          {datasetName ? `${condition.datasets?.runs.length} runs` : 'datasets'}
         </span>
       </div>
     </div>
   )
 }
 
+function ScenarioSelect({
+  label,
+  value,
+  scenarios,
+  disabledKey,
+  onChange,
+}: {
+  label: string
+  value: ConditionKey
+  scenarios: ConditionData[]
+  disabledKey?: ConditionKey
+  onChange(key: ConditionKey): void
+}) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <select
+        value={value}
+        disabled={scenarios.length === 0}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {scenarios.length === 0 ? (
+          <option value="">Waiting for scenarios</option>
+        ) : (
+          scenarios.map((scenario) => (
+            <option
+              key={scenario.key}
+              value={scenario.key}
+              disabled={scenario.key === disabledKey}
+            >
+              {scenario.label}
+            </option>
+          ))
+        )}
+      </select>
+    </label>
+  )
+}
+
+function RunSelect({
+  label,
+  scenario,
+  runs,
+  value,
+  onChange,
+}: {
+  label: string
+  scenario?: ConditionData
+  runs: RunSelection[]
+  value: number
+  onChange(index: number): void
+}) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <select
+        value={value}
+        disabled={runs.length === 0}
+        onChange={(event) => onChange(Number(event.target.value))}
+      >
+        {runs.length === 0 ? (
+          <option value={0}>
+            Waiting for {scenario?.label ?? 'scenario'} files
+          </option>
+        ) : (
+          runs.map((selection) => (
+            <option key={selection.index} value={selection.index}>
+              {runDisplayName(selection.run.name)}
+            </option>
+          ))
+        )}
+      </select>
+    </label>
+  )
+}
+
 export function ModelsWorkspace({
   busy,
-  existingCondition,
-  proposedCondition,
-  existingRuns,
-  proposedRuns,
-  existingRun,
-  proposedRun,
+  scenarios,
+  baselineId,
+  comparisonId,
+  assessmentId,
+  runByScenario,
   onH5Files,
   onRemoveCondition,
-  onExistingRunChange,
-  onProposedRunChange,
+  onRenameCondition,
+  onRoleChange,
+  onRunChange,
+  runsFor,
 }: ModelsWorkspaceProps) {
+  const baseline = scenarios.find((scenario) => scenario.key === baselineId)
+  const comparison = scenarios.find(
+    (scenario) => scenario.key === comparisonId,
+  )
+  const assessment = scenarios.find(
+    (scenario) => scenario.key === assessmentId,
+  )
+
   return (
     <>
       <section className="workflow-block">
         <div className="block-title">
           <UploadCloud size={17} aria-hidden="true" />
-          <span>SMS mesh and results</span>
+          <span>SMS scenarios</span>
           <span className="file-chip">.h5</span>
         </div>
         <FileDrop
           accept=".h5"
-          title="Add geometry + datasets"
-          description="Existing and Proposed, any order"
+          title="Add scenario geometry + datasets"
+          description="Natural, Existing, Proposed, or alternatives"
           disabled={busy}
           testId="h5-file-drop"
           onFiles={onH5Files}
         />
         <div className="condition-list">
-          <ConditionStatus
-            label="Existing"
-            conditionKey="EX"
-            condition={existingCondition}
-            onRemove={() => onRemoveCondition('EX')}
-          />
-          <ConditionStatus
-            label="Proposed"
-            conditionKey="PR"
-            condition={proposedCondition}
-            onRemove={() => onRemoveCondition('PR')}
-          />
+          {scenarios.length === 0 ? (
+            <p className="empty-note">No hydraulic scenarios loaded.</p>
+          ) : (
+            scenarios.map((scenario) => (
+              <ConditionStatus
+                key={scenario.key}
+                condition={scenario}
+                onRemove={() => onRemoveCondition(scenario.key)}
+                onRename={(label) => onRenameCondition(scenario.key, label)}
+              />
+            ))
+          )}
         </div>
       </section>
 
       <section className="workflow-block">
         <div className="block-title">
           <RefreshCcw size={17} aria-hidden="true" />
-          <span>Run pairing</span>
+          <span>Figure roles</span>
         </div>
-        <label className="field">
-          <span>Existing run</span>
-          <select
-            value={existingRun}
-            disabled={existingRuns.length === 0}
-            onChange={(event) =>
-              onExistingRunChange(Number(event.target.value))
-            }
-          >
-            {existingRuns.length === 0 ? (
-              <option>Waiting for Existing files</option>
-            ) : (
-              existingRuns.map((selection) => (
-                <option key={selection.index} value={selection.index}>
-                  {runDisplayName(selection.run.name)}
-                </option>
-              ))
-            )}
-          </select>
-        </label>
-        <label className="field">
-          <span>Proposed run</span>
-          <select
-            value={proposedRun}
-            disabled={proposedRuns.length === 0}
-            onChange={(event) =>
-              onProposedRunChange(Number(event.target.value))
-            }
-          >
-            {proposedRuns.length === 0 ? (
-              <option>Waiting for Proposed files</option>
-            ) : (
-              proposedRuns.map((selection) => (
-                <option key={selection.index} value={selection.index}>
-                  {runDisplayName(selection.run.name)}
-                </option>
-              ))
-            )}
-          </select>
-        </label>
+        <ScenarioSelect
+          label="Baseline"
+          value={baselineId}
+          scenarios={scenarios}
+          disabledKey={comparisonId}
+          onChange={(key) => onRoleChange('baseline', key)}
+        />
+        <ScenarioSelect
+          label="Comparison"
+          value={comparisonId}
+          scenarios={scenarios}
+          disabledKey={baselineId}
+          onChange={(key) => onRoleChange('comparison', key)}
+        />
+        <ScenarioSelect
+          label="Assessment-line source"
+          value={assessmentId}
+          scenarios={scenarios}
+          onChange={(key) => onRoleChange('assessment', key)}
+        />
+      </section>
+
+      <section className="workflow-block">
+        <div className="block-title">
+          <RefreshCcw size={17} aria-hidden="true" />
+          <span>Selected runs</span>
+        </div>
+        <RunSelect
+          label={`${baseline?.label ?? 'Baseline'} run`}
+          scenario={baseline}
+          runs={runsFor(baselineId)}
+          value={runByScenario[baselineId] ?? 0}
+          onChange={(index) => onRunChange(baselineId, index)}
+        />
+        <RunSelect
+          label={`${comparison?.label ?? 'Comparison'} run`}
+          scenario={comparison}
+          runs={runsFor(comparisonId)}
+          value={runByScenario[comparisonId] ?? 0}
+          onChange={(index) => onRunChange(comparisonId, index)}
+        />
+        {assessmentId !== baselineId && assessmentId !== comparisonId ? (
+          <RunSelect
+            label={`${assessment?.label ?? 'Assessment'} run`}
+            scenario={assessment}
+            runs={runsFor(assessmentId)}
+            value={runByScenario[assessmentId] ?? 0}
+            onChange={(index) => onRunChange(assessmentId, index)}
+          />
+        ) : null}
       </section>
     </>
   )

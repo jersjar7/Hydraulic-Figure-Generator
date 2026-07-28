@@ -13,6 +13,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "node --import tsx --test tests/*.test.ts",
+    "test:natural": "tsx scripts/test-natural.ts",
     "test:site6": "tsx scripts/test-site6.ts"
   },
   "dependencies": {

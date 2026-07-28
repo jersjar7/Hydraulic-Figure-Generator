@@ -6,11 +6,13 @@ uploaded.
 
 The first figure module is the FRA WSE Difference map:
 
-- Detects Existing and Proposed geometry and datasets H5 files by contents.
-- Pairs selectable hydraulic runs.
-- Calculates Proposed minus Existing WSE where both conditions have results.
+- Detects Natural, Existing, Proposed, and consistently named alternative
+  geometry/datasets H5 pairs by contents and filenames.
+- Assigns any loaded scenario to Baseline, Comparison, and assessment-source
+  roles, with independently selectable runs.
+- Calculates Comparison minus Baseline WSE where both scenarios have results.
 - Classifies WSE differences to match the legend and outlines each class boundary.
-- Generates reusable Existing WSE assessment lines at whole-foot or half-foot
+- Generates reusable assessment-source WSE lines at whole-foot or half-foot
   elevation intervals, independently styled from difference boundaries.
 - Filters and stations assessment lines against an imported hydraulic
   centerline, with explicit review for ambiguous crossings.
@@ -72,6 +74,13 @@ writes a rendered PNG to the temporary directory:
 ```powershell
 $env:HFG_SITE6_DATA = "C:\path\to\Data h5 and shapefiles"
 npm run test:site6
+```
+
+An additional real-file acceptance test verifies Existing-to-Natural pairing:
+
+```powershell
+$env:HFG_NATURAL_DATA = "C:\path\to\Existing and Natural H5 files"
+npm run test:natural
 ```
 
 GitHub Pages deploys automatically from `main`.

@@ -7,6 +7,7 @@ import {
 import type {
   Bounds,
   ConditionData,
+  ConditionKind,
   ConditionKey,
   DatasetCatalog,
   DatasetRun,
@@ -142,17 +143,57 @@ export function conditionNodeCountsMatch(condition: ConditionData) {
 function conditionToken(text: string) {
   const existing = /(^|[^a-z0-9])(existing|ex)(?=[^a-z0-9]|$)/i.test(text)
   const proposed = /(^|[^a-z0-9])(proposed|pr|fhd)(?=[^a-z0-9]|$)/i.test(text)
-  if (existing && !proposed) return 'EX' as const
-  if (proposed && !existing) return 'PR' as const
+  const natural = /(^|[^a-z0-9])(natural|na)(?=[^a-z0-9]|$)/i.test(text)
+  if (existing && !proposed && !natural) {
+    return { key: 'EX', label: 'Existing', kind: 'existing' } as const
+  }
+  if (proposed && !existing && !natural) {
+    return { key: 'PR', label: 'Proposed', kind: 'proposed' } as const
+  }
+  if (natural && !existing && !proposed) {
+    return { key: 'NA', label: 'Natural', kind: 'natural' } as const
+  }
   return null
 }
 
-function conditionKey(name: string, fileName: string): ConditionKey | null {
-  return conditionToken(fileName) ?? conditionToken(name)
+export type ScenarioDescriptor = {
+  key: ConditionKey
+  label: string
+  kind: ConditionKind
 }
 
-function conditionLabel(key: ConditionKey) {
-  return key === 'EX' ? 'Existing' : 'Proposed'
+function customScenario(text: string): ScenarioDescriptor | null {
+  const stem = text.replace(/\.(h5|hdf5)$/i, '')
+  const label = stem
+    .replace(
+      /(^|[\s_-]+)(geometry|geo|datasets?|results?|mesh|srh-?2d)(?=$|[\s_-]+)/gi,
+      ' ',
+    )
+    .replace(/[\s_-]+/g, ' ')
+    .trim()
+  if (!label || /^(geometry|datasets?|results?|mesh)$/i.test(label)) return null
+  const key = label
+    .replace(/[^a-z0-9]+/gi, '_')
+    .replace(/^_+|_+$/g, '')
+    .toUpperCase()
+  if (!key) return null
+  return {
+    key,
+    label: label.replace(/\b\w/g, (letter) => letter.toUpperCase()),
+    kind: 'other',
+  }
+}
+
+export function inferScenarioDescriptor(
+  name: string,
+  fileName: string,
+): ScenarioDescriptor | null {
+  return (
+    conditionToken(fileName) ??
+    customScenario(fileName) ??
+    conditionToken(name) ??
+    customScenario(name)
+  )
 }
 
 function hasMeshGeometry(file: H5File, base: string) {
@@ -457,29 +498,35 @@ export class HydraulicEngine {
 
         if (isGeometryFile(h5File)) {
           const geometry = readGeometry(h5File)
-          const key = conditionKey(geometry.meshName, file.name)
-          if (!key) {
+          const descriptor = inferScenarioDescriptor(
+            geometry.meshName,
+            file.name,
+          )
+          if (!descriptor) {
             throw new Error(
-              'Geometry was found, but its condition could not be identified as Existing or Proposed.',
+              'Geometry was found, but its scenario could not be identified. Include a shared scenario name in the geometry and datasets filenames.',
             )
           }
-          const condition = this.getCondition(key)
+          const condition = this.getCondition(descriptor.key, descriptor)
           condition.geometryFileName = file.name
           condition.geometry = geometry
           condition.projected = projectGeometry(geometry)
           notices.push({
             level: 'success',
-            text: `${conditionLabel(key)} geometry: ${geometry.N.toLocaleString()} nodes`,
+            text: `${condition.label} geometry: ${geometry.N.toLocaleString()} nodes`,
           })
         } else if (isDatasetsFile(h5File)) {
           const datasets = readDatasets(h5File)
-          const key = conditionKey(datasets.runs[0]?.name ?? '', file.name)
-          if (!key) {
+          const descriptor = inferScenarioDescriptor(
+            datasets.runs[0]?.name ?? '',
+            file.name,
+          )
+          if (!descriptor) {
             throw new Error(
-              'Datasets were found, but their condition could not be identified as Existing or Proposed.',
+              'Datasets were found, but their scenario could not be identified. Include a shared scenario name in the geometry and datasets filenames.',
             )
           }
-          const condition = this.getCondition(key)
+          const condition = this.getCondition(descriptor.key, descriptor)
           this.releaseDataset(condition)
           condition.datasetFileName = file.name
           condition.datasetFile = h5File
@@ -488,7 +535,7 @@ export class HydraulicEngine {
           keepFileOpen = true
           notices.push({
             level: 'success',
-            text: `${conditionLabel(key)} datasets: ${datasets.runs.length} run${datasets.runs.length === 1 ? '' : 's'}`,
+            text: `${condition.label} datasets: ${datasets.runs.length} run${datasets.runs.length === 1 ? '' : 's'}`,
           })
         } else {
           notices.push({
@@ -521,7 +568,7 @@ export class HydraulicEngine {
       ) {
         notices.push({
           level: 'error',
-          text: `${conditionLabel(condition.key)} geometry and datasets have different node counts. Replace the mismatched input before generating.`,
+          text: `${condition.label} geometry and datasets have different node counts. Replace the mismatched input before generating.`,
         })
       }
     }
@@ -545,12 +592,34 @@ export class HydraulicEngine {
     this.valueCache.clear()
   }
 
-  getCondition(key: ConditionKey) {
+  getCondition(
+    key: ConditionKey,
+    descriptor?: Pick<ConditionData, 'label' | 'kind'>,
+  ) {
     const existing = this.conditions.get(key)
     if (existing) return existing
-    const condition: ConditionData = { key }
+    const condition: ConditionData = {
+      key,
+      label: descriptor?.label ?? key,
+      kind: descriptor?.kind ?? 'other',
+    }
     this.conditions.set(key, condition)
     return condition
+  }
+
+  scenarios() {
+    const order: Record<string, number> = { EX: 0, PR: 1, NA: 2 }
+    return [...this.conditions.values()].sort(
+      (first, second) =>
+        (order[first.key] ?? 10) - (order[second.key] ?? 10) ||
+        first.label.localeCompare(second.label),
+    )
+  }
+
+  renameCondition(key: ConditionKey, label: string) {
+    const condition = this.conditions.get(key)
+    const nextLabel = label.trim()
+    if (condition && nextLabel) condition.label = nextLabel
   }
 
   condition(key: ConditionKey) {
@@ -574,17 +643,21 @@ export class HydraulicEngine {
     }))
   }
 
-  isReady() {
-    return this.runOptions('EX').length > 0 && this.runOptions('PR').length > 0
+  isReady(baselineKey: ConditionKey, comparisonKey: ConditionKey) {
+    return (
+      baselineKey !== comparisonKey &&
+      this.runOptions(baselineKey).length > 0 &&
+      this.runOptions(comparisonKey).length > 0
+    )
   }
 
-  commonBounds() {
+  commonBounds(keys: Iterable<ConditionKey> = this.conditions.keys()) {
     let x0 = Number.POSITIVE_INFINITY
     let x1 = Number.NEGATIVE_INFINITY
     let y0 = Number.POSITIVE_INFINITY
     let y1 = Number.NEGATIVE_INFINITY
 
-    for (const key of ['EX', 'PR'] as const) {
+    for (const key of keys) {
       const bbox = this.conditions.get(key)?.projected?.bbox
       if (!bbox) continue
       x0 = Math.min(x0, bbox.x0)
@@ -605,14 +678,19 @@ export class HydraulicEngine {
   }
 
   buildWseDifference(
-    existingIndex: number,
-    proposedIndex: number,
+    baselineKey: ConditionKey,
+    baselineIndex: number,
+    comparisonKey: ConditionKey,
+    comparisonIndex: number,
     dryDepth: number,
   ): WseDifferenceScene {
-    const existing = this.runOptions('EX')[existingIndex]
-    const proposed = this.runOptions('PR')[proposedIndex]
+    const existing = this.runOptions(baselineKey)[baselineIndex]
+    const proposed = this.runOptions(comparisonKey)[comparisonIndex]
     if (!existing || !proposed) {
-      throw new Error('Select one Existing run and one Proposed run.')
+      throw new Error('Select one complete Baseline run and one complete Comparison run.')
+    }
+    if (baselineKey === comparisonKey) {
+      throw new Error('Baseline and Comparison must use different scenarios.')
     }
 
     const existingWseParam = findParam(existing.run, /Water_?Elev|WSE/i)
@@ -637,7 +715,7 @@ export class HydraulicEngine {
     const existingProjected = existing.condition.projected
     const proposedProjected = proposed.condition.projected
     if (!existingProjected || !proposedProjected) {
-      throw new Error('Both selected conditions need geometry.')
+      throw new Error('Both selected scenarios need geometry.')
     }
     if (
       existingWse.length !== existingProjected.N ||
@@ -719,25 +797,27 @@ export class HydraulicEngine {
     }
   }
 
-  buildExistingWseAssessmentLines(
-    existingIndex: number,
+  buildWseAssessmentLines(
+    scenarioKey: ConditionKey,
+    runIndex: number,
     dryDepth: number,
     interval: number,
   ): WseAssessmentLineCollection {
-    const existing = this.runOptions('EX')[existingIndex]
-    if (!existing) {
-      throw new Error('Select an Existing run before generating assessment lines.')
+    const selection = this.runOptions(scenarioKey)[runIndex]
+    const scenario = this.condition(scenarioKey)
+    if (!selection || !scenario) {
+      throw new Error('Select a complete assessment-source run before generating assessment lines.')
     }
-    const wseParam = findParam(existing.run, /Water_?Elev|WSE/i)
-    const depthParam = findParam(existing.run, /Water_?Depth/i)
+    const wseParam = findParam(selection.run, /Water_?Elev|WSE/i)
+    const depthParam = findParam(selection.run, /Water_?Depth/i)
     if (!wseParam || !depthParam) {
       throw new Error(
-        'The selected Existing run needs Water_Elev_ft and Water_Depth_ft datasets.',
+        `The selected ${scenario.label} run needs Water_Elev_ft and Water_Depth_ft datasets.`,
       )
     }
-    const projected = existing.condition.projected
+    const projected = selection.condition.projected
     if (!projected) {
-      throw new Error('Existing geometry is required for assessment lines.')
+      throw new Error(`${scenario.label} geometry is required for assessment lines.`)
     }
     const modelX = new Float64Array(projected.N)
     const modelY = new Float64Array(projected.N)
@@ -746,13 +826,17 @@ export class HydraulicEngine {
       modelY[index] = projected.xy[index * 2 + 1]
     }
     return generateWseAssessmentLines({
+      source:
+        scenarioKey === 'EX'
+          ? 'existing-wse'
+          : `${scenarioKey.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-wse`,
       mapX: projected.mx,
       mapY: projected.my,
       modelX,
       modelY,
       triangles: projected.tris,
-      wse: this.scalarValues(existing, wseParam),
-      depth: this.scalarValues(existing, depthParam),
+      wse: this.scalarValues(selection, wseParam),
+      depth: this.scalarValues(selection, depthParam),
       dryDepth,
       interval,
     })

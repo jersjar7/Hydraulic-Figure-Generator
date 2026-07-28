@@ -28,6 +28,7 @@ They cover:
 - Assessment WSE callout hit testing, global visibility, and positioned labels.
 - Persistence validation for centerline, per-line review decisions, and callout
   visibility and placement.
+- Known and arbitrary scenario-name detection plus version 11 role migration.
 
 Add a focused test for every bug fixed in a core module. Prefer small synthetic
 geometry where the expected engineering result can be calculated by hand.
@@ -50,6 +51,17 @@ generated PNGs.
 
 The Site 6 files are not committed and the acceptance test is therefore not a
 GitHub Actions gate.
+
+## Natural Scenario Acceptance
+
+The Natural acceptance test loads real Existing and Natural geometry/datasets
+pairs, verifies the scenario catalog and role readiness, pairs a shared event,
+and requires a nonempty WSE-difference result:
+
+```powershell
+$env:HFG_NATURAL_DATA = "C:\SMS\Report Figures\Site 6\Data"
+npm run test:natural
+```
 
 ## Next Coverage
 

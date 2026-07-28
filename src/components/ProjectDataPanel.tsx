@@ -16,6 +16,7 @@ import type { AssessmentPanelView } from '../features/assessment-lines/useAssess
 import { AssessmentWorkspace } from './project-data/AssessmentWorkspace'
 import { LayersWorkspace } from './project-data/LayersWorkspace'
 import { ModelsWorkspace } from './project-data/ModelsWorkspace'
+import type { ScenarioRole } from './project-data/ModelsWorkspace'
 import {
   ProjectWorkflowNav,
   type ProjectWorkflowSection,
@@ -33,12 +34,11 @@ type ProjectDataPanelProps = {
   mobileOpen: boolean
   collapsed: boolean
   busy: boolean
-  existingCondition?: ConditionData
-  proposedCondition?: ConditionData
-  existingRuns: RunSelection[]
-  proposedRuns: RunSelection[]
-  existingRun: number
-  proposedRun: number
+  scenarios: ConditionData[]
+  baselineId: ConditionKey
+  comparisonId: ConditionKey
+  assessmentId: ConditionKey
+  runByScenario: Record<ConditionKey, number>
   assessmentLines: WseAssessmentLineCollection
   assessmentReview: AssessmentReviewProps
   overlays: MapOverlay[]
@@ -49,8 +49,10 @@ type ProjectDataPanelProps = {
   onH5Files(files: File[]): void
   onOverlayFiles(files: File[]): void
   onRemoveCondition(key: ConditionKey): void
-  onExistingRunChange(index: number): void
-  onProposedRunChange(index: number): void
+  onRenameCondition(key: ConditionKey, label: string): void
+  onRoleChange(role: ScenarioRole, key: ConditionKey): void
+  onRunChange(key: ConditionKey, index: number): void
+  runsFor(key: ConditionKey): RunSelection[]
   onAssessmentIntervalChange(interval: number): void
   onGenerateAssessmentLines(): void
   onClearAssessmentLines(): void
@@ -73,12 +75,11 @@ export function ProjectDataPanel({
   mobileOpen,
   collapsed,
   busy,
-  existingCondition,
-  proposedCondition,
-  existingRuns,
-  proposedRuns,
-  existingRun,
-  proposedRun,
+  scenarios,
+  baselineId,
+  comparisonId,
+  assessmentId,
+  runByScenario,
   assessmentLines,
   assessmentReview,
   overlays,
@@ -89,8 +90,10 @@ export function ProjectDataPanel({
   onH5Files,
   onOverlayFiles,
   onRemoveCondition,
-  onExistingRunChange,
-  onProposedRunChange,
+  onRenameCondition,
+  onRoleChange,
+  onRunChange,
+  runsFor,
   onAssessmentIntervalChange,
   onGenerateAssessmentLines,
   onClearAssessmentLines,
@@ -101,15 +104,13 @@ export function ProjectDataPanel({
 }: ProjectDataPanelProps) {
   const [activeSection, setActiveSection] =
     useState<ProjectWorkflowSection>('models')
-  const loadedConditionCount =
-    Number(conditionComplete(existingCondition)) +
-    Number(conditionComplete(proposedCondition))
+  const loadedConditionCount = scenarios.filter(conditionComplete).length
   const stationed = assessmentReview.stationed
   const statuses: Record<ProjectWorkflowSection, ProjectWorkflowStatus> = {
     models: {
-      badge: `${loadedConditionCount}/2`,
+      badge: loadedConditionCount || undefined,
       tone:
-        loadedConditionCount === 2
+        loadedConditionCount >= 2
           ? 'ready'
           : loadedConditionCount > 0
             ? 'warning'
@@ -223,16 +224,17 @@ export function ProjectDataPanel({
             {activeSection === 'models' ? (
               <ModelsWorkspace
                 busy={busy}
-                existingCondition={existingCondition}
-                proposedCondition={proposedCondition}
-                existingRuns={existingRuns}
-                proposedRuns={proposedRuns}
-                existingRun={existingRun}
-                proposedRun={proposedRun}
+                scenarios={scenarios}
+                baselineId={baselineId}
+                comparisonId={comparisonId}
+                assessmentId={assessmentId}
+                runByScenario={runByScenario}
                 onH5Files={onH5Files}
                 onRemoveCondition={onRemoveCondition}
-                onExistingRunChange={onExistingRunChange}
-                onProposedRunChange={onProposedRunChange}
+                onRenameCondition={onRenameCondition}
+                onRoleChange={onRoleChange}
+                onRunChange={onRunChange}
+                runsFor={runsFor}
               />
             ) : null}
 
@@ -251,7 +253,11 @@ export function ProjectDataPanel({
             {activeSection === 'assessment' ? (
               <AssessmentWorkspace
                 busy={busy}
-                hasExistingRuns={existingRuns.length > 0}
+                hasSourceRuns={runsFor(assessmentId).length > 0}
+                sourceLabel={
+                  scenarios.find((scenario) => scenario.key === assessmentId)
+                    ?.label ?? 'Assessment source'
+                }
                 assessmentLines={assessmentLines}
                 stationed={stationed}
                 stationing={assessmentReview}
