@@ -91,6 +91,11 @@
   overflow: hidden;
 }
 
+.left-sidebar.assessment-review-mode {
+  padding: 0;
+  overflow: hidden;
+}
+
 .left-sidebar-rail {
   height: 100%;
   display: flex;
@@ -473,6 +478,10 @@ input[type="color"] {
   margin-top: 9px;
 }
 
+.assessment-review-button {
+  margin-top: 6px !important;
+}
+
 .assessment-summary {
   display: flex;
   align-items: center;
@@ -503,6 +512,222 @@ input[type="color"] {
   font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.assessment-review-shell {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.assessment-review-heading {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 8px;
+  min-height: 62px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.assessment-review-heading h2 {
+  margin: 1px 0 0;
+  color: #12263a;
+  font-size: 15px;
+}
+
+.assessment-stationing-controls {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 7px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.assessment-stationing-controls .field {
+  gap: 3px;
+}
+
+.assessment-stationing-controls .field > span {
+  font-size: 10px;
+}
+
+.assessment-stationing-controls select,
+.assessment-stationing-controls input {
+  height: 32px;
+  font-size: 11px;
+}
+
+.assessment-direction {
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+}
+
+.assessment-direction button {
+  min-width: 0;
+  min-height: 30px;
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+.assessment-guidance {
+  margin: -2px 0 0;
+  color: #68798b;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.assessment-review-tabs {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 8px 10px;
+  background: #f6f8fa;
+  border-bottom: 1px solid var(--border);
+}
+
+.assessment-review-tabs button {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  height: 31px;
+  padding: 0 6px;
+  color: #56697d;
+  background: #ffffff;
+  border: 1px solid #cbd7e2;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.assessment-review-tabs button.active {
+  color: #075d91;
+  background: #eaf5fb;
+  border-color: #6eb3da;
+}
+
+.assessment-review-tabs button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assessment-review-tabs button strong {
+  min-width: 16px;
+  font-size: 9px;
+  text-align: right;
+}
+
+.assessment-review-list {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 8px 9px 14px;
+  scrollbar-gutter: stable;
+}
+
+.assessment-review-row {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 6px;
+  padding: 5px;
+  background: #ffffff;
+  border: 1px solid #d4dee7;
+  border-radius: 5px;
+}
+
+.assessment-review-row.selected {
+  background: #edf7fc;
+  border-color: #5ca8d2;
+  box-shadow: inset 3px 0 #1677ad;
+}
+
+.assessment-review-select {
+  min-width: 0;
+  padding: 2px 3px;
+  color: #24384b;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.assessment-review-select > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+}
+
+.assessment-review-select b {
+  color: #075d91;
+  font-size: 10px;
+}
+
+.assessment-review-select small,
+.assessment-review-select em {
+  display: block;
+  margin-top: 2px;
+  color: #718095;
+  font-size: 9px;
+  font-style: normal;
+  line-height: 1.3;
+}
+
+.assessment-review-select em {
+  color: #9a5c10;
+}
+
+.assessment-intersection-select {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  padding: 0 3px;
+  color: #56697d;
+  font-size: 9px;
+}
+
+.assessment-intersection-select select {
+  min-width: 0;
+  height: 28px;
+  font-size: 10px;
+}
+
+.assessment-row-action {
+  justify-self: end;
+  padding: 2px 4px;
+  font-size: 9px;
+}
+
+.assessment-review-empty {
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 16px;
+  color: #6d7e90;
+  text-align: center;
+}
+
+.assessment-review-empty strong {
+  color: #34495e;
+  font-size: 11px;
+}
+
+.assessment-review-empty span {
+  max-width: 230px;
+  font-size: 9px;
+  line-height: 1.4;
 }
 
 .reset-project {
@@ -1811,15 +2036,14 @@ input[type="range"] {
   }
 
   .brand h1 {
-    max-width: 180px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 14px;
+    max-width: 112px;
+    font-size: 12px;
+    line-height: 1.08;
+    white-space: normal;
   }
 
   .brand p {
-    font-size: 9px;
+    display: none;
   }
 
   .topbar-actions .button {

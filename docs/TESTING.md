@@ -23,6 +23,9 @@ They cover:
 - Current project-file round trips.
 - Supported legacy project migration.
 - Rejection of future, wrong-figure, malformed, and unsafe project files.
+- Assessment-line contour stitching, directed centerline stationing, ambiguous
+  crossings, explicit exclusions, and station formatting.
+- Persistence validation for centerline and per-line review decisions.
 
 Add a focused test for every bug fixed in a core module. Prefer small synthetic
 geometry where the expected engineering result can be calculated by hand.
@@ -37,9 +40,11 @@ $env:HFG_SITE6_DATA = "C:\SMS\Report Figures\Site 6\Data"
 npm run test:site6
 ```
 
-It pins the accepted node counts and WSE extrema. Those golden values should
-change only after an intentional hydraulic-method update and visual review of
-both generated PNGs.
+It pins the accepted node counts, WSE extrema, centerline length, station range,
+and included/review/excluded assessment-line counts. It also verifies station
+labels with a raster-pixel comparison. Those golden values should change only
+after an intentional hydraulic-method update and visual review of both
+generated PNGs.
 
 The Site 6 files are not committed and the acceptance test is therefore not a
 GitHub Actions gate.
@@ -53,7 +58,7 @@ Before adding another figure type, add checked-in synthetic coverage for:
 - Nonoverlapping and differently spaced meshes.
 - CRS failures and projected shapefile fixtures.
 - Basemap failure and cache behavior.
-- Save-file migrations when version 9 is introduced.
+- Additional save-file migrations after version 10.
 
 Browser interaction tests should be added when a second figure workflow is
 introduced, because navigation and shared-shell regressions then become more

@@ -1,4 +1,5 @@
 import type {
+  AssessmentMapLayer,
   Anchor,
   Bounds,
   DifferenceLegendElementStyle,
@@ -682,6 +683,176 @@ function drawAssessmentLines(
     context.stroke()
   }
   context.restore()
+}
+
+function drawAssessmentSelection(
+  context: CanvasRenderingContext2D,
+  line: WseAssessmentLine | null | undefined,
+  view: View,
+  width: number,
+) {
+  if (!line || line.points.length < 2) return
+  context.save()
+  context.strokeStyle = 'rgba(255, 255, 255, 0.94)'
+  context.lineWidth = Math.max(width + 7, 9)
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
+  context.beginPath()
+  line.points.forEach((point, index) => {
+    const [x, y] = view.toLocal(point.x, point.y)
+    if (index === 0) context.moveTo(x, y)
+    else context.lineTo(x, y)
+  })
+  context.stroke()
+  context.strokeStyle = '#0077b6'
+  context.lineWidth = Math.max(width + 3, 5)
+  context.stroke()
+  context.restore()
+}
+
+function drawAssessmentStationLabels(
+  context: CanvasRenderingContext2D,
+  layer: AssessmentMapLayer,
+  view: View,
+  settings: FigureSettings,
+) {
+  if (!settings.showAssessmentStationLabels) return
+  const labels = layer.stationLabels ?? []
+  context.save()
+  context.font = `600 ${settings.assessmentStationLabelFontSize}px Arial, sans-serif`
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  context.lineWidth = 1
+  const placedBoxes: { x: number; y: number; width: number; height: number }[] =
+    []
+
+  labels.forEach((label, index) => {
+    const [x, y] = view.toScreen(label.point.x, label.point.y)
+    const [tangentX, tangentY] = view.toScreen(
+      label.point.x + label.tangent.x,
+      label.point.y + label.tangent.y,
+    )
+    const dx = tangentX - x
+    const dy = tangentY - y
+    const length = Math.hypot(dx, dy) || 1
+    const preferredSide =
+      settings.assessmentStationLabelSide === 'left'
+        ? 1
+        : settings.assessmentStationLabelSide === 'right'
+          ? -1
+          : index % 2 === 0
+            ? 1
+            : -1
+    const paddingX = 6
+    const paddingY = 4
+    const metrics = context.measureText(label.text)
+    const width = metrics.width + paddingX * 2
+    const height = settings.assessmentStationLabelFontSize + paddingY * 2
+    let labelX = x
+    let labelY = y
+    let box = { x: 0, y: 0, width, height }
+    let placed = false
+
+    for (let attempt = 0; attempt < 8 && !placed; attempt += 1) {
+      const side =
+        attempt % 2 === 0 ? preferredSide : -preferredSide
+      const step = Math.floor(attempt / 2)
+      const offset =
+        (settings.assessmentStationLabelOffset +
+          step * (height + 5)) *
+        side
+      labelX = x + (-dy / length) * offset
+      labelY = y + (dx / length) * offset
+      box = {
+        x: labelX - width / 2,
+        y: labelY - height / 2,
+        width,
+        height,
+      }
+      const insideFrame =
+        box.x >= 4 &&
+        box.y >= 4 &&
+        box.x + box.width <= context.canvas.width - 4 &&
+        box.y + box.height <= context.canvas.height - 4
+      const overlaps = placedBoxes.some(
+        (other) =>
+          box.x < other.x + other.width + 4 &&
+          box.x + box.width + 4 > other.x &&
+          box.y < other.y + other.height + 4 &&
+          box.y + box.height + 4 > other.y,
+      )
+      placed = insideFrame && !overlaps
+    }
+    placedBoxes.push(box)
+
+    context.strokeStyle = 'rgba(91, 108, 122, 0.72)'
+    context.beginPath()
+    context.moveTo(x, y)
+    context.lineTo(labelX, labelY)
+    context.stroke()
+    context.fillStyle = 'rgba(255, 255, 255, 0.9)'
+    context.beginPath()
+    context.roundRect(
+      labelX - width / 2,
+      labelY - height / 2,
+      width,
+      height,
+      3,
+    )
+    context.fill()
+    context.stroke()
+    context.fillStyle = settings.assessmentStationLabelColor
+    context.fillText(label.text, labelX, labelY + 0.5)
+  })
+  context.restore()
+}
+
+function drawAssessmentReviewMarkers(
+  context: CanvasRenderingContext2D,
+  layer: AssessmentMapLayer,
+  view: View,
+) {
+  context.save()
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  context.font = '700 14px Arial, sans-serif'
+
+  if (layer.endpoints) {
+    ;(['a', 'b'] as const).forEach((key) => {
+      const point = layer.endpoints?.[key]
+      if (!point) return
+      const [x, y] = view.toScreen(point.x, point.y)
+      context.fillStyle = '#ffffff'
+      context.strokeStyle = '#0067a3'
+      context.lineWidth = 3
+      context.beginPath()
+      context.arc(x, y, 13, 0, Math.PI * 2)
+      context.fill()
+      context.stroke()
+      context.fillStyle = '#06466c'
+      context.fillText(key.toUpperCase(), x, y + 0.5)
+    })
+  }
+
+  for (const marker of layer.intersections ?? []) {
+    const [x, y] = view.toScreen(marker.point.x, marker.point.y)
+    context.fillStyle = marker.selected ? '#0077b6' : '#ffffff'
+    context.strokeStyle = '#0077b6'
+    context.lineWidth = 2
+    context.beginPath()
+    context.arc(x, y, 11, 0, Math.PI * 2)
+    context.fill()
+    context.stroke()
+    context.fillStyle = marker.selected ? '#ffffff' : '#06466c'
+    context.fillText(String(marker.index + 1), x, y + 0.5)
+  }
+  context.restore()
+}
+
+function assessmentMapLayer(
+  input: AssessmentMapLayer | WseAssessmentLine[],
+): AssessmentMapLayer {
+  return Array.isArray(input) ? { lines: input } : input
 }
 
 function annotationScreenPoint(point: MapCoordinate, view: View) {
@@ -1804,7 +1975,7 @@ export async function renderWseDifferenceMap(
   commonBounds: Bounds,
   settings: FigureSettings,
   overlays: MapOverlay[],
-  assessmentLines: WseAssessmentLine[] = [],
+  assessmentInput: AssessmentMapLayer | WseAssessmentLine[] = [],
   annotations: MapAnnotation[] = [],
   selectedAnnotationId: string | null = null,
   selectedElementKey: MapElementKey | null = null,
@@ -1816,6 +1987,7 @@ export async function renderWseDifferenceMap(
   const context = canvas.getContext('2d')
   if (!context) throw new Error('This browser could not create the map canvas.')
   const view = makeView(commonBounds, frame, settings)
+  const assessmentLayer = assessmentMapLayer(assessmentInput)
   const legendBound =
     settings.legendBound && settings.legendBound > 0
       ? settings.legendBound
@@ -1881,15 +2053,25 @@ export async function renderWseDifferenceMap(
   if (settings.showAssessmentLines) {
     drawAssessmentLines(
       context,
-      assessmentLines,
+      assessmentLayer.lines,
       view,
       settings.assessmentLineColor,
+      settings.assessmentLineWidth,
+    )
+    drawAssessmentSelection(
+      context,
+      assessmentLayer.selectedLine,
+      view,
       settings.assessmentLineWidth,
     )
   }
   if (settings.showOverlays) drawOverlays(context, overlays, view)
   context.restore()
 
+  if (settings.showAssessmentLines) {
+    drawAssessmentStationLabels(context, assessmentLayer, view, settings)
+    drawAssessmentReviewMarkers(context, assessmentLayer, view)
+  }
   drawAnnotations(context, annotations, view)
   const selectedAnnotation = annotations.find(
     (annotation) => annotation.id === selectedAnnotationId,

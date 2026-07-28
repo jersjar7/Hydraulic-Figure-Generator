@@ -12,6 +12,8 @@ The first figure module is the FRA WSE Difference map:
 - Classifies WSE differences to match the legend and outlines each class boundary.
 - Generates reusable Existing WSE assessment lines at whole-foot or half-foot
   elevation intervals, independently styled from difference boundaries.
+- Filters and stations assessment lines against an imported hydraulic
+  centerline, with explicit review for ambiguous crossings.
 - Classifies newly inundated and newly dry areas using a configurable dry-depth
   threshold.
 - Reads zipped shapefile overlays.
@@ -27,11 +29,14 @@ src/
   core/
     hydraulicEngine.ts SMS H5 parsing, run metadata, mesh matching, WSE logic
     assessmentLines.ts Existing WSE contour generation and polyline stitching
+    centerlineStationing.ts Centerline extraction, intersections, and stationing
     meshMatching.ts    Exact spatial matching and mesh-spacing tolerance
     mapRenderer.ts     Canvas map composition and report elements
     projectFile.ts     Versioned save-file validation and migrations
     shapefile.ts       Zipped shapefile ingestion
     types.ts           Hydraulic and figure contracts
+  features/
+    assessment-lines/  Bounded review state and interface
   App.tsx              FRA WSE Difference workspace
 ```
 

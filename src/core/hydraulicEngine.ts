@@ -739,15 +739,22 @@ export class HydraulicEngine {
     if (!projected) {
       throw new Error('Existing geometry is required for assessment lines.')
     }
+    const modelX = new Float64Array(projected.N)
+    const modelY = new Float64Array(projected.N)
+    for (let index = 0; index < projected.N; index += 1) {
+      modelX[index] = projected.xy[index * 2]
+      modelY[index] = projected.xy[index * 2 + 1]
+    }
     return generateWseAssessmentLines({
-      x: projected.mx,
-      y: projected.my,
+      mapX: projected.mx,
+      mapY: projected.my,
+      modelX,
+      modelY,
       triangles: projected.tris,
       wse: this.scalarValues(existing, wseParam),
       depth: this.scalarValues(existing, depthParam),
       dryDepth,
       interval,
-      feetPerMapUnit: projected.ftPerMerc,
     })
   }
 

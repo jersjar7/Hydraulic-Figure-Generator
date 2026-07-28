@@ -19,6 +19,10 @@ DOM components, or application state.
 - `meshMatching.ts` owns spatial-index and comparison-point rules.
 - `assessmentLines.ts` turns an Existing WSE surface into reusable,
   level-aware map polylines. It does not own their UI or cartographic style.
+- `centerlineStationing.ts` transforms imported line overlays into the model
+  CRS, intersects them with assessment paths, and assigns directed stations.
+- `features/assessment-lines/` owns review navigation and user decisions. The
+  core stationing service remains independent of React.
 - `mapRenderer.ts` receives a complete scene and settings snapshot and renders
   it without mutating application state.
 - `projectFile.ts` is the only boundary for persisted project JSON.
@@ -53,7 +57,9 @@ top-level state variables. A new figure type should live under
 Global project inputs and reusable analysis objects belong in the left panel.
 The center workspace owns the selected output, while the right panel owns
 settings for that output. Future chart and table features should consume the
-shared assessment-line collection instead of duplicating it.
+shared, stationed assessment-line collection instead of duplicating it. Long
+review collections must scroll inside a fixed-height feature view rather than
+grow the workspace sidebar.
 
 ## Resource Ownership
 
@@ -70,3 +76,7 @@ Saved projects have both a `version` and a `figure` discriminator. Load all
 project JSON through `parseHydraulicFigureProject`; never cast parsed JSON
 directly into application types. Add an explicit migration and regression test
 whenever the persisted shape changes.
+
+Generated assessment geometry is reproducible and is not stored in the project.
+The selected centerline, downstream direction, starting station, and per-line
+review decisions are stored, then reapplied after the H5 files are regenerated.

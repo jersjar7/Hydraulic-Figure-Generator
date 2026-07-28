@@ -4,14 +4,15 @@ import { generateWseAssessmentLines } from '../src/core/assessmentLines'
 
 function squareInput() {
   return {
-    x: new Float64Array([0, 1, 1, 0]),
-    y: new Float64Array([0, 0, 1, 1]),
+    mapX: new Float64Array([0, 1, 1, 0]),
+    mapY: new Float64Array([0, 0, 1, 1]),
+    modelX: new Float64Array([0, 1, 1, 0]),
+    modelY: new Float64Array([0, 0, 1, 1]),
     triangles: new Uint32Array([0, 1, 2, 0, 2, 3]),
     wse: new Float32Array([10, 11, 11, 10]),
     depth: new Float32Array([1, 1, 1, 1]),
     dryDepth: 0,
     interval: 0.5,
-    feetPerMapUnit: 10,
   }
 }
 
@@ -28,7 +29,8 @@ describe('Existing WSE assessment lines', () => {
     assert.ok(
       middle.points.every((point) => Math.abs(point.x - 0.5) < 1e-6),
     )
-    assert.ok(Math.abs(middle.lengthFeet - 10) < 1e-6)
+    assert.ok(Math.abs(middle.lengthFeet - 1) < 1e-6)
+    assert.deepEqual(middle.modelPoints, middle.points)
   })
 
   it('supports whole-foot intervals independently from half-foot intervals', () => {
@@ -55,14 +57,15 @@ describe('Existing WSE assessment lines', () => {
 
   it('keeps disconnected paths as independent reusable lines', () => {
     const result = generateWseAssessmentLines({
-      x: new Float64Array([0, 1, 0, 3, 4, 3]),
-      y: new Float64Array([0, 0, 1, 0, 0, 1]),
+      mapX: new Float64Array([0, 1, 0, 3, 4, 3]),
+      mapY: new Float64Array([0, 0, 1, 0, 0, 1]),
+      modelX: new Float64Array([0, 1, 0, 3, 4, 3]),
+      modelY: new Float64Array([0, 0, 1, 0, 0, 1]),
       triangles: new Uint32Array([0, 1, 2, 3, 4, 5]),
       wse: new Float32Array([10, 11, 10, 10, 11, 10]),
       depth: new Float32Array([1, 1, 1, 1, 1, 1]),
       dryDepth: 0,
       interval: 0.5,
-      feetPerMapUnit: 1,
     })
 
     assert.equal(result.lines.length, 2)

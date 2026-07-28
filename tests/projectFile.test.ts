@@ -16,9 +16,26 @@ describe('hydraulic figure project files', () => {
         assessmentLineColor: '#d92d20',
         assessmentLineWidth: 2,
         showAssessmentLines: true,
+        showAssessmentStationLabels: true,
+        assessmentStationLabelColor: '#172b3a',
+        assessmentStationLabelFontSize: 18,
+        assessmentStationLabelOffset: 16,
+        assessmentStationLabelSide: 'alternate',
         basemapOpacity: 0.5,
       },
       selectedRuns: { existingRun: 1, proposedRun: 2 },
+      assessment: {
+        centerlineId: 'overlay-1:0:0',
+        direction: 'b-to-a',
+        startStation: 1000,
+        overrides: {
+          'existing-wse:52:0': {
+            included: true,
+            intersectionIndex: 1,
+          },
+          'existing-wse:53:0': { included: false },
+        },
+      },
     })
 
     const loaded = parseHydraulicFigureProject(JSON.stringify(saved))
@@ -27,6 +44,7 @@ describe('hydraulic figure project files', () => {
     assert.equal(loaded.figure, 'fra-wse-difference')
     assert.deepEqual(loaded.settings, saved.settings)
     assert.deepEqual(loaded.selectedRuns, saved.selectedRuns)
+    assert.deepEqual(loaded.assessment, saved.assessment)
   })
 
   it('migrates supported legacy settings and removes marker annotations', () => {
@@ -126,6 +144,21 @@ describe('hydraulic figure project files', () => {
           }),
         ),
       /requires at least 2 points/,
+    )
+    assert.throws(
+      () =>
+        parseHydraulicFigureProject(
+          JSON.stringify({
+            version: PROJECT_FILE_VERSION,
+            figure: 'fra-wse-difference',
+            assessment: {
+              overrides: {
+                'existing-wse:52:0': { intersectionIndex: -1 },
+              },
+            },
+          }),
+        ),
+      /intersectionIndex/,
     )
   })
 })

@@ -5,6 +5,11 @@ import { tmpdir } from 'node:os'
 import { createCanvas, loadImage } from '@napi-rs/canvas'
 import { cloneDefaultElementStyles } from '../src/core/figureElements'
 import {
+  extractCenterlineCandidates,
+  formatStation,
+  stationAssessmentLines,
+} from '../src/core/centerlineStationing'
+import {
   findWseDifferenceExtrema,
   formatWseExtremumLabel,
   HydraulicEngine,
@@ -22,6 +27,7 @@ import {
 } from '../src/core/mapRenderer'
 import { readShapefileOverlays } from '../src/core/shapefile'
 import type {
+  AssessmentMapLayer,
   FigureSettings,
   MapAnnotation,
 } from '../src/core/types'
@@ -54,10 +60,26 @@ async function availableFileName(candidates: string[]) {
 }
 
 const fileNames = await Promise.all([
-  availableFileName(['Existing_Datasets.h5', 'EX_datasets.h5']),
-  availableFileName(['Existing_Geometry.h5', 'EX_geometry.h5']),
-  availableFileName(['Proposed_Datasets.h5', 'PR_datasets.h5']),
-  availableFileName(['Proposed_Geometry.h5', 'PR_geometry.h5']),
+  availableFileName([
+    'Existing_Datasets.h5',
+    'Existing Datasets.h5',
+    'EX_datasets.h5',
+  ]),
+  availableFileName([
+    'Existing_Geometry.h5',
+    'Existing Geometry.h5',
+    'EX_geometry.h5',
+  ]),
+  availableFileName([
+    'Proposed_Datasets.h5',
+    'Proposed Datasets.h5',
+    'PR_datasets.h5',
+  ]),
+  availableFileName([
+    'Proposed_Geometry.h5',
+    'Proposed Geometry.h5',
+    'PR_geometry.h5',
+  ]),
 ])
 
 const files = await Promise.all(
@@ -190,7 +212,12 @@ if (
 }
 const overlayPath = join(
   dataDirectory,
-  await availableFileName(['Proposed_CL.zip', 'CL.zip']),
+  await availableFileName([
+    'Proposed_CL.zip',
+    'PR-CL.zip',
+    'CL.zip',
+    'Shapefiles Correctly Projected/PR-CL.zip',
+  ]),
 )
 const overlayFile = new File([await readFile(overlayPath)], basename(overlayPath))
 const overlayResult = await readShapefileOverlays(
@@ -201,6 +228,85 @@ const overlayFeatureCount = overlayResult.overlays.reduce(
   (total, overlay) => total + overlay.geojson.features.length,
   0,
 )
+if (!scene.projected.wkt) {
+  throw new Error('Site 6 Existing geometry is missing its model WKT.')
+}
+const centerlineCandidates = extractCenterlineCandidates(
+  overlayResult.overlays,
+  scene.projected.wkt,
+)
+if (centerlineCandidates.length !== 1) {
+  throw new Error(
+    `Expected one Site 6 centerline candidate, found ${centerlineCandidates.length}.`,
+  )
+}
+const stationedAssessmentLines = stationAssessmentLines(
+  assessmentLines.lines,
+  centerlineCandidates[0],
+  'a-to-b',
+  0,
+)
+if (stationedAssessmentLines.includedCount <= 0) {
+  throw new Error('Site 6 assessment lines did not intersect the centerline.')
+}
+const includedStationedLines = stationedAssessmentLines.items.filter(
+  (item) => item.status === 'included' && item.selectedIntersection,
+)
+const stationRange = includedStationedLines.reduce(
+  (range, item) => {
+    const station = item.selectedIntersection!.stationFeet
+    return [
+      Math.min(range[0], station),
+      Math.max(range[1], station),
+    ]
+  },
+  [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY],
+)
+const expectedStationing = {
+  centerlineVertices: 250,
+  centerlineLengthFeet: 620.833682850606,
+  included: 14,
+  review: 1,
+  excluded: 18,
+  minimumStation: 28.902797495734713,
+  maximumStation: 613.6849512605482,
+}
+if (
+  centerlineCandidates[0].modelPoints.length !==
+    expectedStationing.centerlineVertices ||
+  Math.abs(
+    centerlineCandidates[0].lengthFeet -
+      expectedStationing.centerlineLengthFeet,
+  ) > 1e-6 ||
+  stationedAssessmentLines.includedCount !== expectedStationing.included ||
+  stationedAssessmentLines.reviewCount !== expectedStationing.review ||
+  stationedAssessmentLines.excludedCount !== expectedStationing.excluded ||
+  Math.abs(stationRange[0] - expectedStationing.minimumStation) > 1e-6 ||
+  Math.abs(stationRange[1] - expectedStationing.maximumStation) > 1e-6
+) {
+  throw new Error(
+    `Site 6 centerline stationing changed: ${JSON.stringify({
+      actual: {
+        centerlineVertices: centerlineCandidates[0].modelPoints.length,
+        centerlineLengthFeet: centerlineCandidates[0].lengthFeet,
+        included: stationedAssessmentLines.includedCount,
+        review: stationedAssessmentLines.reviewCount,
+        excluded: stationedAssessmentLines.excludedCount,
+        stationRange,
+      },
+      expected: expectedStationing,
+    })}`,
+  )
+}
+const assessmentMapLayer: AssessmentMapLayer = {
+  lines: includedStationedLines.map((item) => item.line),
+  stationLabels: includedStationedLines.map((item) => ({
+    lineId: item.line.id,
+    text: formatStation(item.selectedIntersection!.stationFeet),
+    point: item.selectedIntersection!.mapPoint,
+    tangent: item.selectedIntersection!.mapTangent,
+  })),
+}
 
 if (
   scene.validDifferenceNodes <= 0 ||
@@ -219,6 +325,11 @@ const renderSettings: FigureSettings = {
   assessmentLineColor: '#d92d20',
   assessmentLineWidth: 2,
   showAssessmentLines: true,
+  showAssessmentStationLabels: true,
+  assessmentStationLabelColor: '#172b3a',
+  assessmentStationLabelFontSize: 18,
+  assessmentStationLabelOffset: 16,
+  assessmentStationLabelSide: 'alternate',
   differenceOutlineColor: '#111111',
   showDifferenceOutlines: true,
   showWetDry: true,
@@ -536,7 +647,7 @@ const landscapeElementBounds = await renderWseDifferenceMap(
   engine.commonBounds(),
   renderSettings,
   overlayResult.overlays,
-  assessmentLines.lines,
+  assessmentMapLayer,
   annotations,
   'leader',
   'title',
@@ -644,7 +755,7 @@ await Promise.all([
     engine.commonBounds(),
     assessmentTestSettings,
     [],
-    assessmentLines.lines,
+    assessmentMapLayer,
   ),
   renderWseDifferenceMap(
     noAssessmentCanvas as unknown as HTMLCanvasElement,
@@ -652,7 +763,7 @@ await Promise.all([
     engine.commonBounds(),
     { ...assessmentTestSettings, showAssessmentLines: false },
     [],
-    assessmentLines.lines,
+    assessmentMapLayer,
   ),
 ])
 const assessmentPixels = assessmentCanvas
@@ -674,6 +785,43 @@ for (let index = 0; index < assessmentPixels.length; index += 4) {
 if (renderedAssessmentPixels < 500) {
   throw new Error(
     `Existing WSE assessment lines appear missing (${renderedAssessmentPixels} changed pixels).`,
+  )
+}
+
+const noAssessmentLabelCanvas = createCanvas(1650, 1275)
+await renderWseDifferenceMap(
+  noAssessmentLabelCanvas as unknown as HTMLCanvasElement,
+  scene,
+  engine.commonBounds(),
+  { ...assessmentTestSettings, showAssessmentStationLabels: false },
+  [],
+  assessmentMapLayer,
+)
+const noAssessmentLabelPixels = noAssessmentLabelCanvas
+  .getContext('2d')
+  .getImageData(
+    0,
+    0,
+    noAssessmentLabelCanvas.width,
+    noAssessmentLabelCanvas.height,
+  ).data
+let renderedAssessmentLabelPixels = 0
+for (let index = 0; index < assessmentPixels.length; index += 4) {
+  const colorChange =
+    Math.abs(assessmentPixels[index] - noAssessmentLabelPixels[index]) +
+    Math.abs(
+      assessmentPixels[index + 1] -
+        noAssessmentLabelPixels[index + 1],
+    ) +
+    Math.abs(
+      assessmentPixels[index + 2] -
+        noAssessmentLabelPixels[index + 2],
+    )
+  if (colorChange > 45) renderedAssessmentLabelPixels += 1
+}
+if (renderedAssessmentLabelPixels < 150) {
+  throw new Error(
+    `Assessment station labels appear missing (${renderedAssessmentLabelPixels} changed pixels).`,
   )
 }
 
@@ -704,7 +852,7 @@ const portraitElementBounds = await renderWseDifferenceMap(
   engine.commonBounds(),
   portraitSettings,
   overlayResult.overlays,
-  assessmentLines.lines,
+  assessmentMapLayer,
   annotations,
 )
 if (
@@ -758,6 +906,14 @@ console.log(
       overlay: {
         layers: overlayResult.overlays.map((overlay) => overlay.name),
         features: overlayFeatureCount,
+        centerlineVertices: centerlineCandidates[0].modelPoints.length,
+        centerlineLengthFeet: centerlineCandidates[0].lengthFeet,
+        stationedAssessmentLines: {
+          included: stationedAssessmentLines.includedCount,
+          review: stationedAssessmentLines.reviewCount,
+          excluded: stationedAssessmentLines.excludedCount,
+          stationRange,
+        },
       },
       render: {
         outputPath,

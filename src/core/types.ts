@@ -222,6 +222,7 @@ export type WseAssessmentLine = {
   source: 'existing-wse'
   level: number
   points: MapCoordinate[]
+  modelPoints: MapCoordinate[]
   lengthFeet: number
 }
 
@@ -231,6 +232,82 @@ export type WseAssessmentLineCollection = {
   maximumLevel: number | null
   levelCount: number
   lines: WseAssessmentLine[]
+}
+
+export type CenterlineDirection = 'a-to-b' | 'b-to-a'
+
+export type CenterlineCandidate = {
+  id: string
+  overlayId: string
+  overlayName: string
+  featureIndex: number
+  partIndex: number
+  mapPoints: MapCoordinate[]
+  modelPoints: MapCoordinate[]
+  lengthFeet: number
+}
+
+export type AssessmentLineOverride = {
+  included?: boolean
+  intersectionIndex?: number
+}
+
+export type AssessmentLineOverrides = Record<string, AssessmentLineOverride>
+
+export type AssessmentIntersection = {
+  index: number
+  mapPoint: MapCoordinate
+  modelPoint: MapCoordinate
+  mapTangent: MapCoordinate
+  centerlineOffsetFeet: number
+  stationFeet: number
+}
+
+export type StationedAssessmentLineStatus =
+  | 'included'
+  | 'review'
+  | 'excluded'
+
+export type StationedAssessmentLine = {
+  line: WseAssessmentLine
+  intersections: AssessmentIntersection[]
+  selectedIntersectionIndex: number | null
+  selectedIntersection: AssessmentIntersection | null
+  status: StationedAssessmentLineStatus
+  reason: string
+  warnings: string[]
+}
+
+export type StationedAssessmentLineCollection = {
+  centerline: CenterlineCandidate
+  direction: CenterlineDirection
+  startStation: number
+  items: StationedAssessmentLine[]
+  includedCount: number
+  reviewCount: number
+  excludedCount: number
+}
+
+export type AssessmentStationLabel = {
+  lineId: string
+  text: string
+  point: MapCoordinate
+  tangent: MapCoordinate
+}
+
+export type AssessmentMapLayer = {
+  lines: WseAssessmentLine[]
+  stationLabels?: AssessmentStationLabel[]
+  selectedLine?: WseAssessmentLine | null
+  endpoints?: {
+    a: MapCoordinate
+    b: MapCoordinate
+  } | null
+  intersections?: {
+    point: MapCoordinate
+    index: number
+    selected: boolean
+  }[]
 }
 
 export type AnnotationTool =
@@ -289,6 +366,11 @@ export type FigureSettings = {
   assessmentLineColor: string
   assessmentLineWidth: number
   showAssessmentLines: boolean
+  showAssessmentStationLabels: boolean
+  assessmentStationLabelColor: string
+  assessmentStationLabelFontSize: number
+  assessmentStationLabelOffset: number
+  assessmentStationLabelSide: 'left' | 'right' | 'alternate'
   differenceOutlineColor: string
   showDifferenceOutlines: boolean
   showWetDry: boolean

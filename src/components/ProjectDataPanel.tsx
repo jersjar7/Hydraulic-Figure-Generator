@@ -17,7 +17,17 @@ import type {
   RunSelection,
   WseAssessmentLineCollection,
 } from '../core/types'
+import {
+  AssessmentLinesReviewPanel,
+  type AssessmentLinesReviewPanelProps,
+} from '../features/assessment-lines/AssessmentLinesReviewPanel'
+import type { AssessmentPanelView } from '../features/assessment-lines/useAssessmentWorkflow'
 import { FileDrop } from './FileDrop'
+
+type AssessmentReviewProps = AssessmentLinesReviewPanelProps & {
+  view: AssessmentPanelView
+  onOpen(): void
+}
 
 type ProjectDataPanelProps = {
   mobileOpen: boolean
@@ -30,6 +40,7 @@ type ProjectDataPanelProps = {
   existingRun: number
   proposedRun: number
   assessmentLines: WseAssessmentLineCollection
+  assessmentReview: AssessmentReviewProps
   overlays: MapOverlay[]
   showOverlays: boolean
   onCollapse(): void
@@ -113,6 +124,7 @@ export function ProjectDataPanel({
   existingRun,
   proposedRun,
   assessmentLines,
+  assessmentReview,
   overlays,
   showOverlays,
   onCollapse,
@@ -133,7 +145,7 @@ export function ProjectDataPanel({
 }: ProjectDataPanelProps) {
   return (
     <aside
-      className={`sidebar left-sidebar${mobileOpen ? ' is-mobile-open' : ''}${collapsed ? ' is-collapsed' : ''}`}
+      className={`sidebar left-sidebar${mobileOpen ? ' is-mobile-open' : ''}${collapsed ? ' is-collapsed' : ''}${assessmentReview.view === 'review' ? ' assessment-review-mode' : ''}`}
     >
       {collapsed ? (
         <div className="left-sidebar-rail">
@@ -180,11 +192,16 @@ export function ProjectDataPanel({
             type="button"
             title="Expand Existing WSE assessment lines"
             aria-label="Expand Existing WSE assessment lines"
-            onClick={onExpand}
+            onClick={() => {
+              onExpand()
+              if (assessmentLines.lines.length > 0) assessmentReview.onOpen()
+            }}
           >
             <Spline size={17} aria-hidden="true" />
           </button>
         </div>
+      ) : assessmentReview.view === 'review' ? (
+        <AssessmentLinesReviewPanel {...assessmentReview} />
       ) : (
         <>
           <div className="sidebar-heading">
@@ -322,29 +339,45 @@ export function ProjectDataPanel({
                 : 'Generate from Existing WSE'}
             </button>
             {assessmentLines.lines.length > 0 ? (
-              <div className="assessment-summary">
-                <div>
-                  <strong>
-                    {assessmentLines.lines.length.toLocaleString()} lines
-                  </strong>
-                  <span>
-                    {assessmentLines.levelCount.toLocaleString()} levels
-                    {assessmentLines.minimumLevel !== null &&
-                    assessmentLines.maximumLevel !== null
-                      ? ` · ${assessmentLines.minimumLevel.toFixed(1)}–${assessmentLines.maximumLevel.toFixed(1)} ft`
-                      : ''}
-                  </span>
+              <>
+                <div className="assessment-summary">
+                  <div>
+                    <strong>
+                      {assessmentLines.lines.length.toLocaleString()} lines
+                    </strong>
+                    <span>
+                      {assessmentLines.levelCount.toLocaleString()} levels
+                      {assessmentLines.minimumLevel !== null &&
+                      assessmentLines.maximumLevel !== null
+                        ? ` · ${assessmentLines.minimumLevel.toFixed(1)}–${assessmentLines.maximumLevel.toFixed(1)} ft`
+                        : ''}
+                    </span>
+                    {assessmentReview.stationed ? (
+                      <span>
+                        {assessmentReview.stationed.includedCount} included ·{' '}
+                        {assessmentReview.stationed.reviewCount} review
+                      </span>
+                    ) : null}
+                  </div>
+                  <button
+                    className="icon-button small danger"
+                    type="button"
+                    title="Clear assessment lines"
+                    aria-label="Clear assessment lines"
+                    onClick={onClearAssessmentLines}
+                  >
+                    <X size={14} aria-hidden="true" />
+                  </button>
                 </div>
                 <button
-                  className="icon-button small danger"
+                  className="button secondary compact full assessment-review-button"
                   type="button"
-                  title="Clear assessment lines"
-                  aria-label="Clear assessment lines"
-                  onClick={onClearAssessmentLines}
+                  onClick={assessmentReview.onOpen}
                 >
-                  <X size={14} aria-hidden="true" />
+                  <Spline size={15} aria-hidden="true" />
+                  Review and station
                 </button>
-              </div>
+              </>
             ) : (
               <p className="empty-note">
                 No reusable Existing WSE lines generated.

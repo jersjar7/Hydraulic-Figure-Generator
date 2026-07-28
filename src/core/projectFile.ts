@@ -1,5 +1,7 @@
 import type {
   AnnotationDefaults,
+  AssessmentLineOverrides,
+  CenterlineDirection,
   FigureSettings,
   MapAnnotation,
   MapElementPositions,
@@ -7,7 +9,7 @@ import type {
   MapOverlay,
 } from './types'
 
-export const PROJECT_FILE_VERSION = 9
+export const PROJECT_FILE_VERSION = 10
 export const PROJECT_FIGURE = 'fra-wse-difference'
 
 type PartialElementStyles = {
@@ -35,6 +37,14 @@ export type HydraulicFigureProject = {
     existingRun?: number
     proposedRun?: number
   }
+  assessment?: AssessmentWorkflowProject
+}
+
+export type AssessmentWorkflowProject = {
+  centerlineId?: string
+  direction?: CenterlineDirection
+  startStation?: number
+  overrides?: AssessmentLineOverrides
 }
 
 type UnknownRecord = Record<string, unknown>
@@ -216,6 +226,11 @@ function settings(value: unknown, path: string): ProjectSettings {
     assessmentLineColor: text,
     assessmentLineWidth: ranged(0.25, 12),
     showAssessmentLines: bool,
+    showAssessmentStationLabels: bool,
+    assessmentStationLabelColor: text,
+    assessmentStationLabelFontSize: ranged(6, 72),
+    assessmentStationLabelOffset: ranged(0, 120),
+    assessmentStationLabelSide: oneOf(['left', 'right', 'alternate']),
     differenceOutlineColor: text,
     showDifferenceOutlines: bool,
     showWetDry: bool,
@@ -352,6 +367,31 @@ function annotationDefaults(value: unknown, path: string) {
   }) as Partial<AnnotationDefaults>
 }
 
+function assessmentOverrides(value: unknown, path: string) {
+  const input = record(value, path)
+  const output: AssessmentLineOverrides = {}
+  for (const [lineId, lineOverride] of Object.entries(input)) {
+    const parsed = shape(lineOverride, `${path}.${lineId}`, {
+      included: bool,
+      intersectionIndex: integer(0),
+    }) as AssessmentLineOverrides[string]
+    output[lineId] = parsed
+  }
+  return output
+}
+
+function assessmentWorkflow(
+  value: unknown,
+  path: string,
+): AssessmentWorkflowProject {
+  return shape(value, path, {
+    centerlineId: text,
+    direction: oneOf(['a-to-b', 'b-to-a']),
+    startStation: finite,
+    overrides: assessmentOverrides,
+  }) as AssessmentWorkflowProject
+}
+
 export function createHydraulicFigureProject(
   project: Omit<HydraulicFigureProject, 'version' | 'figure'>,
 ): HydraulicFigureProject {
@@ -418,6 +458,12 @@ export function parseHydraulicFigureProject(
       existingRun: integer(0),
       proposedRun: integer(0),
     })
+  }
+  if (input.assessment !== undefined) {
+    result.assessment = assessmentWorkflow(
+      input.assessment,
+      'Project.assessment',
+    )
   }
   return result
 }

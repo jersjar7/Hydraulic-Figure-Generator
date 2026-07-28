@@ -81,9 +81,27 @@ the dry-depth threshold are contoured. The user may generate lines at 1.0-foot
 or 0.5-foot elevation intervals.
 
 Triangle contour segments are stitched into reusable map-coordinate polylines.
-Each line retains its Existing WSE elevation and length in feet. These objects
-are independent from the optional WSE-difference class outlines and are the
-hydraulic basis for future observation-line charts and summary tables.
+Each line retains parallel Web Mercator coordinates for drawing and original
+model coordinates for engineering measurements. Length and station values
+assume the SMS model horizontal units are feet.
+
+An imported line shapefile may be selected as the hydraulic centerline. Its
+WGS84 GeoJSON coordinates are transformed back into the Existing model CRS
+before intersection and station calculations. Endpoint A is the first imported
+vertex and endpoint B is the last. The user explicitly chooses which endpoint
+is downstream; stationing increases upstream from that endpoint and from the
+configured starting station.
+
+One centerline intersection is included automatically. No intersection is
+excluded. Multiple intersections or a collinear overlap require review. A user
+may select one of multiple intersections or explicitly exclude a line.
+Only included lines receive station labels and appear in exported figures.
+Review highlighting, endpoint badges, and numbered intersection markers are
+editor aids and are not exported.
+
+These objects are independent from the optional WSE-difference class outlines
+and are the hydraulic basis for future observation-line charts and summary
+tables.
 
 ## CRS And Units
 

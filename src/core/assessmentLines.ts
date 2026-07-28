@@ -8,24 +8,28 @@ const VALID = (value: number) =>
   value != null && Number.isFinite(value) && value > -900
 
 type Segment = {
-  start: MapCoordinate
-  end: MapCoordinate
+  startMap: MapCoordinate
+  endMap: MapCoordinate
+  startModel: MapCoordinate
+  endModel: MapCoordinate
 }
 
 type GraphNode = {
-  point: MapCoordinate
+  mapPoint: MapCoordinate
+  modelPoint: MapCoordinate
   edges: number[]
 }
 
 export type WseAssessmentLineInput = {
-  x: Float64Array
-  y: Float64Array
+  mapX: Float64Array
+  mapY: Float64Array
+  modelX: Float64Array
+  modelY: Float64Array
   triangles: Uint32Array
   wse: Float32Array
   depth: Float32Array
   dryDepth: number
   interval: number
-  feetPerMapUnit: number
 }
 
 function contourLevels(minimum: number, maximum: number, interval: number) {
@@ -71,7 +75,8 @@ function triangleSegments(
       continue
     }
 
-    const intersections: MapCoordinate[] = []
+    const mapIntersections: MapCoordinate[] = []
+    const modelIntersections: MapCoordinate[] = []
     for (let edgeIndex = 0; edgeIndex < 3; edgeIndex += 1) {
       const first = ids[edgeIndex]
       const second = ids[(edgeIndex + 1) % 3]
@@ -83,14 +88,31 @@ function triangleSegments(
       ) {
         const fraction =
           (sampledLevel - firstValue) / (secondValue - firstValue)
-        intersections.push({
-          x: input.x[first] + (input.x[second] - input.x[first]) * fraction,
-          y: input.y[first] + (input.y[second] - input.y[first]) * fraction,
+        mapIntersections.push({
+          x:
+            input.mapX[first] +
+            (input.mapX[second] - input.mapX[first]) * fraction,
+          y:
+            input.mapY[first] +
+            (input.mapY[second] - input.mapY[first]) * fraction,
+        })
+        modelIntersections.push({
+          x:
+            input.modelX[first] +
+            (input.modelX[second] - input.modelX[first]) * fraction,
+          y:
+            input.modelY[first] +
+            (input.modelY[second] - input.modelY[first]) * fraction,
         })
       }
     }
-    if (intersections.length === 2) {
-      segments.push({ start: intersections[0], end: intersections[1] })
+    if (mapIntersections.length === 2 && modelIntersections.length === 2) {
+      segments.push({
+        startMap: mapIntersections[0],
+        endMap: mapIntersections[1],
+        startModel: modelIntersections[0],
+        endModel: modelIntersections[1],
+      })
     }
   }
   return segments
@@ -104,36 +126,45 @@ function stitchSegments(segments: Segment[], tolerance: number) {
   const nodes = new Map<string, GraphNode>()
   const edgeNodes: [string, string][] = []
 
-  const addNode = (point: MapCoordinate, edgeIndex: number) => {
-    const key = coordinateKey(point, tolerance)
+  const addNode = (
+    modelPoint: MapCoordinate,
+    mapPoint: MapCoordinate,
+    edgeIndex: number,
+  ) => {
+    const key = coordinateKey(modelPoint, tolerance)
     const current = nodes.get(key)
     if (current) {
       current.edges.push(edgeIndex)
     } else {
-      nodes.set(key, { point, edges: [edgeIndex] })
+      nodes.set(key, { mapPoint, modelPoint, edges: [edgeIndex] })
     }
     return key
   }
 
   segments.forEach((segment, edgeIndex) => {
     edgeNodes.push([
-      addNode(segment.start, edgeIndex),
-      addNode(segment.end, edgeIndex),
+      addNode(segment.startModel, segment.startMap, edgeIndex),
+      addNode(segment.endModel, segment.endMap, edgeIndex),
     ])
   })
 
   const visited = new Uint8Array(segments.length)
-  const paths: MapCoordinate[][] = []
+  const paths: { mapPoints: MapCoordinate[]; modelPoints: MapCoordinate[] }[] =
+    []
 
   const walk = (startKey: string) => {
-    const points: MapCoordinate[] = []
+    const mapPoints: MapCoordinate[] = []
+    const modelPoints: MapCoordinate[] = []
     let currentKey = startKey
     let previousEdge = -1
 
     while (true) {
       const node = nodes.get(currentKey)
       if (!node) break
-      if (points.length === 0) points.push(node.point)
+      if (mapPoints.length === 0) {
+        mapPoints.push(node.mapPoint)
+        modelPoints.push(node.modelPoint)
+      }
       const nextEdge = node.edges.find(
         (edgeIndex) => edgeIndex !== previousEdge && !visited[edgeIndex],
       )
@@ -143,23 +174,24 @@ function stitchSegments(segments: Segment[], tolerance: number) {
       const nextKey = firstKey === currentKey ? secondKey : firstKey
       const nextNode = nodes.get(nextKey)
       if (!nextNode) break
-      points.push(nextNode.point)
+      mapPoints.push(nextNode.mapPoint)
+      modelPoints.push(nextNode.modelPoint)
       previousEdge = nextEdge
       currentKey = nextKey
       if (currentKey === startKey) break
     }
-    return points
+    return { mapPoints, modelPoints }
   }
 
   for (const [key, node] of nodes) {
     if (node.edges.length !== 1) continue
     const path = walk(key)
-    if (path.length >= 2) paths.push(path)
+    if (path.mapPoints.length >= 2) paths.push(path)
   }
   for (let edgeIndex = 0; edgeIndex < segments.length; edgeIndex += 1) {
     if (visited[edgeIndex]) continue
     const path = walk(edgeNodes[edgeIndex][0])
-    if (path.length >= 2) paths.push(path)
+    if (path.mapPoints.length >= 2) paths.push(path)
   }
   return paths
 }
@@ -181,13 +213,12 @@ export function generateWseAssessmentLines(
   if (!Number.isFinite(input.interval) || input.interval <= 0) {
     throw new Error('Assessment-line interval must be greater than zero.')
   }
-  if (!Number.isFinite(input.feetPerMapUnit) || input.feetPerMapUnit <= 0) {
-    throw new Error('Assessment-line map units could not be converted to feet.')
-  }
   if (
-    input.x.length !== input.y.length ||
-    input.x.length !== input.wse.length ||
-    input.x.length !== input.depth.length
+    input.mapX.length !== input.mapY.length ||
+    input.mapX.length !== input.modelX.length ||
+    input.mapX.length !== input.modelY.length ||
+    input.mapX.length !== input.wse.length ||
+    input.mapX.length !== input.depth.length
   ) {
     throw new Error('Assessment-line coordinate and result arrays must align.')
   }
@@ -219,11 +250,11 @@ export function generateWseAssessmentLines(
   let maximumX = Number.NEGATIVE_INFINITY
   let minimumY = Number.POSITIVE_INFINITY
   let maximumY = Number.NEGATIVE_INFINITY
-  for (let index = 0; index < input.x.length; index += 1) {
-    minimumX = Math.min(minimumX, input.x[index])
-    maximumX = Math.max(maximumX, input.x[index])
-    minimumY = Math.min(minimumY, input.y[index])
-    maximumY = Math.max(maximumY, input.y[index])
+  for (let index = 0; index < input.modelX.length; index += 1) {
+    minimumX = Math.min(minimumX, input.modelX[index])
+    maximumX = Math.max(maximumX, input.modelX[index])
+    minimumY = Math.min(minimumY, input.modelY[index])
+    maximumY = Math.max(maximumY, input.modelY[index])
   }
   const extent = Math.max(maximumX - minimumX, maximumY - minimumY, 1)
   const stitchTolerance = extent * 1e-8
@@ -233,14 +264,18 @@ export function generateWseAssessmentLines(
     const paths = stitchSegments(
       triangleSegments(input, level),
       stitchTolerance,
-    ).sort((first, second) => pathLength(second) - pathLength(first))
-    paths.forEach((points, pathIndex) => {
+    ).sort(
+      (first, second) =>
+        pathLength(second.modelPoints) - pathLength(first.modelPoints),
+    )
+    paths.forEach(({ mapPoints, modelPoints }, pathIndex) => {
       lines.push({
         id: `existing-wse:${level.toFixed(6)}:${pathIndex}`,
         source: 'existing-wse',
         level,
-        points,
-        lengthFeet: pathLength(points) * input.feetPerMapUnit,
+        points: mapPoints,
+        modelPoints,
+        lengthFeet: pathLength(modelPoints),
       })
     })
   }

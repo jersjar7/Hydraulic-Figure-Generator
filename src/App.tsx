@@ -54,6 +54,11 @@ import {
   createDefaultFigureSettings,
 } from './core/defaults'
 import {
+  extractCenterlineCandidates,
+  formatStation,
+  stationAssessmentLines,
+} from './core/centerlineStationing'
+import {
   DEFAULT_ELEMENT_STYLES,
   mergeElementStyles,
 } from './core/figureElements'
@@ -82,8 +87,10 @@ import {
   parseHydraulicFigureProject,
 } from './core/projectFile'
 import { readShapefileOverlays } from './core/shapefile'
+import { useAssessmentWorkflow } from './features/assessment-lines/useAssessmentWorkflow'
 import type {
   AnnotationDefaults,
+  AssessmentMapLayer,
   AnnotationTool,
   Bounds,
   ConditionKey,
@@ -96,7 +103,7 @@ import type {
   MapElementStyles,
   MapOverlay,
   ResultLabelField,
-  WseAssessmentLineCollection,
+  WseAssessmentLine,
   WseExtremumKind,
   WseDifferenceScene,
 } from './core/types'
@@ -176,16 +183,6 @@ const RESULT_LABEL_OPTIONS: { value: ResultLabelField; label: string }[] = [
 const numeric = (value: string, fallback = 0) => {
   const parsed = Number.parseFloat(value)
   return Number.isFinite(parsed) ? parsed : fallback
-}
-
-function emptyAssessmentLines(interval: number): WseAssessmentLineCollection {
-  return {
-    interval,
-    minimumLevel: null,
-    maximumLevel: null,
-    levelCount: 0,
-    lines: [],
-  }
 }
 
 type AnnotationDrag = {
@@ -287,15 +284,64 @@ function defaultEditorView(annotation: MapAnnotation): AnnotationEditorView {
   return annotationHasContentEditor(annotation) ? 'content' : 'style'
 }
 
+function pointSegmentDistance(
+  point: { x: number; y: number },
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+) {
+  const dx = end.x - start.x
+  const dy = end.y - start.y
+  const lengthSquared = dx * dx + dy * dy
+  if (lengthSquared === 0) {
+    return Math.hypot(point.x - start.x, point.y - start.y)
+  }
+  const fraction = Math.max(
+    0,
+    Math.min(
+      1,
+      ((point.x - start.x) * dx + (point.y - start.y) * dy) /
+        lengthSquared,
+    ),
+  )
+  return Math.hypot(
+    point.x - (start.x + dx * fraction),
+    point.y - (start.y + dy * fraction),
+  )
+}
+
+function assessmentLineAt(
+  lines: WseAssessmentLine[],
+  bounds: Bounds,
+  settings: FigureSettings,
+  point: { x: number; y: number },
+) {
+  let closest: { line: WseAssessmentLine; distance: number } | null = null
+  for (const line of lines) {
+    for (let index = 1; index < line.points.length; index += 1) {
+      const start = mapPointToCanvas(
+        line.points[index - 1],
+        bounds,
+        settings,
+      )
+      const end = mapPointToCanvas(line.points[index], bounds, settings)
+      const distance = pointSegmentDistance(point, start, end)
+      if (distance <= 10 && (!closest || distance < closest.distance)) {
+        closest = { line, distance }
+      }
+    }
+  }
+  return closest?.line ?? null
+}
+
 function App() {
   const [engine] = useState(() => new HydraulicEngine())
   const [dataVersion, setDataVersion] = useState(0)
   const [settings, setSettings] = useState<FigureSettings>(
     createDefaultFigureSettings,
   )
-  const [assessmentLines, setAssessmentLines] = useState(() =>
-    emptyAssessmentLines(1),
-  )
+  const assessmentWorkflow = useAssessmentWorkflow(1)
+  const assessmentState = assessmentWorkflow.state
+  const assessmentLines = assessmentState.collection
   const [existingRun, setExistingRun] = useState(0)
   const [proposedRun, setProposedRun] = useState(0)
   const [overlays, setOverlays] = useState<MapOverlay[]>([])
@@ -370,6 +416,111 @@ function App() {
   const extremaCalloutCount = annotations.filter(
     (annotation) => annotation.hydraulicExtremum,
   ).length
+  const centerlineCandidates = useMemo(() => {
+    const modelWkt = existingCondition?.geometry?.wkt
+    if (!modelWkt) return []
+    try {
+      return extractCenterlineCandidates(overlays, modelWkt)
+    } catch {
+      return []
+    }
+  }, [existingCondition?.geometry?.wkt, overlays])
+  const selectedCenterline =
+    centerlineCandidates.find(
+      (candidate) => candidate.id === assessmentState.centerlineId,
+    ) ?? null
+  const stationedAssessmentLines = useMemo(
+    () =>
+      selectedCenterline
+        ? stationAssessmentLines(
+            assessmentLines.lines,
+            selectedCenterline,
+            assessmentState.direction,
+            assessmentState.startStation,
+            assessmentState.overrides,
+          )
+        : null,
+    [
+      assessmentLines.lines,
+      assessmentState.direction,
+      assessmentState.overrides,
+      assessmentState.startStation,
+      selectedCenterline,
+    ],
+  )
+  const assessmentExportLayer = useMemo<AssessmentMapLayer>(() => {
+    if (!stationedAssessmentLines) return { lines: assessmentLines.lines }
+    const included = stationedAssessmentLines.items.filter(
+      (item) => item.status === 'included' && item.selectedIntersection,
+    )
+    return {
+      lines: included.map((item) => item.line),
+      stationLabels: included.map((item) => ({
+        lineId: item.line.id,
+        text: formatStation(item.selectedIntersection!.stationFeet),
+        point: item.selectedIntersection!.mapPoint,
+        tangent: item.selectedIntersection!.mapTangent,
+      })),
+    }
+  }, [assessmentLines.lines, stationedAssessmentLines])
+  const assessmentDisplayLayer = useMemo<AssessmentMapLayer>(() => {
+    if (
+      assessmentState.panelView !== 'review' ||
+      !stationedAssessmentLines
+    ) {
+      return assessmentExportLayer
+    }
+    const selectedItem =
+      stationedAssessmentLines.items.find(
+        (item) => item.line.id === assessmentState.selectedLineId,
+      ) ?? null
+    return {
+      ...assessmentExportLayer,
+      selectedLine: selectedItem?.line ?? null,
+      endpoints: {
+        a: stationedAssessmentLines.centerline.mapPoints[0],
+        b: stationedAssessmentLines.centerline.mapPoints.at(-1)!,
+      },
+      intersections:
+        selectedItem?.intersections.map((intersection) => ({
+          point: intersection.mapPoint,
+          index: intersection.index,
+          selected:
+            intersection.index === selectedItem.selectedIntersectionIndex,
+        })) ?? [],
+    }
+  }, [
+    assessmentExportLayer,
+    assessmentState.panelView,
+    assessmentState.selectedLineId,
+    stationedAssessmentLines,
+  ])
+
+  useEffect(() => {
+    if (
+      assessmentState.centerlineId &&
+      existingCondition?.geometry?.wkt &&
+      overlays.length > 0 &&
+      !centerlineCandidates.some(
+        (candidate) => candidate.id === assessmentState.centerlineId,
+      )
+    ) {
+      assessmentWorkflow.setCenterline('')
+      return
+    }
+    if (
+      !assessmentState.centerlineId &&
+      centerlineCandidates.length === 1
+    ) {
+      assessmentWorkflow.setCenterline(centerlineCandidates[0].id)
+    }
+  }, [
+    assessmentState.centerlineId,
+    centerlineCandidates,
+    existingCondition?.geometry?.wkt,
+    overlays.length,
+    assessmentWorkflow,
+  ])
 
   useEffect(() => {
     if (
@@ -424,7 +575,7 @@ function App() {
   const handleH5Files = async (files: File[]) => {
     setBusy(true)
     setScene(null)
-    setAssessmentLines(emptyAssessmentLines(settings.assessmentLineInterval))
+    assessmentWorkflow.invalidate(settings.assessmentLineInterval)
     try {
       const incoming = await engine.ingest(
         files.filter((file) => /\.h5$/i.test(file.name)),
@@ -459,7 +610,7 @@ function App() {
     }
     setScene(null)
     if (key === 'EX') {
-      setAssessmentLines(emptyAssessmentLines(settings.assessmentLineInterval))
+      assessmentWorkflow.clear(settings.assessmentLineInterval)
     }
     setDataVersion((value) => value + 1)
   }
@@ -477,7 +628,7 @@ function App() {
           'No Existing WSE assessment lines were found at this interval and dry-depth threshold.',
         )
       }
-      setAssessmentLines(collection)
+      assessmentWorkflow.setCollection(collection)
       appendNotices([
         {
           level: 'success',
@@ -517,7 +668,7 @@ function App() {
         settings.dryDepth,
         settings.assessmentLineInterval,
       )
-      setAssessmentLines(nextAssessmentLines)
+      assessmentWorkflow.setCollection(nextAssessmentLines)
       appendNotices([
         {
           level: 'success',
@@ -555,7 +706,7 @@ function App() {
       engine.commonBounds(),
       settings,
       overlays,
-      assessmentLines.lines,
+      assessmentDisplayLayer,
       annotations,
       selectedAnnotationId,
       activeSettingsSection === 'elements' ? activeElement : null,
@@ -594,7 +745,7 @@ function App() {
     return () => controller.abort()
   }, [
     annotations,
-    assessmentLines.lines,
+    assessmentDisplayLayer,
     annotationDragging,
     activeElement,
     activeSettingsSection,
@@ -1159,6 +1310,26 @@ function App() {
       }
     }
 
+    if (
+      assessmentState.panelView === 'review' &&
+      stationedAssessmentLines
+    ) {
+      const line = assessmentLineAt(
+        stationedAssessmentLines.items.map((item) => item.line),
+        engine.commonBounds(),
+        settings,
+        screenPoint,
+      )
+      if (line) {
+        const item = stationedAssessmentLines.items.find(
+          (candidate) => candidate.line.id === line.id,
+        )
+        if (item) assessmentWorkflow.setReviewTab(item.status)
+        assessmentWorkflow.selectLine(line.id)
+        return
+      }
+    }
+
     if (annotationTool === 'extrema') return
 
     const bounds = engine.commonBounds()
@@ -1566,7 +1737,7 @@ function App() {
     setHoveredElement(null)
     setActiveElement('title')
     setScene(null)
-    setAssessmentLines(emptyAssessmentLines(1))
+    assessmentWorkflow.reset(1)
     setNotices([])
     setExistingRun(0)
     setProposedRun(0)
@@ -1584,7 +1755,7 @@ function App() {
         engine.commonBounds(),
         settings,
         overlays,
-        assessmentLines.lines,
+        assessmentExportLayer,
         annotations,
       )
       exportCanvas.toBlob((blob) => {
@@ -1615,6 +1786,12 @@ function App() {
       annotations,
       annotationDefaults,
       selectedRuns: { existingRun, proposedRun },
+      assessment: {
+        centerlineId: assessmentState.centerlineId,
+        direction: assessmentState.direction,
+        startStation: assessmentState.startStation,
+        overrides: assessmentState.overrides,
+      },
     })
     const blob = new Blob([JSON.stringify(project, null, 2)], {
       type: 'application/json',
@@ -1679,12 +1856,6 @@ function App() {
             return merged
           })(),
         }))
-        setAssessmentLines(
-          emptyAssessmentLines(
-            project.settings.assessmentLineInterval ??
-              settings.assessmentLineInterval,
-          ),
-        )
       }
       if (Array.isArray(project.overlays)) setOverlays(project.overlays)
       if (Array.isArray(project.annotations)) {
@@ -1705,11 +1876,11 @@ function App() {
       setExistingRun(project.selectedRuns?.existingRun ?? 0)
       setProposedRun(project.selectedRuns?.proposedRun ?? 0)
       setScene(null)
-      if (!project.settings) {
-        setAssessmentLines(
-          emptyAssessmentLines(settings.assessmentLineInterval),
-        )
-      }
+      assessmentWorkflow.load(
+        project.assessment ?? {},
+        project.settings?.assessmentLineInterval ??
+          settings.assessmentLineInterval,
+      )
       appendNotices([
         {
           level: 'success',
@@ -1796,6 +1967,28 @@ function App() {
           existingRun={existingRun}
           proposedRun={proposedRun}
           assessmentLines={assessmentLines}
+          assessmentReview={{
+            view: assessmentState.panelView,
+            candidates: centerlineCandidates,
+            centerlineId: assessmentState.centerlineId,
+            direction: assessmentState.direction,
+            startStation: assessmentState.startStation,
+            reviewTab: assessmentState.reviewTab,
+            selectedLineId: assessmentState.selectedLineId,
+            stationed: stationedAssessmentLines,
+            onOpen: assessmentWorkflow.openReview,
+            onBack: assessmentWorkflow.closeReview,
+            onMobileClose: () => setLeftOpen(false),
+            onCenterlineChange: assessmentWorkflow.setCenterline,
+            onDirectionChange: assessmentWorkflow.setDirection,
+            onStartStationChange: assessmentWorkflow.setStartStation,
+            onReviewTabChange: assessmentWorkflow.setReviewTab,
+            onSelectLine: (id) =>
+              assessmentWorkflow.selectLine(
+                assessmentState.selectedLineId === id ? null : id,
+              ),
+            onSetOverride: assessmentWorkflow.setOverride,
+          }}
           overlays={overlays}
           showOverlays={settings.showOverlays}
           onCollapse={() => setLeftCollapsed(true)}
@@ -1807,9 +2000,7 @@ function App() {
           onExistingRunChange={(index) => {
             setExistingRun(index)
             setScene(null)
-            setAssessmentLines(
-              emptyAssessmentLines(settings.assessmentLineInterval),
-            )
+            assessmentWorkflow.clear(settings.assessmentLineInterval)
           }}
           onProposedRunChange={(index) => {
             setProposedRun(index)
@@ -1817,13 +2008,11 @@ function App() {
           }}
           onAssessmentIntervalChange={(interval) => {
             updateSettings('assessmentLineInterval', interval)
-            setAssessmentLines(emptyAssessmentLines(interval))
+            assessmentWorkflow.clear(interval)
           }}
           onGenerateAssessmentLines={generateAssessmentLines}
           onClearAssessmentLines={() =>
-            setAssessmentLines(
-              emptyAssessmentLines(settings.assessmentLineInterval),
-            )
+            assessmentWorkflow.clear(settings.assessmentLineInterval)
           }
           onShowOverlaysChange={(visible) =>
             updateSettings('showOverlays', visible)
@@ -2014,8 +2203,8 @@ function App() {
                       numeric(event.target.value, 0),
                     )
                     setScene(null)
-                    setAssessmentLines(
-                      emptyAssessmentLines(settings.assessmentLineInterval),
+                    assessmentWorkflow.clear(
+                      settings.assessmentLineInterval,
                     )
                   }}
                 />
@@ -2068,6 +2257,82 @@ function App() {
                       )
                     }
                   />
+                </label>
+              </div>
+              <Toggle
+                label="Assessment station labels"
+                checked={settings.showAssessmentStationLabels}
+                onChange={(checked) =>
+                  updateSettings('showAssessmentStationLabels', checked)
+                }
+              />
+              <div className="field-grid two">
+                <label className="field color-field">
+                  <span>Label color</span>
+                  <input
+                    type="color"
+                    value={settings.assessmentStationLabelColor}
+                    onChange={(event) =>
+                      updateSettings(
+                        'assessmentStationLabelColor',
+                        event.target.value,
+                      )
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>
+                    Label size
+                    <small>px</small>
+                  </span>
+                  <input
+                    type="number"
+                    min="6"
+                    max="72"
+                    step="1"
+                    value={settings.assessmentStationLabelFontSize}
+                    onChange={(event) =>
+                      updateSettings(
+                        'assessmentStationLabelFontSize',
+                        numeric(event.target.value, 18),
+                      )
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>
+                    Label offset
+                    <small>px</small>
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="120"
+                    step="1"
+                    value={settings.assessmentStationLabelOffset}
+                    onChange={(event) =>
+                      updateSettings(
+                        'assessmentStationLabelOffset',
+                        numeric(event.target.value, 16),
+                      )
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>Label side</span>
+                  <select
+                    value={settings.assessmentStationLabelSide}
+                    onChange={(event) =>
+                      updateSettings(
+                        'assessmentStationLabelSide',
+                        event.target.value as FigureSettings['assessmentStationLabelSide'],
+                      )
+                    }
+                  >
+                    <option value="alternate">Alternate</option>
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                  </select>
                 </label>
               </div>
               <Toggle
