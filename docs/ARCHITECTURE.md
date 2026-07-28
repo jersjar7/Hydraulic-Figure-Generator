@@ -61,6 +61,19 @@ shared, stationed assessment-line collection instead of duplicating it. Long
 review collections must scroll inside a fixed-height feature view rather than
 grow the workspace sidebar.
 
+The left panel is a four-view project workflow:
+
+- Models owns H5 conditions and run pairing.
+- Layers owns imported shapefile overlays.
+- Assess owns assessment-line generation and centerline stationing.
+- Review owns bounded included/review/excluded collections and per-line
+  decisions.
+
+Only one project workflow view is mounted at a time. Status badges summarize
+progress without duplicating each view's controls, and the collapsed rail keeps
+all four destinations reachable. Canvas selection may activate Review, but
+canvas dragging must not resize or reveal a sidebar until pointer release.
+
 ## Resource Ownership
 
 H5 dataset files remain open because values are read lazily. `HydraulicEngine`

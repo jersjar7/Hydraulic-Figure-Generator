@@ -1,39 +1,27 @@
+import { useEffect, useRef } from 'react'
 import {
   Check,
-  ChevronLeft,
   CircleOff,
   Eye,
   EyeOff,
   RotateCcw,
   Route,
   TriangleAlert,
-  X,
 } from 'lucide-react'
 import { formatStation } from '../../core/centerlineStationing'
 import type {
   AssessmentLineOverride,
   AssessmentLineOverrides,
-  CenterlineCandidate,
-  CenterlineDirection,
   StationedAssessmentLine,
   StationedAssessmentLineCollection,
 } from '../../core/types'
 import type { AssessmentReviewTab } from './useAssessmentWorkflow'
 
 export type AssessmentLinesReviewPanelProps = {
-  candidates: CenterlineCandidate[]
-  centerlineId: string
-  direction: CenterlineDirection
-  startStation: number
   reviewTab: AssessmentReviewTab
   selectedLineId: string | null
   overrides: AssessmentLineOverrides
   stationed: StationedAssessmentLineCollection | null
-  onBack(): void
-  onMobileClose(): void
-  onCenterlineChange(id: string): void
-  onDirectionChange(direction: CenterlineDirection): void
-  onStartStationChange(station: number): void
   onReviewTabChange(tab: AssessmentReviewTab): void
   onSelectLine(id: string): void
   onSetOverride(id: string, override: AssessmentLineOverride): void
@@ -45,18 +33,6 @@ const TABS = [
   { key: 'excluded', label: 'Excluded', icon: CircleOff },
 ] as const
 
-function candidateName(
-  candidate: CenterlineCandidate,
-  candidates: CenterlineCandidate[],
-) {
-  const sameOverlay = candidates.filter(
-    (item) => item.overlayId === candidate.overlayId,
-  )
-  return sameOverlay.length === 1
-    ? candidate.overlayName
-    : `${candidate.overlayName} · feature ${candidate.featureIndex + 1}, part ${candidate.partIndex + 1}`
-}
-
 function itemStation(item: StationedAssessmentLine) {
   return item.selectedIntersection
     ? formatStation(item.selectedIntersection.stationFeet)
@@ -64,23 +40,15 @@ function itemStation(item: StationedAssessmentLine) {
 }
 
 export function AssessmentLinesReviewPanel({
-  candidates,
-  centerlineId,
-  direction,
-  startStation,
   reviewTab,
   selectedLineId,
   overrides,
   stationed,
-  onBack,
-  onMobileClose,
-  onCenterlineChange,
-  onDirectionChange,
-  onStartStationChange,
   onReviewTabChange,
   onSelectLine,
   onSetOverride,
 }: AssessmentLinesReviewPanelProps) {
+  const itemRefs = useRef(new Map<string, HTMLDivElement>())
   const counts = {
     included: stationed?.includedCount ?? 0,
     review: stationed?.reviewCount ?? 0,
@@ -89,95 +57,15 @@ export function AssessmentLinesReviewPanel({
   const visibleItems =
     stationed?.items.filter((item) => item.status === reviewTab) ?? []
 
+  useEffect(() => {
+    if (!selectedLineId) return
+    itemRefs.current.get(selectedLineId)?.scrollIntoView({
+      block: 'nearest',
+    })
+  }, [reviewTab, selectedLineId])
+
   return (
     <div className="assessment-review-shell">
-      <div className="assessment-review-heading">
-        <button
-          className="icon-button"
-          type="button"
-          title="Back to project data"
-          aria-label="Back to project data"
-          onClick={onBack}
-        >
-          <ChevronLeft size={18} aria-hidden="true" />
-        </button>
-        <div>
-          <span className="eyebrow">Analysis</span>
-          <h2>Assessment lines</h2>
-        </div>
-        <button
-          className="icon-button mobile-close"
-          type="button"
-          title="Close project data"
-          aria-label="Close project data"
-          onClick={onMobileClose}
-        >
-          <X size={18} aria-hidden="true" />
-        </button>
-      </div>
-
-      <div className="assessment-stationing-controls">
-        <label className="field">
-          <span>Hydraulic centerline</span>
-          <select
-            value={centerlineId}
-            disabled={candidates.length === 0}
-            onChange={(event) => onCenterlineChange(event.target.value)}
-          >
-            <option value="">Select a line overlay</option>
-            {candidates.map((candidate) => (
-              <option value={candidate.id} key={candidate.id}>
-                {candidateName(candidate, candidates)}
-              </option>
-            ))}
-          </select>
-        </label>
-        {candidates.length === 0 ? (
-          <p className="assessment-guidance">
-            Add a zipped line shapefile under Map overlays, then return here.
-          </p>
-        ) : null}
-
-        <label className="field">
-          <span>
-            Starting station
-            <small>ft</small>
-          </span>
-          <input
-            type="number"
-            step="1"
-            value={startStation}
-            onChange={(event) => {
-              const station = Number(event.target.value)
-              if (Number.isFinite(station)) onStartStationChange(station)
-            }}
-          />
-        </label>
-
-        <div className="field">
-          <span>Downstream endpoint</span>
-          <div className="segmented assessment-direction">
-            <button
-              type="button"
-              className={direction === 'a-to-b' ? 'active' : ''}
-              onClick={() => onDirectionChange('a-to-b')}
-            >
-              A downstream
-            </button>
-            <button
-              type="button"
-              className={direction === 'b-to-a' ? 'active' : ''}
-              onClick={() => onDirectionChange('b-to-a')}
-            >
-              B downstream
-            </button>
-          </div>
-        </div>
-        <p className="assessment-guidance">
-          Stationing increases upstream from the selected endpoint.
-        </p>
-      </div>
-
       <div
         className="assessment-review-tabs"
         role="tablist"
@@ -206,8 +94,8 @@ export function AssessmentLinesReviewPanel({
         {!stationed ? (
           <div className="assessment-review-empty">
             <Route size={24} aria-hidden="true" />
-            <strong>Select a centerline</strong>
-            <span>Endpoint and station controls will activate the review.</span>
+            <strong>Stationing is not ready</strong>
+            <span>Select a hydraulic centerline in Assess.</span>
           </div>
         ) : visibleItems.length === 0 ? (
           <div className="assessment-review-empty">
@@ -224,6 +112,10 @@ export function AssessmentLinesReviewPanel({
               <div
                 className={`assessment-review-row${selected ? ' selected' : ''}`}
                 key={item.line.id}
+                ref={(node) => {
+                  if (node) itemRefs.current.set(item.line.id, node)
+                  else itemRefs.current.delete(item.line.id)
+                }}
               >
                 <button
                   type="button"

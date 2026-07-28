@@ -81,8 +81,10 @@
 
 .left-sidebar {
   z-index: 4;
-  padding: 16px 14px 24px;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
   border-right: 1px solid var(--border);
 }
 
@@ -91,67 +93,48 @@
   overflow: hidden;
 }
 
-.left-sidebar.assessment-review-mode {
-  padding: 0;
-  overflow: hidden;
-}
-
-.left-sidebar-rail {
+.project-workflow-rail {
   height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 7px;
   padding: 12px 7px;
   background: #f8fafc;
 }
 
-.left-rail-expand,
-.left-rail-overlays,
-.left-rail-analysis {
+.project-rail-expand,
+.project-rail-tab {
   width: 36px;
   height: 36px;
 }
 
-.left-rail-conditions {
+.project-rail-expand {
+  margin-bottom: 5px;
+}
+
+.project-rail-tab {
+  position: relative;
   display: grid;
-  gap: 6px;
-  padding: 8px 0;
-  border-block: 1px solid #dde5ec;
-}
-
-.left-rail-condition {
-  width: 34px;
-  height: 27px;
+  place-items: center;
   padding: 0;
-  color: #7a8898;
-  background: #eef2f5;
-  border: 1px solid #ced8e1;
-  border-radius: 4px;
+  color: #53687d;
+  background: #ffffff;
+  border: 1px solid #cbd6e0;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 9px;
-  font-weight: 800;
 }
 
-.left-rail-condition:hover {
+.project-rail-tab:hover {
   color: #145f93;
+  background: #f3f9fc;
   border-color: #8fb8d3;
 }
 
-.left-rail-condition.ready {
-  color: #12634f;
-  background: #e7f6f0;
-  border-color: #a8d7c7;
-}
-
-.left-rail-overlays {
-  margin-top: auto;
-}
-
-.left-rail-analysis.ready {
-  color: #116a51;
-  background: #e7f6f0;
-  border-color: #a8d7c7;
+.project-rail-tab.active {
+  color: #075d91;
+  background: #eaf5fb;
+  border-color: #6eb3da;
 }
 
 .right-sidebar {
@@ -170,6 +153,144 @@
   gap: 12px;
   margin-bottom: 12px;
   padding: 0 3px;
+}
+
+.project-sidebar-heading {
+  flex: 0 0 auto;
+  min-height: 61px;
+  align-items: center;
+  margin: 0;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.project-workflow-switcher {
+  min-height: 54px;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+  background: #f4f7fa;
+  border-bottom: 1px solid var(--border);
+}
+
+.project-workflow-tab {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  height: 37px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 5px;
+  overflow: hidden;
+  color: #4e6278;
+  background: #ffffff;
+  border: 1px solid #cbd5df;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.project-workflow-tab:hover,
+.project-workflow-tab:focus-visible {
+  color: #145f93;
+  background: #f7fbfd;
+  border-color: #8fb8d3;
+}
+
+.project-workflow-tab.active {
+  color: #0b5286;
+  background: #eaf4fa;
+  border-color: #72a9cb;
+}
+
+.project-workflow-tab:focus-visible,
+.project-rail-tab:focus-visible {
+  outline: 2px solid #1682cf;
+  outline-offset: 2px;
+}
+
+.project-workflow-tab > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.project-status-badge {
+  min-width: 15px;
+  height: 15px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 3px;
+  color: #566a7d;
+  background: #edf1f5;
+  border: 1px solid #cbd5df;
+  border-radius: 7px;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.project-workflow-tab .project-status-badge,
+.project-rail-tab .project-status-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+}
+
+.project-status-badge.ready {
+  color: #096348;
+  background: #e4f5ef;
+  border-color: #9dd4c1;
+}
+
+.project-status-badge.warning {
+  color: #8a4f00;
+  background: #fff4df;
+  border-color: #e6bd72;
+}
+
+.project-workflow-content {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 0 13px 14px;
+  background: #ffffff;
+  scrollbar-gutter: stable;
+}
+
+.project-workflow-content.is-review {
+  overflow: hidden;
+  padding: 0;
+}
+
+.project-workflow-footer {
+  flex: 0 0 auto;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 5px 13px;
+  background: #f8fafc;
+  border-top: 1px solid var(--border);
+}
+
+.workflow-block {
+  padding: 13px 0;
+  border-top: 1px solid #e1e7ee;
+}
+
+.workflow-block:first-child {
+  border-top: 0;
 }
 
 .sidebar-heading h2 {
@@ -191,16 +312,6 @@
   line-height: 1;
   text-transform: uppercase;
   font-weight: 700;
-}
-
-.sidebar-block {
-  padding: 14px 0;
-  border-top: 1px solid #e1e7ee;
-}
-
-.sidebar-block:first-of-type {
-  border-top: 0;
-  padding-top: 5px;
 }
 
 .block-title {
@@ -414,10 +525,6 @@ input[type="number"] {
   line-height: 1.4;
 }
 
-.overlay-block {
-  padding-bottom: 8px;
-}
-
 .overlay-list {
   display: flex;
   flex-direction: column;
@@ -522,21 +629,38 @@ input[type="color"] {
   background: #ffffff;
 }
 
-.assessment-review-heading {
-  flex: 0 0 auto;
+.assessment-status-summary {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 34px;
-  align-items: center;
-  gap: 8px;
-  min-height: 62px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 9px;
 }
 
-.assessment-review-heading h2 {
-  margin: 1px 0 0;
-  color: #12263a;
-  font-size: 15px;
+.assessment-status-summary span {
+  min-width: 0;
+  padding: 5px 3px;
+  overflow: hidden;
+  color: #52667a;
+  background: #f2f5f7;
+  border: 1px solid #d5dee6;
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: 700;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assessment-status-summary span.ready {
+  color: #096348;
+  background: #e9f7f2;
+  border-color: #a6d8c6;
+}
+
+.assessment-status-summary span.warning {
+  color: #8a4f00;
+  background: #fff5e3;
+  border-color: #e6c17d;
 }
 
 .assessment-stationing-controls {
@@ -545,6 +669,11 @@ input[type="color"] {
   gap: 7px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
+}
+
+.stationing-workflow-block .assessment-stationing-controls {
+  padding: 0;
+  border-bottom: 0;
 }
 
 .assessment-stationing-controls .field {
@@ -738,7 +867,7 @@ input[type="color"] {
 }
 
 .reset-project {
-  margin-top: 7px;
+  margin-top: 0;
 }
 
 .right-sidebar .sidebar-heading {

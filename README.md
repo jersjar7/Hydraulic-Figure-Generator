@@ -27,7 +27,8 @@ The first figure module is the FRA WSE Difference map:
 
 ```text
 src/
-  components/          Reusable workspace controls
+  components/          Reusable workspace controls and project workflow views
+    project-data/      Models, Layers, Assess, and Review navigation
   core/
     hydraulicEngine.ts SMS H5 parsing, run metadata, mesh matching, WSE logic
     assessmentLines.ts Existing WSE contour generation and polyline stitching
@@ -38,7 +39,7 @@ src/
     shapefile.ts       Zipped shapefile ingestion
     types.ts           Hydraulic and figure contracts
   features/
-    assessment-lines/  Bounded review state and interface
+    assessment-lines/  Stationing controls, bounded review state, and interface
   App.tsx              FRA WSE Difference workspace
 ```
 

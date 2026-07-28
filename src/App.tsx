@@ -1370,6 +1370,12 @@ function App() {
       if (calloutHit) {
         const originalOverridePoint =
           assessmentState.overrides[calloutHit.lineId]?.labelPoint
+        const stationedItem = stationedAssessmentLines?.items.find(
+          (item) => item.line.id === calloutHit.lineId,
+        )
+        if (stationedItem) {
+          assessmentWorkflow.setReviewTab(stationedItem.status)
+        }
         assessmentWorkflow.selectLine(calloutHit.lineId)
         assessmentCalloutDragRef.current = {
           lineId: calloutHit.lineId,
@@ -1578,10 +1584,17 @@ function App() {
     }
     if (assessmentCalloutDragRef.current) {
       moveAssessmentCalloutDrag(pointerCanvasPoint(event))
+      const openSelectedReview =
+        !assessmentCalloutDragRef.current.moved
       assessmentCalloutDragRef.current = null
       setAssessmentCalloutDragging(false)
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId)
+      }
+      if (openSelectedReview) {
+        assessmentWorkflow.openReview()
+        setLeftCollapsed(false)
+        setLeftOpen(true)
       }
       return
     }
@@ -2111,7 +2124,6 @@ function App() {
             stationed: stationedAssessmentLines,
             onOpen: assessmentWorkflow.openReview,
             onBack: assessmentWorkflow.closeReview,
-            onMobileClose: () => setLeftOpen(false),
             onCenterlineChange: assessmentWorkflow.setCenterline,
             onDirectionChange: assessmentWorkflow.setDirection,
             onStartStationChange: assessmentWorkflow.setStartStation,
