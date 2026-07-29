@@ -21,13 +21,6 @@ import { FigureSettingsSidebar } from '../../components/editor/FigureSettingsSid
 import { FigureElementsPanel } from '../../components/FigureElementsPanel'
 import { ProjectDataPanel } from '../../components/ProjectDataPanel'
 import {
-  DEFAULT_ELEMENT_STYLES,
-} from '../../core/figureElements'
-import {
-  canvasPointToMap,
-  DEFAULT_ELEMENT_POSITIONS,
-  mapPointToCanvas,
-  stationLabelPosition,
   createWseDifferenceRenderDocument,
 } from '../../core/mapRenderer'
 import { importHydraulicFiles } from '../../application/importHydraulicFiles'
@@ -51,11 +44,8 @@ import type {
   ConditionKey,
   FigureSettings,
   IngestNotice,
-  MapElementKey,
-  MapElementStyles,
   MapOverlay,
   ScenarioRole,
-  StationLabelOverride,
   WseDifferenceScene,
 } from '../../core/types'
 import {
@@ -68,6 +58,7 @@ import { useWseMapRendering } from './useWseMapRendering'
 import { useWseMapInteractions } from './useWseMapInteractions'
 import { useWseFigureDocument } from './useWseFigureDocument'
 import { useWseAnnotationController } from './useWseAnnotationController'
+import { useWseFigureElementController } from './useWseFigureElementController'
 import {
   createWseProjectSnapshot,
   hydrateWseProject,
@@ -183,6 +174,14 @@ export function WseDifferenceWorkspace() {
     selectedStationLabelId,
     setCenterline: assessmentWorkflow.setCenterline,
   })
+  const figureElements = useWseFigureElementController({
+    engine,
+    settings,
+    stationingLayer: centerlineStationLayer,
+    selectedStationLabelId,
+    setSettings,
+    setSelectedStationLabelId,
+  })
 
   useEffect(() => {
     if (
@@ -234,36 +233,6 @@ export function WseDifferenceWorkspace() {
     value: FigureSettings[Key],
   ) => {
     setSettings((current) => ({ ...current, [key]: value }))
-  }
-
-  const updateCenterlineStationing = (
-    patch: Partial<FigureSettings['centerlineStationing']>,
-  ) => {
-    setSettings((current) => ({
-      ...current,
-      centerlineStationing: {
-        ...current.centerlineStationing,
-        ...patch,
-      },
-    }))
-  }
-
-  const updateStationLabelOverride = (
-    id: string,
-    override: StationLabelOverride | null,
-  ) => {
-    setSettings((current) => {
-      const overrides = { ...current.centerlineStationing.overrides }
-      if (override) overrides[id] = override
-      else delete overrides[id]
-      return {
-        ...current,
-        centerlineStationing: {
-          ...current.centerlineStationing,
-          overrides,
-        },
-      }
-    })
   }
 
   const handleSettingsTabKeyDown = (
@@ -461,127 +430,6 @@ export function WseDifferenceWorkspace() {
     )
   }
 
-  const updateElementPosition = (
-    key: MapElementKey,
-    patch: Partial<FigureSettings['elementPositions'][MapElementKey]>,
-  ) => {
-    setSettings((current) => ({
-      ...current,
-      elementPositions: {
-        ...current.elementPositions,
-        [key]: { ...current.elementPositions[key], ...patch },
-      },
-    }))
-  }
-
-  const updateElementStyle = (
-    key: MapElementKey,
-    patch: Partial<MapElementStyles[MapElementKey]>,
-  ) => {
-    setSettings((current) => ({
-      ...current,
-      elementStyles: {
-        ...current.elementStyles,
-        [key]: {
-          ...current.elementStyles[key],
-          ...patch,
-        },
-      } as MapElementStyles,
-    }))
-  }
-
-  const updateElementVisibility = (
-    key: MapElementKey,
-    visible: boolean,
-  ) => {
-    const visibilityKey = {
-      title: 'showTitle',
-      diffLegend: 'showLegend',
-      wetDry: 'showWetDryKey',
-      north: 'showNorth',
-      scale: 'showScale',
-    } as const
-    updateSettings(visibilityKey[key], visible)
-  }
-
-  const nudgeElement = (key: MapElementKey, dx: number, dy: number) => {
-    const position = settings.elementPositions[key]
-    updateElementPosition(key, {
-      offX: position.offX + dx,
-      offY: position.offY + dy,
-    })
-  }
-
-  const resetElement = (key: MapElementKey) => {
-    setSettings((current) => {
-      const visibilityKey = {
-        title: 'showTitle',
-        diffLegend: 'showLegend',
-        wetDry: 'showWetDryKey',
-        north: 'showNorth',
-        scale: 'showScale',
-      } as const
-      return {
-        ...current,
-        [visibilityKey[key]]: true,
-        elementPositions: {
-          ...current.elementPositions,
-          [key]: { ...DEFAULT_ELEMENT_POSITIONS[key] },
-        },
-        elementStyles: {
-          ...current.elementStyles,
-          [key]: structuredClone(DEFAULT_ELEMENT_STYLES[key]),
-        } as MapElementStyles,
-      }
-    })
-  }
-
-  const nudgeStationLabel = (dx: number, dy: number) => {
-    if (!selectedStationLabelId || !centerlineStationLayer) return
-    const currentPoint = stationLabelPosition(
-      centerlineStationLayer,
-      engine.commonBounds(),
-      settings,
-      selectedStationLabelId,
-    )
-    if (!currentPoint) return
-    const screenPoint = mapPointToCanvas(
-      currentPoint,
-      engine.commonBounds(),
-      settings,
-    )
-    const nextPoint = canvasPointToMap(
-      screenPoint.x + dx,
-      screenPoint.y + dy,
-      engine.commonBounds(),
-      settings,
-    )
-    updateStationLabelOverride(selectedStationLabelId, {
-      ...settings.centerlineStationing.overrides[selectedStationLabelId],
-      labelPoint: nextPoint,
-    })
-  }
-
-  const resetCenterlineStationing = () => {
-    const defaults =
-      ACTIVE_FIGURE.createDefaultSettings().centerlineStationing
-    setSettings((current) => ({
-      ...current,
-      centerlineStationing: structuredClone(defaults),
-    }))
-    setSelectedStationLabelId(null)
-  }
-
-  const resetView = () => {
-    setSettings((current) => ({
-      ...current,
-      rotation: 0,
-      zoom: 1,
-      panX: 0,
-      panY: 0,
-    }))
-  }
-
   const mapInteractions = useWseMapInteractions({
     scene,
     engine,
@@ -605,7 +453,7 @@ export function WseDifferenceWorkspace() {
     appendNotices,
     setAnnotationDragging,
     selectFigureElement: (key) => setActiveElement(key),
-    updateElementPosition,
+    updateElementPosition: figureElements.updateElementPosition,
     setElementDragging,
     setHoveredElement,
     selectStationLabel: (id) => {
@@ -614,7 +462,8 @@ export function WseDifferenceWorkspace() {
       setSelectedStationLabelId(id)
       setRightOpen(true)
     },
-    updateStationLabelOverride,
+    updateStationLabelOverride:
+      figureElements.updateStationLabelOverride,
     setStationLabelDragging,
     selectAssessmentLine: assessmentWorkflow.selectLine,
     selectAssessmentStatus: assessmentWorkflow.setReviewTab,
@@ -789,17 +638,17 @@ export function WseDifferenceWorkspace() {
             onBack: assessmentWorkflow.closeReview,
             onCenterlineChange: (id) => {
               assessmentWorkflow.setCenterline(id)
-              updateCenterlineStationing({ overrides: {} })
+              figureElements.updateCenterlineStationing({ overrides: {} })
               setSelectedStationLabelId(null)
             },
             onDirectionChange: (direction) => {
               assessmentWorkflow.setDirection(direction)
-              updateCenterlineStationing({ overrides: {} })
+              figureElements.updateCenterlineStationing({ overrides: {} })
               setSelectedStationLabelId(null)
             },
             onStartStationChange: (station) => {
               assessmentWorkflow.setStartStation(station)
-              updateCenterlineStationing({ overrides: {} })
+              figureElements.updateCenterlineStationing({ overrides: {} })
               setSelectedStationLabelId(null)
             },
             onReviewTabChange: assessmentWorkflow.setReviewTab,
@@ -852,7 +701,7 @@ export function WseDifferenceWorkspace() {
           onZoomIn={() =>
             updateSettings('zoom', Math.min(4, settings.zoom + 0.1))
           }
-          onFitFrame={resetView}
+          onFitFrame={figureElements.resetView}
         >
             {!scene ? (
               <div className="map-empty">
@@ -965,7 +814,7 @@ export function WseDifferenceWorkspace() {
               <FrameSettingsPanel
                 settings={settings}
                 onSettingsChange={updateSettings}
-                onResetView={resetView}
+                onResetView={figureElements.resetView}
               />
             ) : null}
 
@@ -975,24 +824,28 @@ export function WseDifferenceWorkspace() {
                 settings={settings}
                 activeElement={activeElement}
                 onActiveElementChange={setActiveElement}
-                onVisibilityChange={updateElementVisibility}
+                onVisibilityChange={figureElements.updateElementVisibility}
                 onTitleTemplateChange={(value) =>
                   updateSettings('titleTemplate', value)
                 }
-                onStyleChange={updateElementStyle}
-                onPositionChange={updateElementPosition}
-                onNudge={nudgeElement}
-                onResetElement={resetElement}
+                onStyleChange={figureElements.updateElementStyle}
+                onPositionChange={figureElements.updateElementPosition}
+                onNudge={figureElements.nudgeElement}
+                onResetElement={figureElements.resetElement}
                 stationTicks={centerlineStationTicks}
                 selectedStationLabelId={selectedStationLabelId}
                 hasCenterline={Boolean(selectedCenterline)}
-                onStationingChange={updateCenterlineStationing}
+                onStationingChange={
+                  figureElements.updateCenterlineStationing
+                }
                 onStationLabelSelect={setSelectedStationLabelId}
                 onStationLabelOverrideChange={
-                  updateStationLabelOverride
+                  figureElements.updateStationLabelOverride
                 }
-                onNudgeStationLabel={nudgeStationLabel}
-                onResetStationing={resetCenterlineStationing}
+                onNudgeStationLabel={figureElements.nudgeStationLabel}
+                onResetStationing={
+                  figureElements.resetCenterlineStationing
+                }
               />
             </ControlSection>
             ) : null}
