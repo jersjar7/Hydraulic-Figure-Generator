@@ -68,7 +68,6 @@ import type {
   AnnotationDefaults,
   AnnotationTool,
   ConditionKey,
-  FigureElementPanelKey,
   FigureSettings,
   IngestNotice,
   MapAnnotation,
@@ -86,10 +85,9 @@ import {
   SETTINGS_SECTIONS,
   type AnnotationEditorView,
   type AnnotationPanelView,
-  type AnnotationPlacedView,
-  type SettingsSectionKey,
 } from './workspaceConfiguration'
 import { useFittedCanvasSize } from './useFittedCanvasSize'
+import { useWseEditorUi } from './useWseEditorUi'
 import { useWseMapRendering } from './useWseMapRendering'
 import { useWseFigureDocument } from './useWseFigureDocument'
 import {
@@ -110,6 +108,7 @@ const ACTIVE_FIGURE = wseDifferenceFigure
 export function WseDifferenceWorkspace() {
   const projectSession = useProjectSession()
   const figureDocument = useWseFigureDocument()
+  const editorUi = useWseEditorUi()
   const {
     engine,
     scenarios,
@@ -132,39 +131,47 @@ export function WseDifferenceWorkspace() {
   const assessmentWorkflow = useAssessmentWorkflow(1)
   const assessmentState = assessmentWorkflow.state
   const assessmentLines = assessmentState.collection
-  const [annotationTool, setAnnotationTool] =
-    useState<AnnotationTool>('select')
-  const [annotationPanelView, setAnnotationPanelView] =
-    useState<AnnotationPanelView>('create')
-  const [annotationPlacedView, setAnnotationPlacedView] =
-    useState<AnnotationPlacedView>('list')
-  const [annotationEditorView, setAnnotationEditorView] =
-    useState<AnnotationEditorView>('content')
-  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(
-    null,
-  )
-  const [annotationStart, setAnnotationStart] = useState<MapCoordinate | null>(
-    null,
-  )
-  const [annotationDragging, setAnnotationDragging] = useState(false)
-  const [assessmentCalloutDragging, setAssessmentCalloutDragging] =
-    useState(false)
-  const [stationLabelDragging, setStationLabelDragging] = useState(false)
-  const [notices, setNotices] = useState<IngestNotice[]>([])
+  const {
+    annotationTool,
+    annotationPanelView,
+    annotationPlacedView,
+    annotationEditorView,
+    selectedAnnotationId,
+    annotationStart,
+    annotationDragging,
+    assessmentCalloutDragging,
+    stationLabelDragging,
+    notices,
+    busy,
+    leftOpen,
+    leftCollapsed,
+    rightOpen,
+    activeSettingsSection,
+    activeElement,
+    selectedStationLabelId,
+    hoveredElement,
+    elementDragging,
+    setAnnotationTool,
+    setAnnotationPanelView,
+    setAnnotationPlacedView,
+    setAnnotationEditorView,
+    setSelectedAnnotationId,
+    setAnnotationStart,
+    setAnnotationDragging,
+    setAssessmentCalloutDragging,
+    setStationLabelDragging,
+    setNotices,
+    setBusy,
+    setLeftOpen,
+    setLeftCollapsed,
+    setRightOpen,
+    setActiveSettingsSection,
+    setActiveElement,
+    setSelectedStationLabelId,
+    setHoveredElement,
+    setElementDragging,
+  } = editorUi
   const [scene, setScene] = useState<WseDifferenceScene | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [leftOpen, setLeftOpen] = useState(false)
-  const [leftCollapsed, setLeftCollapsed] = useState(false)
-  const [rightOpen, setRightOpen] = useState(false)
-  const [activeSettingsSection, setActiveSettingsSection] =
-    useState<SettingsSectionKey>('calculation')
-  const [activeElement, setActiveElement] =
-    useState<FigureElementPanelKey>('title')
-  const [selectedStationLabelId, setSelectedStationLabelId] =
-    useState<string | null>(null)
-  const [hoveredElement, setHoveredElement] =
-    useState<MapElementKey | null>(null)
-  const [elementDragging, setElementDragging] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const canvasFrameRef = useRef<HTMLDivElement>(null)
   const canvasDisplaySize = useFittedCanvasSize(
@@ -250,7 +257,11 @@ export function WseDifferenceWorkspace() {
     ) {
       setSelectedStationLabelId(null)
     }
-  }, [centerlineStationTicks, selectedStationLabelId])
+  }, [
+    centerlineStationTicks,
+    selectedStationLabelId,
+    setSelectedStationLabelId,
+  ])
 
   useEffect(() => {
     if (
@@ -260,12 +271,17 @@ export function WseDifferenceWorkspace() {
     ) {
       setAnnotationPlacedView('list')
     }
-  }, [annotationPanelView, annotationPlacedView, selectedAnnotation])
+  }, [
+    annotationPanelView,
+    annotationPlacedView,
+    selectedAnnotation,
+    setAnnotationPlacedView,
+  ])
 
   const appendNotices = useCallback((incoming: IngestNotice[]) => {
     if (incoming.length === 0) return
     setNotices((current) => [...current, ...incoming].slice(-40))
-  }, [])
+  }, [setNotices])
 
   const updateSettings = <Key extends keyof FigureSettings>(
     key: Key,
@@ -586,7 +602,13 @@ export function WseDifferenceWorkspace() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedAnnotationId, setAnnotations])
+  }, [
+    selectedAnnotationId,
+    setAnnotations,
+    setAnnotationStart,
+    setAnnotationTool,
+    setSelectedAnnotationId,
+  ])
 
   const createAnnotation = (
     kind: MapAnnotation['kind'],
