@@ -34,6 +34,9 @@ jobs:
       - name: Lint application
         run: npm run lint
 
+      - name: Check architecture boundaries
+        run: npm run check:architecture
+
       - name: Run regression tests
         run: npm test
 

@@ -2,21 +2,28 @@
 
 ## Dependency Direction
 
-The application uses five layers:
+The application uses seven layers:
 
 1. `src/core/contracts/` defines shared hydraulic and figure contracts;
    `core/types.ts` is the stable compatibility facade.
 2. Core services parse files, compare meshes, validate projects, and render
    figures without depending on React.
-3. Feature hooks own bounded workflow state such as project sessions and
+3. `src/application/` owns use cases and ports for importing inputs and
+   persisting projects. It may depend on core, but not React, features, or
+   browser adapters.
+4. `src/infrastructure/` implements application ports for browser downloads
+   and third-party archive readers.
+5. Feature hooks own bounded workflow state such as project sessions and
    assessment review.
-4. Figure modules own calculation, settings, rendering, export, and workspace
+6. Figure modules own calculation, settings, rendering, export, and workspace
    composition for one output.
-5. `App.tsx` selects a registered figure workspace and contains no
+7. `App.tsx` selects a registered figure workspace and contains no
    figure-specific behavior.
 
-Dependencies should point toward the core. Core modules must not import React,
-DOM components, or application state.
+Dependencies point inward: infrastructure may use application and core;
+application may use core; core imports only core. Core and application modules
+must not import React. `npm run check:architecture` enforces these rules and a
+1,000-line source-file ceiling in local and deployment builds.
 
 ## Stable Core Boundaries
 

@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "check:architecture": "tsx scripts/check-architecture.ts",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "npm run test:unit && npm run test:ui",

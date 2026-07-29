@@ -32,6 +32,7 @@ The first figure module is the FRA WSE Difference map:
 
 ```text
 src/
+  application/         File-ingestion and project-persistence use cases and ports
   components/          Reusable workspace controls and project workflow views
     project-data/      Models, Layers, Assess, and Review navigation
   core/
@@ -54,6 +55,7 @@ src/
     project-session/   H5 scenario catalog, role, run, and resource ownership
     stationing/        Centerline station figure-element controls
     wse-difference/    Complete WSE Difference workspace, renderer, and export
+  infrastructure/      Browser downloads and shapefile gateway adapters
   App.tsx              Figure workspace host
 ```
 
@@ -80,6 +82,7 @@ Run the checked-in regression suite, build, and lint:
 npm test
 npm run build
 npm run lint
+npm run check:architecture
 npm run test:e2e
 ```
 
