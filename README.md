@@ -35,15 +35,19 @@ src/
   components/          Reusable workspace controls and project workflow views
     project-data/      Models, Layers, Assess, and Review navigation
   core/
-    map/               Reusable view, sampling, interaction, and hydraulic layers
-    hydraulicEngine.ts SMS H5 parsing, run metadata, mesh matching, WSE logic
+    contracts/         Hydraulic, overlay, annotation, stationing, and figure types
+    hydraulics/        SMS H5 readers, projection, scenario, WSE, and extrema services
+    map/               Reusable render layers, elements, transforms, and interactions
+    projectFiles/      Versioned schema, migration, validation, and serialization
+    stationing/        Centerline extraction, ticks, and assessment stationing
+    hydraulicEngine.ts Stable stateful facade over hydraulic services
     assessmentLines.ts Existing WSE contour generation and polyline stitching
-    centerlineStationing.ts Centerline extraction, intersections, and stationing
+    centerlineStationing.ts Stable stationing facade
     meshMatching.ts    Exact spatial matching and mesh-spacing tolerance
     mapRenderer.ts     Canvas layer orchestration and report elements
-    projectFile.ts     Versioned save-file validation and migrations
+    projectFile.ts     Stable project persistence facade
     shapefile.ts       Zipped shapefile ingestion
-    types.ts           Hydraulic and figure contracts
+    types.ts           Compatibility facade for partitioned contracts
   features/
     assessment-lines/  Stationing controls, bounded review state, and interface
     figures/           Figure contracts plus calculation and workspace registries
@@ -55,7 +59,9 @@ src/
 
 The `core` modules are intentionally independent of the React interface so
 future FRA, Appendix H, and Appendix K figure modules can share the same data
-and rendering contracts. See [Architecture](docs/ARCHITECTURE.md),
+and rendering contracts. Facade files preserve established imports while
+implementation ownership stays in focused directories. See
+[Architecture](docs/ARCHITECTURE.md),
 [Hydraulic contract](docs/HYDRAULIC-CONTRACT.md), and
 [Testing](docs/TESTING.md) before extending those contracts.
 

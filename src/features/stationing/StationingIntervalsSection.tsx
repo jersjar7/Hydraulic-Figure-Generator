@@ -10,16 +10,23 @@ type Props = {
   onChange(patch: Partial<CenterlineStationingSettings>): void
 }
 
+type IntervalKey = 'minorInterval' | 'majorInterval' | 'labelInterval'
+
+const INTERVAL_FIELDS: ReadonlyArray<{
+  label: string
+  key: IntervalKey
+}> = [
+  { label: 'Minor', key: 'minorInterval' },
+  { label: 'Major', key: 'majorInterval' },
+  { label: 'Labels', key: 'labelInterval' },
+]
+
 export function StationingIntervalsSection({ settings, onChange }: Props) {
   return (
     <>
       <StationingSectionHeading>Intervals</StationingSectionHeading>
       <div className="field-grid three">
-        {[
-          ['Minor', 'minorInterval'],
-          ['Major', 'majorInterval'],
-          ['Labels', 'labelInterval'],
-        ].map(([label, key]) => (
+        {INTERVAL_FIELDS.map(({ label, key }) => (
           <label className="field" key={key}>
             <span>
               {label} <small>ft</small>
@@ -28,14 +35,14 @@ export function StationingIntervalsSection({ settings, onChange }: Props) {
               type="number"
               min="0.01"
               step="1"
-              value={settings[key as 'minorInterval']}
+              value={settings[key]}
               onChange={(event) =>
                 onChange({
                   [key]: Math.max(
                     0.01,
                     stationingNumberValue(
                       event.target.value,
-                      settings[key as 'minorInterval'],
+                      settings[key],
                     ),
                   ),
                 })

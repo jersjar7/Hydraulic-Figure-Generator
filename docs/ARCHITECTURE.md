@@ -4,7 +4,8 @@
 
 The application uses five layers:
 
-1. `src/core/types.ts` defines shared hydraulic and figure contracts.
+1. `src/core/contracts/` defines shared hydraulic and figure contracts;
+   `core/types.ts` is the stable compatibility facade.
 2. Core services parse files, compare meshes, validate projects, and render
    figures without depending on React.
 3. Feature hooks own bounded workflow state such as project sessions and
@@ -19,19 +20,25 @@ DOM components, or application state.
 
 ## Stable Core Boundaries
 
-- `HydraulicEngine` owns loaded H5 resources and hydraulic run access.
+- `HydraulicEngine` owns loaded H5 resources and hydraulic run access. Its
+  collaborators under `core/hydraulics/` own H5 reading, projection, scenario
+  detection, run labels, WSE calculation, assessment lines, and extrema.
 - `meshMatching.ts` owns spatial-index and comparison-point rules.
 - `assessmentLines.ts` turns the selected assessment-source WSE surface into reusable,
   level-aware map polylines. It does not own their UI or cartographic style.
-- `centerlineStationing.ts` transforms imported line overlays into the model
-  CRS, intersects them with assessment paths, and assigns directed stations.
+- `centerlineStationing.ts` is the stable facade for focused services under
+  `core/stationing/`, which extract centerlines, generate ticks, intersect
+  assessment paths, and assign directed stations.
 - `features/assessment-lines/` owns review navigation and user decisions. The
   core stationing service remains independent of React.
 - `core/map/` owns reusable view transforms, annotation geometry, hydraulic
-  sampling, and WSE class layers.
-- `mapRenderer.ts` orchestrates a complete scene and settings snapshot without
-  mutating application state.
-- `projectFile.ts` is the only boundary for persisted project JSON.
+  sampling, basemaps, overlays, stationing, assessment layers, hydraulic
+  classes, and individual report elements.
+- `mapRenderer.ts` is the stable canvas facade and orchestrates a complete
+  scene and settings snapshot without mutating application state.
+- `projectFile.ts` is the stable persistence facade. Versioned schema,
+  migrations, validation, serialization, and deserialization live under
+  `core/projectFiles/`.
 - `shapefile.ts` converts imported archives into internal overlays.
 - `features/project-session/` owns the mutable engine revision, scenario
   catalog, role assignments, and per-scenario run selections.
@@ -41,6 +48,24 @@ DOM components, or application state.
 
 New figure modules should consume these contracts rather than read H5 files or
 draw shared map elements independently.
+
+## Refactoring Rules
+
+- Preserve public imports through a small facade when partitioning a mature
+  module. Move implementation ownership first; migrate consumers only when it
+  improves the boundary.
+- Prefer one responsibility per file. A stateful coordinator such as
+  `HydraulicEngine` may remain a class, while parsing, calculation, validation,
+  rendering, and formatting stay in stateless collaborators.
+- Keep React state and event coordination in feature hooks. Settings panels
+  receive typed values and callbacks; they do not read files or draw maps.
+- Keep canvas renderers deterministic from their scene, bounds, settings, and
+  overlays. They must not mutate React or project state.
+- Partition styles by the component or feature that owns them. `App.css`
+  controls import order so cascade changes are explicit.
+- Add or preserve a regression test before moving behavior across a boundary.
+  Structural refactors must keep accepted hydraulic values and rendered output
+  unchanged.
 
 ## Scenario Roles
 
@@ -61,10 +86,12 @@ contract.
 
 ## Frontend Growth
 
-`App.tsx` is a figure-workspace host. The current full editor lives in
-`features/wse-difference/WseDifferenceWorkspace.tsx`; controls that become
-useful to a second figure should be promoted into a focused shared component or
-hook rather than copied.
+`App.tsx` is a figure-workspace host. The current editor is composed by
+`features/wse-difference/WseDifferenceWorkspace.tsx`; calculation, legend,
+frame, annotation, figure-element, canvas-sizing, rendering, and interaction
+responsibilities live in focused hooks and components around that composition
+root. Controls that become useful to a second figure should be promoted into a
+focused shared component or hook rather than copied.
 
 Prefer one reducer or feature hook per workflow over adding more independent
 top-level state variables. A new figure type should live under
