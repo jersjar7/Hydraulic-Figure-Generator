@@ -12,7 +12,7 @@ import type {
 } from './types'
 import { WSE_DIFFERENCE_FIGURE_ID } from './figureIds'
 
-export const PROJECT_FILE_VERSION = 13
+export const PROJECT_FILE_VERSION = 14
 export const PROJECT_FIGURE = WSE_DIFFERENCE_FIGURE_ID
 
 type PartialElementStyles = {
@@ -47,6 +47,23 @@ export type HydraulicFigureProject = {
   }
   scenarioSelection?: ScenarioSelectionProject
   assessment?: AssessmentWorkflowProject
+}
+
+export type HydraulicFigureProjectFile = {
+  version: typeof PROJECT_FILE_VERSION
+  activeFigure: typeof PROJECT_FIGURE
+  project: {
+    overlays?: MapOverlay[]
+    scenarioSelection?: ScenarioSelectionProject
+  }
+  figures: {
+    [PROJECT_FIGURE]: {
+      settings?: ProjectSettings
+      annotations?: MapAnnotation[]
+      annotationDefaults?: Partial<AnnotationDefaults>
+      assessment?: AssessmentWorkflowProject
+    }
+  }
 }
 
 export type ScenarioSelectionProject = {
@@ -531,11 +548,22 @@ function scenarioSelection(
 
 export function createHydraulicFigureProject(
   project: Omit<HydraulicFigureProject, 'version' | 'figure'>,
-): HydraulicFigureProject {
+): HydraulicFigureProjectFile {
   return {
     version: PROJECT_FILE_VERSION,
-    figure: PROJECT_FIGURE,
-    ...project,
+    activeFigure: PROJECT_FIGURE,
+    project: {
+      overlays: project.overlays,
+      scenarioSelection: project.scenarioSelection,
+    },
+    figures: {
+      [PROJECT_FIGURE]: {
+        settings: project.settings,
+        annotations: project.annotations,
+        annotationDefaults: project.annotationDefaults,
+        assessment: project.assessment,
+      },
+    },
   }
 }
 
@@ -557,39 +585,65 @@ export function parseHydraulicFigureProject(
       `This project uses version ${version}; this app supports through version ${PROJECT_FILE_VERSION}.`,
     )
   }
-  if (input.figure !== undefined && input.figure !== PROJECT_FIGURE) {
+  if (
+    version < 14 &&
+    input.figure !== undefined &&
+    input.figure !== PROJECT_FIGURE
+  ) {
     throw new Error(`This file is for a different figure type: ${String(input.figure)}.`)
+  }
+
+  let sharedInput = input
+  let figureInput = input
+  let sharedPath = 'Project'
+  let figurePath = 'Project'
+  if (version >= 14) {
+    if (input.activeFigure !== PROJECT_FIGURE) {
+      throw new Error(
+        `This file is for a different figure type: ${String(input.activeFigure)}.`,
+      )
+    }
+    sharedInput = record(input.project, 'Project.project')
+    const figures = record(input.figures, 'Project.figures')
+    figureInput = record(
+      figures[PROJECT_FIGURE],
+      `Project.figures.${PROJECT_FIGURE}`,
+    )
+    sharedPath = 'Project.project'
+    figurePath = `Project.figures.${PROJECT_FIGURE}`
   }
 
   const result: HydraulicFigureProject = {
     version: PROJECT_FILE_VERSION,
     figure: PROJECT_FIGURE,
   }
-  if (input.settings !== undefined) {
+  if (figureInput.settings !== undefined) {
     result.settings = migrateAssessmentLabelSettings(
-      settings(input.settings, 'Project.settings'),
+      settings(figureInput.settings, `${figurePath}.settings`),
     )
   }
-  if (input.overlays !== undefined) {
-    if (!Array.isArray(input.overlays)) {
-      throw new Error('Project.overlays must be an array.')
+  if (sharedInput.overlays !== undefined) {
+    if (!Array.isArray(sharedInput.overlays)) {
+      throw new Error(`${sharedPath}.overlays must be an array.`)
     }
-    result.overlays = input.overlays.map((item, index) =>
-      overlay(item, `Project.overlays[${index}]`),
+    result.overlays = sharedInput.overlays.map((item, index) =>
+      overlay(item, `${sharedPath}.overlays[${index}]`),
     )
   }
-  if (input.annotations !== undefined) {
-    if (!Array.isArray(input.annotations)) {
-      throw new Error('Project.annotations must be an array.')
+  if (figureInput.annotations !== undefined) {
+    if (!Array.isArray(figureInput.annotations)) {
+      throw new Error(`${figurePath}.annotations must be an array.`)
     }
-    result.annotations = input.annotations
-      .map((item, index) => annotation(item, `Project.annotations[${index}]`))
+    result.annotations = figureInput.annotations
+      .map((item, index) =>
+        annotation(item, `${figurePath}.annotations[${index}]`),
+      )
       .filter((item): item is MapAnnotation => item !== null)
   }
-  if (input.annotationDefaults !== undefined) {
+  if (figureInput.annotationDefaults !== undefined) {
     result.annotationDefaults = annotationDefaults(
-      input.annotationDefaults,
-      'Project.annotationDefaults',
+      figureInput.annotationDefaults,
+      `${figurePath}.annotationDefaults`,
     )
   }
   if (input.selectedRuns !== undefined) {
@@ -598,10 +652,10 @@ export function parseHydraulicFigureProject(
       proposedRun: integer(0),
     })
   }
-  if (input.scenarioSelection !== undefined) {
+  if (sharedInput.scenarioSelection !== undefined) {
     result.scenarioSelection = scenarioSelection(
-      input.scenarioSelection,
-      'Project.scenarioSelection',
+      sharedInput.scenarioSelection,
+      `${sharedPath}.scenarioSelection`,
     )
   } else if (result.selectedRuns) {
     result.scenarioSelection = {
@@ -614,10 +668,10 @@ export function parseHydraulicFigureProject(
       },
     }
   }
-  if (input.assessment !== undefined) {
+  if (figureInput.assessment !== undefined) {
     result.assessment = assessmentWorkflow(
-      input.assessment,
-      'Project.assessment',
+      figureInput.assessment,
+      `${figurePath}.assessment`,
     )
   }
   return result

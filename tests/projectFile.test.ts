@@ -57,7 +57,6 @@ describe('hydraulic figure project files', () => {
           },
         },
       },
-      selectedRuns: { existingRun: 1, proposedRun: 2 },
       scenarioSelection: {
         baselineId: 'EX',
         comparisonId: 'NA',
@@ -88,10 +87,47 @@ describe('hydraulic figure project files', () => {
 
     assert.equal(loaded.version, PROJECT_FILE_VERSION)
     assert.equal(loaded.figure, 'fra-wse-difference')
-    assert.deepEqual(loaded.settings, saved.settings)
-    assert.deepEqual(loaded.selectedRuns, saved.selectedRuns)
-    assert.deepEqual(loaded.scenarioSelection, saved.scenarioSelection)
-    assert.deepEqual(loaded.assessment, saved.assessment)
+    assert.equal(saved.activeFigure, 'fra-wse-difference')
+    assert.deepEqual(
+      loaded.settings,
+      saved.figures['fra-wse-difference'].settings,
+    )
+    assert.deepEqual(
+      loaded.scenarioSelection,
+      saved.project.scenarioSelection,
+    )
+    assert.deepEqual(
+      loaded.assessment,
+      saved.figures['fra-wse-difference'].assessment,
+    )
+  })
+
+  it('migrates the flat version 13 layout into normalized project state', () => {
+    const loaded = parseHydraulicFigureProject(
+      JSON.stringify({
+        version: 13,
+        figure: 'fra-wse-difference',
+        settings: { dryDepth: 0.01 },
+        scenarioSelection: {
+          baselineId: 'EX',
+          comparisonId: 'PR',
+          assessmentId: 'EX',
+          runByScenario: { EX: 1, PR: 2 },
+        },
+        assessment: {
+          centerlineId: 'centerline',
+          direction: 'a-to-b',
+          startStation: 500,
+        },
+      }),
+    )
+
+    assert.equal(loaded.settings?.dryDepth, 0.01)
+    assert.deepEqual(loaded.scenarioSelection?.runByScenario, {
+      EX: 1,
+      PR: 2,
+    })
+    assert.equal(loaded.assessment?.startStation, 500)
   })
 
   it('migrates version 11 Existing and Proposed run selections to scenario roles', () => {
@@ -190,6 +226,18 @@ describe('hydraulic figure project files', () => {
         ),
       /supports through version/,
     )
+    assert.throws(
+      () =>
+        parseHydraulicFigureProject(
+          JSON.stringify({
+            version: PROJECT_FILE_VERSION,
+            activeFigure: 'proposed-cross-section',
+            project: {},
+            figures: {},
+          }),
+        ),
+      /different figure type/,
+    )
   })
 
   it('rejects unsafe numeric settings and malformed annotation geometry', () => {
@@ -197,7 +245,7 @@ describe('hydraulic figure project files', () => {
       () =>
         parseHydraulicFigureProject(
           JSON.stringify({
-            version: PROJECT_FILE_VERSION,
+            version: 13,
             figure: 'fra-wse-difference',
             settings: { basemapOpacity: 5 },
           }),
@@ -208,7 +256,7 @@ describe('hydraulic figure project files', () => {
       () =>
         parseHydraulicFigureProject(
           JSON.stringify({
-            version: PROJECT_FILE_VERSION,
+            version: 13,
             figure: 'fra-wse-difference',
             settings: { assessmentLineInterval: 0 },
           }),
@@ -219,7 +267,7 @@ describe('hydraulic figure project files', () => {
       () =>
         parseHydraulicFigureProject(
           JSON.stringify({
-            version: PROJECT_FILE_VERSION,
+            version: 13,
             figure: 'fra-wse-difference',
             annotations: [
               {
@@ -236,7 +284,7 @@ describe('hydraulic figure project files', () => {
       () =>
         parseHydraulicFigureProject(
           JSON.stringify({
-            version: PROJECT_FILE_VERSION,
+            version: 13,
             figure: 'fra-wse-difference',
             assessment: {
               overrides: {
@@ -251,7 +299,7 @@ describe('hydraulic figure project files', () => {
       () =>
         parseHydraulicFigureProject(
           JSON.stringify({
-            version: PROJECT_FILE_VERSION,
+            version: 13,
             figure: 'fra-wse-difference',
             assessment: {
               overrides: {
@@ -266,7 +314,7 @@ describe('hydraulic figure project files', () => {
       () =>
         parseHydraulicFigureProject(
           JSON.stringify({
-            version: PROJECT_FILE_VERSION,
+            version: 13,
             figure: 'fra-wse-difference',
             settings: {
               centerlineStationing: { minorInterval: 0 },
