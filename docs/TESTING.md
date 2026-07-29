@@ -6,12 +6,13 @@ Run before merging or deploying:
 
 ```bash
 npm run lint
+npm run check:architecture
 npm test
 npm run build
 npm run test:e2e
 ```
 
-GitHub Pages runs these commands and deploys only after all four gates pass.
+GitHub Pages runs these commands and deploys only after all five gates pass.
 
 ## Checked-In Regression Tests
 
@@ -32,6 +33,12 @@ project data. They cover:
 - WSE figure registration, accepted engineering defaults, class boundaries,
   and synthetic landscape/portrait raster output.
 - Version 14 shared/figure project separation and version 13 migration.
+- Application file filtering, project download/read ports, and WSE project
+  hydration.
+- Persisted WSE document and transient editor reducers.
+- Modular map-tool ownership and WSE extrema callout reconciliation.
+- Architecture dependency direction, React isolation, and the source-file
+  composition ceiling.
 
 Add a focused test for every bug fixed in a core module. Prefer small synthetic
 geometry where the expected engineering result can be calculated by hand.
@@ -83,6 +90,5 @@ Before adding another figure type, add checked-in synthetic coverage for:
 - Nonoverlapping and differently spaced meshes.
 - CRS failures and projected shapefile fixtures.
 - Basemap failure and cache behavior.
-- Basemap failure and cache behavior in a browser-level test.
 - A public-safe synthetic H5 browser fixture for upload-to-export automation.
 - Figure-specific browser tests as each new output module is introduced.
