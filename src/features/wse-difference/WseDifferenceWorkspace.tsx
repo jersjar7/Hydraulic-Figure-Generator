@@ -2,13 +2,9 @@ import {
   AlertCircle,
   Download,
   FileJson,
-  FolderOpen,
   Map,
   MapPin,
-  PanelLeft,
-  PanelRight,
   RefreshCcw,
-  Save,
   X,
   ZoomIn,
   ZoomOut,
@@ -25,6 +21,7 @@ import {
 import '../../App.css'
 import { ControlSection } from '../../components/ControlSection'
 import { DiagnosticsWidget } from '../../components/DiagnosticsWidget'
+import { FigureEditorShell } from '../../components/editor/FigureEditorShell'
 import { FigureElementsPanel } from '../../components/FigureElementsPanel'
 import { ProjectDataPanel } from '../../components/ProjectDataPanel'
 import {
@@ -1399,53 +1396,24 @@ export function WseDifferenceWorkspace() {
   }
 
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div className="brand">
-          <div className="brand-mark" aria-hidden="true">
-            <Map size={20} />
-          </div>
-          <div>
-            <h1>Hydraulic Figure Generator</h1>
-            <p>
-              {ACTIVE_FIGURE.workspaceLabel} · {ACTIVE_FIGURE.label}
-            </p>
-          </div>
-        </div>
-        <div className="topbar-actions">
-          <button className="button secondary compact" type="button" onClick={saveProject}>
-            <Save size={16} aria-hidden="true" />
-            <span>Save</span>
-          </button>
-          <button
-            className="button secondary compact"
-            type="button"
-            onClick={() => projectInputRef.current?.click()}
-          >
-            <FolderOpen size={16} aria-hidden="true" />
-            <span>Load</span>
-          </button>
-          <button
-            className="icon-button mobile-panel-button"
-            type="button"
-            title="Open project data"
-            aria-label="Open project data"
-            onClick={() => {
-              setLeftCollapsed(false)
-              setLeftOpen(true)
-            }}
-          >
-            <PanelLeft size={19} />
-          </button>
-          <button
-            className="icon-button mobile-panel-button"
-            type="button"
-            title="Open figure settings"
-            aria-label="Open figure settings"
-            onClick={() => setRightOpen(true)}
-          >
-            <PanelRight size={19} />
-          </button>
+    <FigureEditorShell
+      workspaceLabel={ACTIVE_FIGURE.workspaceLabel}
+      figureLabel={ACTIVE_FIGURE.label}
+      inputsCollapsed={leftCollapsed}
+      leftPanelOpen={leftOpen}
+      rightPanelOpen={rightOpen}
+      onSave={saveProject}
+      onLoad={() => projectInputRef.current?.click()}
+      onOpenLeftPanel={() => {
+        setLeftCollapsed(false)
+        setLeftOpen(true)
+      }}
+      onOpenRightPanel={() => setRightOpen(true)}
+      onCloseMobilePanels={() => {
+        setLeftOpen(false)
+        setRightOpen(false)
+      }}
+      loadInput={
           <input
             ref={projectInputRef}
             className="visually-hidden"
@@ -1453,12 +1421,8 @@ export function WseDifferenceWorkspace() {
             accept=".hydfig,.json"
             onChange={loadProject}
           />
-        </div>
-      </header>
-
-      <main
-        className={`workspace${leftCollapsed ? ' inputs-collapsed' : ''}`}
-      >
+      }
+    >
         <ProjectDataPanel
           mobileOpen={leftOpen}
           collapsed={leftCollapsed}
@@ -1847,19 +1811,6 @@ export function WseDifferenceWorkspace() {
             ) : null}
           </div>
         </aside>
-      </main>
-
-      {(leftOpen || rightOpen) && (
-        <button
-          type="button"
-          className="mobile-scrim"
-          aria-label="Close side panel"
-          onClick={() => {
-            setLeftOpen(false)
-            setRightOpen(false)
-          }}
-        />
-      )}
-    </div>
+    </FigureEditorShell>
   )
 }
