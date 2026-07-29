@@ -8,7 +8,6 @@ import {
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -25,18 +24,9 @@ import {
   DEFAULT_ELEMENT_STYLES,
 } from '../../core/figureElements'
 import {
-  findWseDifferenceExtrema,
-  formatWseExtremumLabel,
-  type WseDifferenceExtremum,
-} from '../../core/hydraulicEngine'
-import {
   canvasPointToMap,
   DEFAULT_ELEMENT_POSITIONS,
-  duplicateAnnotation,
-  formatHydraulicResultLabel,
-  FRAMES,
   mapPointToCanvas,
-  sampleHydraulicResult,
   stationLabelPosition,
   createWseDifferenceRenderDocument,
 } from '../../core/mapRenderer'
@@ -58,26 +48,18 @@ import { LegendSettingsPanel } from './components/LegendSettingsPanel'
 import { useAssessmentMapLayers } from './useAssessmentMapLayers'
 import { wseDifferenceFigure } from './wseDifferenceFigure'
 import type {
-  AnnotationDefaults,
-  AnnotationTool,
   ConditionKey,
   FigureSettings,
   IngestNotice,
-  MapAnnotation,
-  MapCoordinate,
   MapElementKey,
   MapElementStyles,
   MapOverlay,
-  ResultLabelField,
   ScenarioRole,
   StationLabelOverride,
-  WseExtremumKind,
   WseDifferenceScene,
 } from '../../core/types'
 import {
   SETTINGS_SECTIONS,
-  type AnnotationEditorView,
-  type AnnotationPanelView,
   type SettingsSectionKey,
 } from './workspaceConfiguration'
 import { useFittedCanvasSize } from './useFittedCanvasSize'
@@ -85,11 +67,7 @@ import { useWseEditorUi } from './useWseEditorUi'
 import { useWseMapRendering } from './useWseMapRendering'
 import { useWseMapInteractions } from './useWseMapInteractions'
 import { useWseFigureDocument } from './useWseFigureDocument'
-import {
-  annotationHasContentEditor,
-  defaultEditorView,
-  defaultExtremumLabelPoint,
-} from './workspaceInteractions'
+import { useWseAnnotationController } from './useWseAnnotationController'
 import {
   createWseProjectSnapshot,
   hydrateWseProject,
@@ -172,9 +150,6 @@ export function WseDifferenceWorkspace() {
     settings.orientation,
   )
   const projectInputRef = useRef<HTMLInputElement>(null)
-  const annotationListItemRefs = useRef(
-    new globalThis.Map<string, HTMLButtonElement>(),
-  )
   const baselineCondition = engine.condition(baselineScenarioId)
   const comparisonCondition = engine.condition(comparisonScenarioId)
   const assessmentCondition = engine.condition(assessmentScenarioId)
@@ -192,34 +167,6 @@ export function WseDifferenceWorkspace() {
   const baselineLabel = baselineCondition?.label ?? 'Baseline'
   const comparisonLabel = comparisonCondition?.label ?? 'Comparison'
   const assessmentLabel = assessmentCondition?.label ?? 'Assessment source'
-  const resultLabelOptions: { value: ResultLabelField; label: string }[] = [
-    { value: 'summary', label: 'WSE summary' },
-    { value: 'difference', label: 'WSE difference' },
-    { value: 'existingWse', label: `${baselineLabel} WSE` },
-    { value: 'proposedWse', label: `${comparisonLabel} WSE` },
-    { value: 'existingDepth', label: `${baselineLabel} depth` },
-    { value: 'proposedDepth', label: `${comparisonLabel} depth` },
-  ]
-  const selectedAnnotation =
-    annotations.find((annotation) => annotation.id === selectedAnnotationId) ??
-    null
-  const selectedAnnotationIndex = selectedAnnotation
-    ? annotations.findIndex(
-        (annotation) => annotation.id === selectedAnnotation.id,
-      )
-    : -1
-  const annotationEditor = selectedAnnotation ?? annotationDefaults
-  const activeResultField =
-    selectedAnnotation?.kind === 'result'
-      ? (selectedAnnotation.resultField ?? annotationDefaults.resultField)
-      : annotationDefaults.resultField
-  const wseExtrema = useMemo(
-    () => (scene ? findWseDifferenceExtrema(scene) : null),
-    [scene],
-  )
-  const extremaCalloutCount = annotations.filter(
-    (annotation) => annotation.hydraulicExtremum,
-  ).length
   const {
     centerlineCandidates,
     selectedCenterline,
@@ -252,25 +199,35 @@ export function WseDifferenceWorkspace() {
     setSelectedStationLabelId,
   ])
 
-  useEffect(() => {
-    if (
-      annotationPanelView === 'placed' &&
-      annotationPlacedView === 'detail' &&
-      !selectedAnnotation
-    ) {
-      setAnnotationPlacedView('list')
-    }
-  }, [
-    annotationPanelView,
-    annotationPlacedView,
-    selectedAnnotation,
-    setAnnotationPlacedView,
-  ])
-
   const appendNotices = useCallback((incoming: IngestNotice[]) => {
     if (incoming.length === 0) return
     setNotices((current) => [...current, ...incoming].slice(-40))
   }, [setNotices])
+
+  const annotationController = useWseAnnotationController({
+    scene,
+    engine,
+    settings,
+    annotations,
+    annotationDefaults,
+    baselineLabel,
+    comparisonLabel,
+    panelView: annotationPanelView,
+    placedView: annotationPlacedView,
+    editorView: annotationEditorView,
+    tool: annotationTool,
+    drawing: Boolean(annotationStart),
+    selectedId: selectedAnnotationId,
+    setAnnotations,
+    setAnnotationDefaults,
+    setPanelView: setAnnotationPanelView,
+    setPlacedView: setAnnotationPlacedView,
+    setEditorView: setAnnotationEditorView,
+    setTool: setAnnotationTool,
+    setAnnotationStart,
+    setSelectedId: setSelectedAnnotationId,
+    appendNotices,
+  })
 
   const updateSettings = <Key extends keyof FigureSettings>(
     key: Key,
@@ -496,552 +453,6 @@ export function WseDifferenceWorkspace() {
     appendNotices,
   })
 
-  useEffect(() => {
-    if (!scene) return
-    const bounds = engine.commonBounds()
-    setAnnotations((current) =>
-      current.map((annotation) => {
-        if (annotation.kind !== 'result' || !annotation.resultField) {
-          return annotation
-        }
-        const sample = sampleHydraulicResult(
-          scene,
-          bounds,
-          settings,
-          annotation.points[0],
-        )
-        return sample
-          ? {
-              ...annotation,
-              text: formatHydraulicResultLabel(
-                annotation.resultField,
-                sample,
-              ),
-            }
-          : annotation
-      }),
-    )
-  }, [engine, scene, setAnnotations, settings])
-
-  useEffect(() => {
-    if (!wseExtrema) return
-    const byKind = new globalThis.Map(
-      [wseExtrema.rise, wseExtrema.reduction]
-        .filter(
-          (item): item is WseDifferenceExtremum => item !== null,
-        )
-        .map((extremum) => [extremum.kind, extremum]),
-    )
-    setAnnotations((current) =>
-      current.flatMap((annotation) => {
-        const kind = annotation.hydraulicExtremum
-        if (!kind) return [annotation]
-        const extremum = byKind.get(kind)
-        if (!extremum) return []
-        const previousTarget = annotation.points[0]
-        const previousLabel = annotation.points[1]
-        const labelPoint =
-          previousTarget && previousLabel
-            ? {
-                x:
-                  extremum.point.x +
-                  previousLabel.x -
-                  previousTarget.x,
-                y:
-                  extremum.point.y +
-                  previousLabel.y -
-                  previousTarget.y,
-              }
-            : extremum.point
-        return [
-          {
-            ...annotation,
-            points: [extremum.point, labelPoint],
-            text: formatWseExtremumLabel(kind, extremum.value),
-          },
-        ]
-      }),
-    )
-  }, [setAnnotations, wseExtrema])
-
-  useEffect(() => {
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      const target = event.target
-      if (
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement
-      ) {
-        return
-      }
-      if (event.key === 'Escape') {
-        setAnnotationStart(null)
-        setAnnotationTool('select')
-      }
-      if (
-        (event.key === 'Delete' || event.key === 'Backspace') &&
-        selectedAnnotationId
-      ) {
-        setAnnotations((current) =>
-          current.filter(
-            (annotation) => annotation.id !== selectedAnnotationId,
-          ),
-        )
-        setSelectedAnnotationId(null)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [
-    selectedAnnotationId,
-    setAnnotations,
-    setAnnotationStart,
-    setAnnotationTool,
-    setSelectedAnnotationId,
-  ])
-
-  const createAnnotation = (
-    kind: MapAnnotation['kind'],
-    points: MapCoordinate[],
-    text = annotationDefaults.text,
-    resultField?: ResultLabelField,
-  ) => {
-    const id = globalThis.crypto.randomUUID()
-    const annotation: MapAnnotation = {
-      id,
-      kind,
-      points,
-      text,
-      color: annotationDefaults.color,
-      fillColor: annotationDefaults.fillColor,
-      lineWidth: annotationDefaults.lineWidth,
-      fontSize: annotationDefaults.fontSize,
-      rotation: annotationDefaults.rotation,
-      dashed: annotationDefaults.dashed,
-      background:
-        kind === 'text'
-          ? annotationDefaults.background
-          : kind === 'leader' || kind === 'result'
-            ? true
-            : false,
-      resultField,
-    }
-    setAnnotations((current) => [...current, annotation])
-    setSelectedAnnotationId(id)
-    setAnnotationTool('select')
-    setAnnotationPanelView('placed')
-    setAnnotationPlacedView('detail')
-    setAnnotationEditorView(defaultEditorView(annotation))
-    return annotation
-  }
-
-  const addWseExtremaCallouts = () => {
-    if (!scene || !wseExtrema) return
-    const extrema = [wseExtrema.rise, wseExtrema.reduction].filter(
-      (item): item is WseDifferenceExtremum => item !== null,
-    )
-    if (extrema.length === 0) {
-      appendNotices([
-        {
-          level: 'warning',
-          text: 'No positive or negative WSE differences are available to label.',
-        },
-      ])
-      return
-    }
-
-    const bounds = engine.commonBounds()
-    const ids = new globalThis.Map<WseExtremumKind, string>()
-    for (const extremum of extrema) {
-      ids.set(
-        extremum.kind,
-        annotations.find(
-          (annotation) =>
-            annotation.hydraulicExtremum === extremum.kind,
-        )?.id ?? globalThis.crypto.randomUUID(),
-      )
-    }
-
-    setAnnotations((current) => {
-      const extremaByKind = new globalThis.Map(
-        extrema.map((extremum) => [extremum.kind, extremum]),
-      )
-      const seen = new Set<WseExtremumKind>()
-      const next = current.flatMap((annotation) => {
-        const kind = annotation.hydraulicExtremum
-        if (!kind) return [annotation]
-        const extremum = extremaByKind.get(kind)
-        if (!extremum || seen.has(kind)) return []
-        seen.add(kind)
-        const previousTarget = annotation.points[0]
-        const previousLabel = annotation.points[1]
-        const labelPoint =
-          previousTarget && previousLabel
-            ? {
-                x:
-                  extremum.point.x +
-                  previousLabel.x -
-                  previousTarget.x,
-                y:
-                  extremum.point.y +
-                  previousLabel.y -
-                  previousTarget.y,
-              }
-            : defaultExtremumLabelPoint(extremum, bounds, settings)
-        return [
-          {
-            ...annotation,
-            kind: 'leader' as const,
-            points: [extremum.point, labelPoint],
-            text: formatWseExtremumLabel(kind, extremum.value),
-            resultField: undefined,
-          },
-        ]
-      })
-
-      for (const extremum of extrema) {
-        if (seen.has(extremum.kind)) continue
-        next.push({
-          id: ids.get(extremum.kind) ?? globalThis.crypto.randomUUID(),
-          kind: 'leader',
-          hydraulicExtremum: extremum.kind,
-          points: [
-            extremum.point,
-            defaultExtremumLabelPoint(extremum, bounds, settings),
-          ],
-          text: formatWseExtremumLabel(extremum.kind, extremum.value),
-          color:
-            extremum.kind === 'max-rise' ? '#b42318' : '#175cd3',
-          fillColor: annotationDefaults.fillColor,
-          lineWidth: annotationDefaults.lineWidth,
-          fontSize: annotationDefaults.fontSize,
-          rotation: annotationDefaults.rotation,
-          dashed: annotationDefaults.dashed,
-          background: true,
-        })
-      }
-      return next
-    })
-
-    setSelectedAnnotationId(ids.get(extrema[0].kind) ?? null)
-    setAnnotationTool('select')
-    setAnnotationPanelView('placed')
-    setAnnotationPlacedView('detail')
-    setAnnotationEditorView('content')
-    setAnnotationStart(null)
-    const summary = extrema
-      .map((extremum) =>
-        formatWseExtremumLabel(extremum.kind, extremum.value),
-      )
-      .join('; ')
-    appendNotices([
-      {
-        level: 'success',
-        text: `${extremaCalloutCount > 0 ? 'Refreshed' : 'Added'} ${summary}.`,
-      },
-      ...(extrema.length < 2
-        ? [
-            {
-              level: 'warning' as const,
-              text:
-                wseExtrema.rise === null
-                  ? 'No positive WSE rise was found in the comparison.'
-                  : 'No negative WSE reduction was found in the comparison.',
-            },
-          ]
-        : []),
-    ])
-  }
-
-  const updateAnnotationAppearance = (
-    patch: Partial<AnnotationDefaults>,
-  ) => {
-    if (selectedAnnotationId) {
-      setAnnotations((current) =>
-        current.map((annotation) =>
-          annotation.id === selectedAnnotationId
-            ? { ...annotation, ...patch }
-            : annotation,
-        ),
-      )
-    } else {
-      setAnnotationDefaults((current) => ({ ...current, ...patch }))
-    }
-  }
-
-  const setResultLabelField = (field: ResultLabelField) => {
-    setAnnotationDefaults((current) => ({
-      ...current,
-      resultField: field,
-    }))
-    if (
-      !selectedAnnotation ||
-      selectedAnnotation.kind !== 'result' ||
-      !scene
-    ) {
-      return
-    }
-    const sample = sampleHydraulicResult(
-      scene,
-      engine.commonBounds(),
-      settings,
-      selectedAnnotation.points[0],
-    )
-    setAnnotations((current) =>
-      current.map((annotation) =>
-        annotation.id === selectedAnnotation.id
-          ? {
-              ...annotation,
-              resultField: field,
-              text: sample
-                ? formatHydraulicResultLabel(field, sample)
-                : annotation.text,
-            }
-          : annotation,
-      ),
-    )
-  }
-
-  const chooseAnnotationTool = (tool: AnnotationTool) => {
-    setAnnotationPanelView('create')
-    setAnnotationTool(tool)
-    setAnnotationStart(null)
-    if (tool !== 'select') setSelectedAnnotationId(null)
-  }
-
-  const chooseAnnotationPanelView = (view: AnnotationPanelView) => {
-    setAnnotationPanelView(view)
-    setAnnotationStart(null)
-    if (view === 'create') {
-      setSelectedAnnotationId(null)
-      return
-    }
-    setAnnotationTool('select')
-    setAnnotationPlacedView('list')
-  }
-
-  const handleAnnotationPanelTabKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    view: AnnotationPanelView,
-  ) => {
-    if (
-      event.key !== 'ArrowLeft' &&
-      event.key !== 'ArrowRight' &&
-      event.key !== 'Home' &&
-      event.key !== 'End'
-    ) {
-      return
-    }
-    event.preventDefault()
-    const nextView =
-      event.key === 'Home'
-        ? 'create'
-        : event.key === 'End'
-          ? 'placed'
-          : view === 'create'
-            ? 'placed'
-            : 'create'
-    chooseAnnotationPanelView(nextView)
-    requestAnimationFrame(() =>
-      document
-        .querySelector<HTMLButtonElement>(
-          `#annotation-view-tab-${nextView}`,
-        )
-        ?.focus(),
-    )
-  }
-
-  const selectPlacedAnnotation = (annotation: MapAnnotation) => {
-    setAnnotationPanelView('placed')
-    setAnnotationPlacedView('detail')
-    setAnnotationEditorView(defaultEditorView(annotation))
-    setAnnotationTool('select')
-    setAnnotationStart(null)
-    setSelectedAnnotationId(annotation.id)
-  }
-
-  const returnToPlacedAnnotations = () => {
-    setAnnotationPlacedView('list')
-    setAnnotationStart(null)
-    requestAnimationFrame(() => {
-      if (selectedAnnotationId) {
-        annotationListItemRefs.current.get(selectedAnnotationId)?.focus()
-      }
-    })
-  }
-
-  const selectAdjacentAnnotation = (direction: -1 | 1) => {
-    if (annotations.length === 0) return
-    const currentIndex = Math.max(0, selectedAnnotationIndex)
-    const nextIndex =
-      (currentIndex + direction + annotations.length) % annotations.length
-    const next = annotations[nextIndex]
-    setSelectedAnnotationId(next.id)
-    if (
-      annotationEditorView === 'content' &&
-      !annotationHasContentEditor(next)
-    ) {
-      setAnnotationEditorView('style')
-    }
-  }
-
-  const handleAnnotationEditorTabKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    view: AnnotationEditorView,
-  ) => {
-    if (!selectedAnnotation) return
-    const views: AnnotationEditorView[] = annotationHasContentEditor(
-      selectedAnnotation,
-    )
-      ? ['content', 'style', 'position']
-      : ['style', 'position']
-    if (
-      event.key !== 'ArrowLeft' &&
-      event.key !== 'ArrowRight' &&
-      event.key !== 'Home' &&
-      event.key !== 'End'
-    ) {
-      return
-    }
-    event.preventDefault()
-    const currentIndex = Math.max(0, views.indexOf(view))
-    const nextIndex =
-      event.key === 'Home'
-        ? 0
-        : event.key === 'End'
-          ? views.length - 1
-          : event.key === 'ArrowRight'
-            ? (currentIndex + 1) % views.length
-            : (currentIndex - 1 + views.length) % views.length
-    const nextView = views[nextIndex]
-    setAnnotationEditorView(nextView)
-    requestAnimationFrame(() =>
-      document
-        .querySelector<HTMLButtonElement>(
-          `#annotation-editor-tab-${nextView}`,
-        )
-        ?.focus(),
-    )
-  }
-
-  const handleAnnotationListKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ) => {
-    let nextIndex = index
-    if (event.key === 'ArrowDown') {
-      nextIndex = Math.min(annotations.length - 1, index + 1)
-    } else if (event.key === 'ArrowUp') {
-      nextIndex = Math.max(0, index - 1)
-    } else if (event.key === 'Home') {
-      nextIndex = 0
-    } else if (event.key === 'End') {
-      nextIndex = annotations.length - 1
-    } else {
-      return
-    }
-    event.preventDefault()
-    const next = annotations[nextIndex]
-    if (!next) return
-    setSelectedAnnotationId(next.id)
-    requestAnimationFrame(() =>
-      annotationListItemRefs.current.get(next.id)?.focus(),
-    )
-  }
-
-  const deleteSelectedAnnotation = () => {
-    if (!selectedAnnotationId) return
-    const selectedIndex = annotations.findIndex(
-      (annotation) => annotation.id === selectedAnnotationId,
-    )
-    const nextSelection =
-      annotations[selectedIndex + 1] ?? annotations[selectedIndex - 1] ?? null
-    setAnnotations((current) =>
-      current.filter(
-        (annotation) => annotation.id !== selectedAnnotationId,
-      ),
-    )
-    setSelectedAnnotationId(nextSelection?.id ?? null)
-    if (!nextSelection) setAnnotationPlacedView('list')
-  }
-
-  const duplicateSelectedAnnotation = () => {
-    if (!selectedAnnotation) return
-    const frame = FRAMES[settings.orientation]
-    const bounds = engine.commonBounds()
-    const origin = canvasPointToMap(
-      frame.width / 2,
-      frame.height / 2,
-      bounds,
-      settings,
-    )
-    const shifted = canvasPointToMap(
-      frame.width / 2 + 18,
-      frame.height / 2 + 18,
-      bounds,
-      settings,
-    )
-    const id = globalThis.crypto.randomUUID()
-    const copy = duplicateAnnotation(
-      selectedAnnotation,
-      id,
-      shifted.x - origin.x,
-      shifted.y - origin.y,
-    )
-    if (copy.kind === 'result' && copy.resultField && scene) {
-      const sample = sampleHydraulicResult(
-        scene,
-        bounds,
-        settings,
-        copy.points[0],
-      )
-      if (sample) {
-        copy.text = formatHydraulicResultLabel(copy.resultField, sample)
-      }
-    }
-    setAnnotations((current) => [...current, copy])
-    setSelectedAnnotationId(id)
-    setAnnotationTool('select')
-    setAnnotationPanelView('placed')
-    setAnnotationPlacedView('detail')
-    setAnnotationEditorView(defaultEditorView(copy))
-    setAnnotationStart(null)
-  }
-
-  const nudgeSelectedAnnotation = (dx: number, dy: number) => {
-    if (!selectedAnnotationId) return
-    const frame = FRAMES[settings.orientation]
-    const center = canvasPointToMap(
-      frame.width / 2,
-      frame.height / 2,
-      engine.commonBounds(),
-      settings,
-    )
-    const offset = canvasPointToMap(
-      frame.width / 2 + dx,
-      frame.height / 2 + dy,
-      engine.commonBounds(),
-      settings,
-    )
-    setAnnotations((current) =>
-      current.map((annotation) =>
-        annotation.id === selectedAnnotationId
-          ? {
-              ...annotation,
-              points: annotation.points.map((point, index) =>
-                annotation.hydraulicExtremum && index === 0
-                  ? point
-                  : {
-                      x: point.x + offset.x - center.x,
-                      y: point.y + offset.y - center.y,
-                    },
-              ),
-            }
-          : annotation,
-      ),
-    )
-  }
-
   const updateOverlay = (id: string, patch: Partial<MapOverlay>) => {
     setOverlays((current) =>
       current.map((overlay) =>
@@ -1189,8 +600,8 @@ export function WseDifferenceWorkspace() {
     setAnnotations,
     setAnnotationStart,
     setSelectedAnnotationId,
-    showPlacedAnnotation: selectPlacedAnnotation,
-    createAnnotation,
+    showPlacedAnnotation: annotationController.selectPlacedAnnotation,
+    createAnnotation: annotationController.createAnnotation,
     appendNotices,
     setAnnotationDragging,
     selectFigureElement: (key) => setActiveElement(key),
@@ -1588,49 +999,8 @@ export function WseDifferenceWorkspace() {
 
             {activeSettingsSection === 'annotations' ? (
               <AnnotationSettingsPanel
-                model={{
-                  annotations,
-                  panelView: annotationPanelView,
-                  placedView: annotationPlacedView,
-                  editorView: annotationEditorView,
-                  tool: annotationTool,
-                  drawing: Boolean(annotationStart),
-                  sceneReady: Boolean(scene),
-                  extrema: wseExtrema,
-                  extremaCalloutCount,
-                  baselineLabel,
-                  comparisonLabel,
-                  editor: annotationEditor,
-                  activeResultField,
-                  resultLabelOptions,
-                  selectedId: selectedAnnotationId,
-                  selected: selectedAnnotation,
-                  selectedIndex: selectedAnnotationIndex,
-                  listItemRefs: annotationListItemRefs,
-                }}
-                actions={{
-                  choosePanelView: chooseAnnotationPanelView,
-                  handlePanelTabKeyDown: handleAnnotationPanelTabKeyDown,
-                  chooseTool: chooseAnnotationTool,
-                  cancelDrawing: () => setAnnotationStart(null),
-                  addExtremaCallouts: addWseExtremaCallouts,
-                  updateAppearance: updateAnnotationAppearance,
-                  setResultField: setResultLabelField,
-                  selectPlaced: selectPlacedAnnotation,
-                  handleListKeyDown: handleAnnotationListKeyDown,
-                  clearAnnotations: () => {
-                    setAnnotations([])
-                    setSelectedAnnotationId(null)
-                    setAnnotationStart(null)
-                  },
-                  returnToList: returnToPlacedAnnotations,
-                  selectAdjacent: selectAdjacentAnnotation,
-                  setEditorView: setAnnotationEditorView,
-                  handleEditorTabKeyDown: handleAnnotationEditorTabKeyDown,
-                  nudgeSelected: nudgeSelectedAnnotation,
-                  duplicateSelected: duplicateSelectedAnnotation,
-                  deleteSelected: deleteSelectedAnnotation,
-                }}
+                model={annotationController.model}
+                actions={annotationController.actions}
               />
             ) : null}
             {activeSettingsSection === 'export' ? (
