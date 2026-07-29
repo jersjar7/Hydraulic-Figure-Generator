@@ -4,10 +4,7 @@ import {
   FileJson,
   Map,
   MapPin,
-  RefreshCcw,
   X,
-  ZoomIn,
-  ZoomOut,
 } from 'lucide-react'
 import {
   useCallback,
@@ -20,8 +17,8 @@ import {
 } from 'react'
 import '../../App.css'
 import { ControlSection } from '../../components/ControlSection'
-import { DiagnosticsWidget } from '../../components/DiagnosticsWidget'
 import { FigureEditorShell } from '../../components/editor/FigureEditorShell'
+import { FigureMapWorkspace } from '../../components/editor/FigureMapWorkspace'
 import { FigureElementsPanel } from '../../components/FigureElementsPanel'
 import { ProjectDataPanel } from '../../components/ProjectDataPanel'
 import {
@@ -1499,49 +1496,19 @@ export function WseDifferenceWorkspace() {
           onReset={resetProject}
         />
 
-        <section className="map-workspace">
-          <div className="map-toolbar">
-            <div className="map-mode">
-              <span className="mode-dot" />
-              <strong>{ACTIVE_FIGURE.label}</strong>
-              <span>{comparisonLabel} minus {baselineLabel}</span>
-            </div>
-            <div className="map-toolbar-actions">
-              <button
-                className="icon-button"
-                type="button"
-                title="Zoom out"
-                aria-label="Zoom out"
-                onClick={() =>
-                  updateSettings('zoom', Math.max(0.35, settings.zoom - 0.1))
-                }
-              >
-                <ZoomOut size={18} />
-              </button>
-              <button
-                className="icon-button"
-                type="button"
-                title="Zoom in"
-                aria-label="Zoom in"
-                onClick={() =>
-                  updateSettings('zoom', Math.min(4, settings.zoom + 0.1))
-                }
-              >
-                <ZoomIn size={18} />
-              </button>
-              <button
-                className="icon-button"
-                type="button"
-                title="Fit map to frame"
-                aria-label="Fit map to frame"
-                onClick={resetView}
-              >
-                <RefreshCcw size={18} />
-              </button>
-            </div>
-          </div>
-
-          <div className="map-stage">
+        <FigureMapWorkspace
+          figureLabel={ACTIVE_FIGURE.label}
+          comparisonDescription={`${comparisonLabel} minus ${baselineLabel}`}
+          busy={busy}
+          notices={notices}
+          onZoomOut={() =>
+            updateSettings('zoom', Math.max(0.35, settings.zoom - 0.1))
+          }
+          onZoomIn={() =>
+            updateSettings('zoom', Math.min(4, settings.zoom + 0.1))
+          }
+          onFitFrame={resetView}
+        >
             {!scene ? (
               <div className="map-empty">
                 <div className="empty-symbol">
@@ -1597,15 +1564,7 @@ export function WseDifferenceWorkspace() {
                 }}
               />
             </div>
-            {busy ? (
-              <div className="map-busy" role="status">
-                <span className="spinner" />
-                Processing figure
-              </div>
-            ) : null}
-            <DiagnosticsWidget notices={notices} />
-          </div>
-        </section>
+        </FigureMapWorkspace>
 
         <aside className={`sidebar right-sidebar${rightOpen ? ' is-mobile-open' : ''}`}>
           <div className="sidebar-heading">
