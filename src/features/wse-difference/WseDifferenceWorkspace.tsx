@@ -28,7 +28,6 @@ import { ControlSection } from '../../components/ControlSection'
 import { DiagnosticsWidget } from '../../components/DiagnosticsWidget'
 import { FigureElementsPanel } from '../../components/FigureElementsPanel'
 import { ProjectDataPanel } from '../../components/ProjectDataPanel'
-import { createDefaultAnnotationSettings } from '../../core/defaults'
 import {
   DEFAULT_ELEMENT_STYLES,
   mergeElementStyles,
@@ -92,6 +91,7 @@ import {
 } from './workspaceConfiguration'
 import { useFittedCanvasSize } from './useFittedCanvasSize'
 import { useWseMapRendering } from './useWseMapRendering'
+import { useWseFigureDocument } from './useWseFigureDocument'
 import {
   annotationHasContentEditor,
   assessmentLineAt,
@@ -109,6 +109,7 @@ const ACTIVE_FIGURE = wseDifferenceFigure
 
 export function WseDifferenceWorkspace() {
   const projectSession = useProjectSession()
+  const figureDocument = useWseFigureDocument()
   const {
     engine,
     scenarios,
@@ -117,14 +118,20 @@ export function WseDifferenceWorkspace() {
     assessmentId: assessmentScenarioId,
     runByScenario,
   } = projectSession
-  const [settings, setSettings] = useState<FigureSettings>(
-    ACTIVE_FIGURE.createDefaultSettings,
-  )
+  const {
+    settings,
+    overlays,
+    annotations,
+    annotationDefaults,
+    setSettings,
+    setOverlays,
+    setAnnotations,
+    setAnnotationDefaults,
+    resetDocument,
+  } = figureDocument
   const assessmentWorkflow = useAssessmentWorkflow(1)
   const assessmentState = assessmentWorkflow.state
   const assessmentLines = assessmentState.collection
-  const [overlays, setOverlays] = useState<MapOverlay[]>([])
-  const [annotations, setAnnotations] = useState<MapAnnotation[]>([])
   const [annotationTool, setAnnotationTool] =
     useState<AnnotationTool>('select')
   const [annotationPanelView, setAnnotationPanelView] =
@@ -133,8 +140,6 @@ export function WseDifferenceWorkspace() {
     useState<AnnotationPlacedView>('list')
   const [annotationEditorView, setAnnotationEditorView] =
     useState<AnnotationEditorView>('content')
-  const [annotationDefaults, setAnnotationDefaults] =
-    useState<AnnotationDefaults>(createDefaultAnnotationSettings)
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(
     null,
   )
@@ -510,7 +515,7 @@ export function WseDifferenceWorkspace() {
           : annotation
       }),
     )
-  }, [engine, scene, settings])
+  }, [engine, scene, setAnnotations, settings])
 
   useEffect(() => {
     if (!wseExtrema) return
@@ -551,7 +556,7 @@ export function WseDifferenceWorkspace() {
         ]
       }),
     )
-  }, [wseExtrema])
+  }, [setAnnotations, wseExtrema])
 
   useEffect(() => {
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -581,7 +586,7 @@ export function WseDifferenceWorkspace() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedAnnotationId])
+  }, [selectedAnnotationId, setAnnotations])
 
   const createAnnotation = (
     kind: MapAnnotation['kind'],
@@ -1656,8 +1661,7 @@ export function WseDifferenceWorkspace() {
 
   const resetProject = () => {
     projectSession.reset()
-    setOverlays([])
-    setAnnotations([])
+    resetDocument()
     setSelectedAnnotationId(null)
     setAnnotationStart(null)
     setAnnotationTool('select')
@@ -1665,7 +1669,6 @@ export function WseDifferenceWorkspace() {
     setAnnotationPlacedView('list')
     setAnnotationEditorView('content')
     setLeftCollapsed(false)
-    setAnnotationDefaults(createDefaultAnnotationSettings())
     assessmentCalloutDragRef.current = null
     setAssessmentCalloutDragging(false)
     stationLabelDragRef.current = null
@@ -1679,7 +1682,6 @@ export function WseDifferenceWorkspace() {
     setScene(null)
     assessmentWorkflow.reset(1)
     setNotices([])
-    setSettings(ACTIVE_FIGURE.createDefaultSettings())
   }
 
   const downloadMap = async () => {
