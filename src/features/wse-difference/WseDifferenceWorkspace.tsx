@@ -73,6 +73,9 @@ import { readShapefileOverlays } from '../../core/shapefile'
 import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
 import { useProjectSession } from '../project-session/useProjectSession'
 import { downloadWseDifferencePng } from './exportWseDifference'
+import { CalculationSettingsPanel } from './components/CalculationSettingsPanel'
+import { NudgeButton } from './components/NudgeButton'
+import { Toggle } from './components/Toggle'
 import { useAssessmentMapLayers } from './useAssessmentMapLayers'
 import { wseDifferenceFigure } from './wseDifferenceFigure'
 import type {
@@ -2170,176 +2173,18 @@ export function WseDifferenceWorkspace() {
             aria-labelledby={`settings-tab-${activeSettingsSection}`}
           >
             {activeSettingsSection === 'calculation' ? (
-            <ControlSection>
-              <label className="field">
-                <span>
-                  Dry-depth threshold
-                  <small>ft</small>
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={settings.dryDepth}
-                  onChange={(event) => {
-                    updateSettings(
-                      'dryDepth',
-                      numeric(event.target.value, 0),
-                    )
-                    setScene(null)
-                    assessmentWorkflow.clear(
-                      settings.assessmentLineInterval,
-                    )
-                  }}
-                />
-              </label>
-              <p className="field-help">
-                Depths at or below this value are dry. At 0.00 ft, every
-                positive modeled depth is wet.
-              </p>
-              <Toggle
-                label="Newly wet/dry fill"
-                checked={settings.showWetDry}
-                onChange={(checked) => updateSettings('showWetDry', checked)}
+              <CalculationSettingsPanel
+                settings={settings}
+                assessmentLabel={assessmentLabel}
+                onSettingsChange={updateSettings}
+                onDryDepthChange={(dryDepth) => {
+                  updateSettings('dryDepth', dryDepth)
+                  setScene(null)
+                  assessmentWorkflow.clear(
+                    settings.assessmentLineInterval,
+                  )
+                }}
               />
-              <Toggle
-                label={`${assessmentLabel} WSE assessment lines`}
-                checked={settings.showAssessmentLines}
-                onChange={(checked) =>
-                  updateSettings('showAssessmentLines', checked)
-                }
-              />
-              <div className="field-grid two">
-                <label className="field color-field">
-                  <span>Assessment color</span>
-                  <input
-                    type="color"
-                    value={settings.assessmentLineColor}
-                    onChange={(event) =>
-                      updateSettings(
-                        'assessmentLineColor',
-                        event.target.value,
-                      )
-                    }
-                  />
-                </label>
-                <label className="field">
-                  <span>
-                    Line width
-                    <small>px</small>
-                  </span>
-                  <input
-                    type="number"
-                    min="0.25"
-                    max="12"
-                    step="0.25"
-                    value={settings.assessmentLineWidth}
-                    onChange={(event) =>
-                      updateSettings(
-                        'assessmentLineWidth',
-                        numeric(event.target.value, 2),
-                      )
-                    }
-                  />
-                </label>
-              </div>
-              <Toggle
-                label="Assessment WSE callouts"
-                checked={settings.showAssessmentLabels}
-                onChange={(checked) =>
-                  updateSettings('showAssessmentLabels', checked)
-                }
-              />
-              <div className="field-grid two">
-                <label className="field color-field">
-                  <span>Label color</span>
-                  <input
-                    type="color"
-                    value={settings.assessmentLabelColor}
-                    onChange={(event) =>
-                      updateSettings(
-                        'assessmentLabelColor',
-                        event.target.value,
-                      )
-                    }
-                  />
-                </label>
-                <label className="field">
-                  <span>
-                    Label size
-                    <small>px</small>
-                  </span>
-                  <input
-                    type="number"
-                    min="6"
-                    max="72"
-                    step="1"
-                    value={settings.assessmentLabelFontSize}
-                    onChange={(event) =>
-                      updateSettings(
-                        'assessmentLabelFontSize',
-                        numeric(event.target.value, 18),
-                      )
-                    }
-                  />
-                </label>
-                <label className="field">
-                  <span>
-                    Label offset
-                    <small>px</small>
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="120"
-                    step="1"
-                    value={settings.assessmentLabelOffset}
-                    onChange={(event) =>
-                      updateSettings(
-                        'assessmentLabelOffset',
-                        numeric(event.target.value, 28),
-                      )
-                    }
-                  />
-                </label>
-                <label className="field">
-                  <span>Label side</span>
-                  <select
-                    value={settings.assessmentLabelSide}
-                    onChange={(event) =>
-                      updateSettings(
-                        'assessmentLabelSide',
-                        event.target.value as FigureSettings['assessmentLabelSide'],
-                      )
-                    }
-                  >
-                    <option value="alternate">Alternate</option>
-                    <option value="left">Left</option>
-                    <option value="right">Right</option>
-                  </select>
-                </label>
-              </div>
-              <Toggle
-                label="WSE difference outlines"
-                checked={settings.showDifferenceOutlines}
-                onChange={(checked) =>
-                  updateSettings('showDifferenceOutlines', checked)
-                }
-              />
-              <label className="field color-field">
-                <span>Outline color</span>
-                <input
-                  type="color"
-                  value={settings.differenceOutlineColor}
-                  onChange={(event) =>
-                    updateSettings(
-                      'differenceOutlineColor',
-                      event.target.value,
-                    )
-                  }
-                />
-              </label>
-            </ControlSection>
             ) : null}
 
             {activeSettingsSection === 'legend' ? (
@@ -3353,47 +3198,5 @@ export function WseDifferenceWorkspace() {
         />
       )}
     </div>
-  )
-}
-
-type ToggleProps = {
-  label: string
-  checked: boolean
-  onChange(checked: boolean): void
-}
-
-function Toggle({ label, checked, onChange }: ToggleProps) {
-  return (
-    <label className="toggle-row">
-      <span>{label}</span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-      />
-      <span className="toggle-track" aria-hidden="true">
-        <span />
-      </span>
-    </label>
-  )
-}
-
-type NudgeButtonProps = {
-  label: string
-  icon: React.ReactNode
-  onClick(): void
-}
-
-function NudgeButton({ label, icon, onClick }: NudgeButtonProps) {
-  return (
-    <button
-      className="icon-button tiny"
-      type="button"
-      title={label}
-      aria-label={label}
-      onClick={onClick}
-    >
-      {icon}
-    </button>
   )
 }
