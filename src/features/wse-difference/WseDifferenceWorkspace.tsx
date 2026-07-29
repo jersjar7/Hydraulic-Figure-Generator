@@ -74,6 +74,8 @@ import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow
 import { useProjectSession } from '../project-session/useProjectSession'
 import { downloadWseDifferencePng } from './exportWseDifference'
 import { CalculationSettingsPanel } from './components/CalculationSettingsPanel'
+import { FrameSettingsPanel } from './components/FrameSettingsPanel'
+import { LegendSettingsPanel } from './components/LegendSettingsPanel'
 import { NudgeButton } from './components/NudgeButton'
 import { Toggle } from './components/Toggle'
 import { useAssessmentMapLayers } from './useAssessmentMapLayers'
@@ -2188,168 +2190,18 @@ export function WseDifferenceWorkspace() {
             ) : null}
 
             {activeSettingsSection === 'legend' ? (
-            <ControlSection>
-              <div className="field-grid two">
-                <label className="field">
-                  <span>Symmetric bound <small>± ft</small></span>
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.25"
-                    placeholder="Auto"
-                    value={settings.legendBound ?? ''}
-                    onChange={(event) =>
-                      updateSettings(
-                        'legendBound',
-                        event.target.value
-                          ? numeric(event.target.value, 3)
-                          : null,
-                      )
-                    }
-                  />
-                </label>
-                <label className="field">
-                  <span>Legend interval <small>ft</small></span>
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.1"
-                    placeholder="Auto"
-                    value={settings.legendInterval ?? ''}
-                    onChange={(event) =>
-                      updateSettings(
-                        'legendInterval',
-                        event.target.value
-                          ? numeric(event.target.value, 0.5)
-                          : null,
-                      )
-                    }
-                  />
-                </label>
-              </div>
-              <div className="field-grid two">
-                <label className="field color-field">
-                  <span>Newly inundated</span>
-                  <input
-                    type="color"
-                    value={settings.newlyWetColor}
-                    onChange={(event) =>
-                      updateSettings('newlyWetColor', event.target.value)
-                    }
-                  />
-                </label>
-                <label className="field color-field">
-                  <span>Newly dry</span>
-                  <input
-                    type="color"
-                    value={settings.newlyDryColor}
-                    onChange={(event) =>
-                      updateSettings('newlyDryColor', event.target.value)
-                    }
-                  />
-                </label>
-              </div>
-            </ControlSection>
+              <LegendSettingsPanel
+                settings={settings}
+                onSettingsChange={updateSettings}
+              />
             ) : null}
 
             {activeSettingsSection === 'frame' ? (
-            <ControlSection>
-              <div className="segmented" aria-label="Figure orientation">
-                <button
-                  type="button"
-                  className={settings.orientation === 'landscape' ? 'active' : ''}
-                  onClick={() => updateSettings('orientation', 'landscape')}
-                >
-                  Landscape
-                </button>
-                <button
-                  type="button"
-                  className={settings.orientation === 'portrait' ? 'active' : ''}
-                  onClick={() => updateSettings('orientation', 'portrait')}
-                >
-                  Portrait
-                </button>
-              </div>
-              <label className="range-field">
-                <span>
-                  Rotation <output>{settings.rotation.toFixed(0)}°</output>
-                </span>
-                <input
-                  type="range"
-                  min="-180"
-                  max="180"
-                  step="1"
-                  value={settings.rotation}
-                  onChange={(event) =>
-                    updateSettings('rotation', numeric(event.target.value))
-                  }
-                />
-              </label>
-              <label className="range-field">
-                <span>
-                  Zoom <output>{settings.zoom.toFixed(2)}×</output>
-                </span>
-                <input
-                  type="range"
-                  min="0.35"
-                  max="4"
-                  step="0.05"
-                  value={settings.zoom}
-                  onChange={(event) =>
-                    updateSettings('zoom', numeric(event.target.value, 1))
-                  }
-                />
-              </label>
-              <label className="range-field">
-                <span>
-                  Aerial opacity{' '}
-                  <output>{Math.round(settings.basemapOpacity * 100)}%</output>
-                </span>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={settings.basemapOpacity}
-                  onChange={(event) =>
-                    updateSettings(
-                      'basemapOpacity',
-                      numeric(event.target.value, 0.72),
-                    )
-                  }
-                />
-              </label>
-              <div className="nudge-control map-pan">
-                <span>Pan map</span>
-                <div className="nudge-buttons">
-                  <NudgeButton
-                    label="Pan left"
-                    icon={<ArrowLeft size={15} />}
-                    onClick={() => updateSettings('panX', settings.panX - 30)}
-                  />
-                  <NudgeButton
-                    label="Pan up"
-                    icon={<ArrowUp size={15} />}
-                    onClick={() => updateSettings('panY', settings.panY - 30)}
-                  />
-                  <NudgeButton
-                    label="Pan down"
-                    icon={<ArrowDown size={15} />}
-                    onClick={() => updateSettings('panY', settings.panY + 30)}
-                  />
-                  <NudgeButton
-                    label="Pan right"
-                    icon={<ArrowRight size={15} />}
-                    onClick={() => updateSettings('panX', settings.panX + 30)}
-                  />
-                  <NudgeButton
-                    label="Reset view"
-                    icon={<RefreshCcw size={15} />}
-                    onClick={resetView}
-                  />
-                </div>
-              </div>
-            </ControlSection>
+              <FrameSettingsPanel
+                settings={settings}
+                onSettingsChange={updateSettings}
+                onResetView={resetView}
+              />
             ) : null}
 
             {activeSettingsSection === 'elements' ? (
