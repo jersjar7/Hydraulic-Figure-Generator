@@ -2513,7 +2513,7 @@ function App() {
                 <div className="empty-symbol">
                   <MapPin size={28} />
                 </div>
-                <h2>Build an {ACTIVE_FIGURE.label} figure</h2>
+                <h2>Build a {ACTIVE_FIGURE.label} figure</h2>
                 <p>
                   Add at least two scenario geometry and datasets pairs on the
                   left, assign the Baseline and Comparison roles, then generate
