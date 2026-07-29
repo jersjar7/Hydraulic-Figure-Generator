@@ -49,10 +49,7 @@ import { ControlSection } from './components/ControlSection'
 import { DiagnosticsWidget } from './components/DiagnosticsWidget'
 import { FigureElementsPanel } from './components/FigureElementsPanel'
 import { ProjectDataPanel } from './components/ProjectDataPanel'
-import {
-  createDefaultAnnotationSettings,
-  createDefaultFigureSettings,
-} from './core/defaults'
+import { createDefaultAnnotationSettings } from './core/defaults'
 import {
   extractCenterlineCandidates,
   generateCenterlineStationTicks,
@@ -65,7 +62,6 @@ import {
 import {
   findWseDifferenceExtrema,
   formatWseExtremumLabel,
-  runDisplayName,
   type HydraulicEngine,
   type WseDifferenceExtremum,
 } from './core/hydraulicEngine'
@@ -80,7 +76,6 @@ import {
   hitTestStationLabel,
   mapPointToCanvas,
   moveAnnotationPoints,
-  renderWseDifferenceMap,
   sampleHydraulicResult,
   stationLabelPosition,
   type AnnotationHitPart,
@@ -91,6 +86,7 @@ import {
 } from './core/projectFile'
 import { readShapefileOverlays } from './core/shapefile'
 import { useAssessmentWorkflow } from './features/assessment-lines/useAssessmentWorkflow'
+import { DEFAULT_FIGURE_MODULE } from './features/figures/registry'
 import { useProjectSession } from './features/project-session/useProjectSession'
 import type {
   AnnotationDefaults,
@@ -119,6 +115,8 @@ const FRAME_ASPECTS = {
   landscape: 1650 / 1275,
   portrait: 1275 / 1650,
 } as const
+
+const ACTIVE_FIGURE = DEFAULT_FIGURE_MODULE
 
 const SETTINGS_SECTIONS = [
   {
@@ -362,10 +360,9 @@ function App() {
     comparisonId: comparisonScenarioId,
     assessmentId: assessmentScenarioId,
     runByScenario,
-    ready,
   } = projectSession
   const [settings, setSettings] = useState<FigureSettings>(
-    createDefaultFigureSettings,
+    ACTIVE_FIGURE.createDefaultSettings,
   )
   const assessmentWorkflow = useAssessmentWorkflow(1)
   const assessmentState = assessmentWorkflow.state
@@ -429,6 +426,14 @@ function App() {
   const baselineRun = runByScenario[baselineScenarioId] ?? 0
   const comparisonRun = runByScenario[comparisonScenarioId] ?? 0
   const assessmentRun = runByScenario[assessmentScenarioId] ?? 0
+  const ready = ACTIVE_FIGURE.canGenerate({
+    engine,
+    baselineId: baselineScenarioId,
+    baselineRun,
+    comparisonId: comparisonScenarioId,
+    comparisonRun,
+    dryDepth: settings.dryDepth,
+  })
   const baselineLabel = baselineCondition?.label ?? 'Baseline'
   const comparisonLabel = comparisonCondition?.label ?? 'Comparison'
   const assessmentLabel = assessmentCondition?.label ?? 'Assessment source'
@@ -813,13 +818,14 @@ function App() {
   const generateMap = () => {
     setBusy(true)
     try {
-      const nextScene = engine.buildWseDifference(
-        baselineScenarioId,
+      const nextScene = ACTIVE_FIGURE.buildScene({
+        engine,
+        baselineId: baselineScenarioId,
         baselineRun,
-        comparisonScenarioId,
+        comparisonId: comparisonScenarioId,
         comparisonRun,
-        settings.dryDepth,
-      )
+        dryDepth: settings.dryDepth,
+      })
       if (nextScene.validDifferenceNodes === 0) {
         throw new Error(
           'The selected runs have no overlapping valid WSE values at this dry-depth threshold.',
@@ -866,21 +872,22 @@ function App() {
     ) {
       setBusy(true)
     }
-    void renderWseDifferenceMap(
-      renderCanvas,
+    void ACTIVE_FIGURE.render({
+      canvas: renderCanvas,
       scene,
-      engine.commonBounds(),
+      commonBounds: engine.commonBounds(),
       settings,
       overlays,
-      assessmentDisplayLayer,
+      assessment: assessmentDisplayLayer,
       annotations,
       selectedAnnotationId,
-      activeSettingsSection === 'elements' &&
+      selectedElementKey:
+        activeSettingsSection === 'elements' &&
         activeElement !== 'stationing'
-        ? activeElement
-        : null,
-      controller.signal,
-    )
+          ? activeElement
+          : null,
+      signal: controller.signal,
+    })
       .then((elementBounds) => {
         if (renderSequence.current !== sequence || !canvasRef.current) return
         elementBoundsRef.current = elementBounds
@@ -2106,7 +2113,8 @@ function App() {
   }
 
   const resetCenterlineStationing = () => {
-    const defaults = createDefaultFigureSettings().centerlineStationing
+    const defaults =
+      ACTIVE_FIGURE.createDefaultSettings().centerlineStationing
     setSettings((current) => ({
       ...current,
       centerlineStationing: structuredClone(defaults),
@@ -2149,7 +2157,7 @@ function App() {
     setScene(null)
     assessmentWorkflow.reset(1)
     setNotices([])
-    setSettings(createDefaultFigureSettings())
+    setSettings(ACTIVE_FIGURE.createDefaultSettings())
   }
 
   const downloadMap = async () => {
@@ -2157,21 +2165,21 @@ function App() {
     setBusy(true)
     try {
       const exportCanvas = document.createElement('canvas')
-      await renderWseDifferenceMap(
-        exportCanvas,
+      await ACTIVE_FIGURE.render({
+        canvas: exportCanvas,
         scene,
-        engine.commonBounds(),
+        commonBounds: engine.commonBounds(),
         settings,
         overlays,
-        assessmentExportLayer,
+        assessment: assessmentExportLayer,
         annotations,
-      )
+      })
       exportCanvas.toBlob((blob) => {
         if (!blob) return
         const url = URL.createObjectURL(blob)
         const anchor = document.createElement('a')
         anchor.href = url
-        anchor.download = `FRA_WSE_Difference_${runDisplayName(scene.existing.run.name).replace(/\s+/g, '_')}_${runDisplayName(scene.proposed.run.name).replace(/\s+/g, '_')}.png`
+        anchor.download = ACTIVE_FIGURE.exportFileName(scene)
         anchor.click()
         URL.revokeObjectURL(url)
       }, 'image/png')
@@ -2339,7 +2347,9 @@ function App() {
           </div>
           <div>
             <h1>Hydraulic Figure Generator</h1>
-            <p>FRA workspace · WSE difference</p>
+            <p>
+              {ACTIVE_FIGURE.workspaceLabel} · {ACTIVE_FIGURE.label}
+            </p>
           </div>
         </div>
         <div className="topbar-actions">
@@ -2469,7 +2479,7 @@ function App() {
           <div className="map-toolbar">
             <div className="map-mode">
               <span className="mode-dot" />
-              <strong>WSE Difference</strong>
+              <strong>{ACTIVE_FIGURE.label}</strong>
               <span>{comparisonLabel} minus {baselineLabel}</span>
             </div>
             <div className="map-toolbar-actions">
@@ -2513,7 +2523,7 @@ function App() {
                 <div className="empty-symbol">
                   <MapPin size={28} />
                 </div>
-                <h2>Build an FRA WSE difference figure</h2>
+                <h2>Build an {ACTIVE_FIGURE.label} figure</h2>
                 <p>
                   Add at least two scenario geometry and datasets pairs on the
                   left, assign the Baseline and Comparison roles, then generate
@@ -2527,7 +2537,7 @@ function App() {
                   onClick={generateMap}
                 >
                   <Map size={17} aria-hidden="true" />
-                  Generate WSE difference
+                  Generate {ACTIVE_FIGURE.label}
                 </button>
               </div>
             ) : null}

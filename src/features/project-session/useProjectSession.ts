@@ -200,7 +200,6 @@ export function useProjectSession() {
     comparisonId,
     assessmentId,
     runByScenario,
-    ready: engine.isReady(baselineId, comparisonId),
     ingest,
     removeCondition,
     renameCondition,

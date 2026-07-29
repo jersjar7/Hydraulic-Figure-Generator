@@ -10,9 +10,10 @@ import type {
   MapOverlay,
   StationLabelOverrides,
 } from './types'
+import { WSE_DIFFERENCE_FIGURE_ID } from './figureIds'
 
 export const PROJECT_FILE_VERSION = 13
-export const PROJECT_FIGURE = 'fra-wse-difference'
+export const PROJECT_FIGURE = WSE_DIFFERENCE_FIGURE_ID
 
 type PartialElementStyles = {
   [Key in keyof MapElementStyles]?: Partial<MapElementStyles[Key]>
