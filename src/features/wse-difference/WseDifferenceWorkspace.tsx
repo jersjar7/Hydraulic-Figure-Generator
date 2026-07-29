@@ -3,7 +3,6 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
-  ArrowUpRight,
   ArrowUp,
   ArrowUpDown,
   Crosshair,
@@ -13,21 +12,15 @@ import {
   Download,
   FileJson,
   FolderOpen,
-  ImageDown,
   List,
   Map,
   MapPin,
-  MessageSquareText,
-  Minus,
-  MousePointer2,
   PanelLeft,
   PanelRight,
   Palette,
   Plus,
   RefreshCcw,
   Save,
-  Settings2,
-  SlidersHorizontal,
   Trash2,
   Type,
   X,
@@ -62,7 +55,6 @@ import {
 import {
   findWseDifferenceExtrema,
   formatWseExtremumLabel,
-  type HydraulicEngine,
   type WseDifferenceExtremum,
 } from '../../core/hydraulicEngine'
 import {
@@ -75,10 +67,8 @@ import {
   hitTestAssessmentCallout,
   hitTestStationLabel,
   mapPointToCanvas,
-  moveAnnotationPoints,
   sampleHydraulicResult,
   stationLabelPosition,
-  type AnnotationHitPart,
 } from '../../core/mapRenderer'
 import {
   createHydraulicFigureProject,
@@ -93,7 +83,6 @@ import type {
   AnnotationDefaults,
   AssessmentMapLayer,
   AnnotationTool,
-  Bounds,
   ConditionKey,
   FigureElementPanelKey,
   FigureSettings,
@@ -107,249 +96,38 @@ import type {
   ResultLabelField,
   ScenarioRole,
   StationLabelOverride,
-  WseAssessmentLine,
   WseExtremumKind,
   WseDifferenceScene,
 } from '../../core/types'
-
-const FRAME_ASPECTS = {
-  landscape: 1650 / 1275,
-  portrait: 1275 / 1650,
-} as const
+import {
+  ANNOTATION_TOOLS,
+  FRAME_ASPECTS,
+  SETTINGS_SECTIONS,
+  type AnnotationEditorView,
+  type AnnotationPanelView,
+  type AnnotationPlacedView,
+  type SettingsSectionKey,
+} from './workspaceConfiguration'
+import {
+  annotationDisplayName,
+  annotationHasContentEditor,
+  assessmentLineAt,
+  assessmentWseLabel,
+  defaultEditorView,
+  defaultExtremumLabelPoint,
+  draggedAnnotationPoints,
+  updateDraggedResultAnnotation,
+  type AnnotationDrag,
+  type AssessmentCalloutDrag,
+  type FigureElementDrag,
+  type StationLabelDrag,
+} from './workspaceInteractions'
 
 const ACTIVE_FIGURE = wseDifferenceFigure
-
-const SETTINGS_SECTIONS = [
-  {
-    key: 'calculation',
-    label: 'Map',
-    title: 'Map calculation',
-    icon: Settings2,
-  },
-  {
-    key: 'legend',
-    label: 'Legend',
-    title: 'Legend and colors',
-    icon: Palette,
-  },
-  {
-    key: 'frame',
-    label: 'View',
-    title: 'Frame and view',
-    icon: SlidersHorizontal,
-  },
-  {
-    key: 'elements',
-    label: 'Elements',
-    title: 'Figure elements',
-    icon: MapPin,
-  },
-  {
-    key: 'annotations',
-    label: 'Callouts',
-    title: 'Annotations and callouts',
-    icon: MessageSquareText,
-  },
-  {
-    key: 'export',
-    label: 'Export',
-    title: 'Export',
-    icon: ImageDown,
-  },
-] as const
-
-type SettingsSectionKey = (typeof SETTINGS_SECTIONS)[number]['key']
-type AnnotationPanelView = 'create' | 'placed'
-type AnnotationPlacedView = 'list' | 'detail'
-type AnnotationEditorView = 'content' | 'style' | 'position'
-
-const ANNOTATION_TOOLS = [
-  { key: 'select', label: 'Select', icon: MousePointer2 },
-  { key: 'text', label: 'Text', icon: Type },
-  { key: 'leader', label: 'Leader callout', icon: MessageSquareText },
-  { key: 'arrow', label: 'Arrow', icon: ArrowUpRight },
-  { key: 'line', label: 'Line', icon: Minus },
-  { key: 'result', label: 'Automatic result label', icon: Crosshair },
-  { key: 'extrema', label: 'Max / min WSE', icon: ArrowUpDown },
-] as const satisfies ReadonlyArray<{
-  key: AnnotationTool
-  label: string
-  icon: typeof MousePointer2
-}>
 
 const numeric = (value: string, fallback = 0) => {
   const parsed = Number.parseFloat(value)
   return Number.isFinite(parsed) ? parsed : fallback
-}
-
-type AnnotationDrag = {
-  id: string
-  part: AnnotationHitPart
-  start: MapCoordinate
-  end: MapCoordinate
-  originalPoints: MapCoordinate[]
-}
-
-type FigureElementDrag = {
-  key: MapElementKey
-  start: { x: number; y: number }
-  originalPosition: FigureSettings['elementPositions'][MapElementKey]
-  originalBounds: MapElementBounds
-}
-
-type AssessmentCalloutDrag = {
-  lineId: string
-  startScreen: { x: number; y: number }
-  startPointer: MapCoordinate
-  originalRenderedPoint: MapCoordinate
-  originalOverridePoint?: MapCoordinate
-  moved: boolean
-}
-
-type StationLabelDrag = {
-  id: string
-  startScreen: { x: number; y: number }
-  startPointer: MapCoordinate
-  originalRenderedPoint: MapCoordinate
-  originalOverride: StationLabelOverride | undefined
-  moved: boolean
-}
-
-function assessmentWseLabel(level: number) {
-  return `WSE ${level.toFixed(1)} ft`
-}
-
-function draggedAnnotationPoints(
-  annotation: MapAnnotation,
-  drag: AnnotationDrag,
-) {
-  const dx = drag.end.x - drag.start.x
-  const dy = drag.end.y - drag.start.y
-  return moveAnnotationPoints(
-    annotation,
-    drag.part,
-    drag.originalPoints,
-    dx,
-    dy,
-  )
-}
-
-function updateDraggedResultAnnotation(
-  annotation: MapAnnotation,
-  dragPart: AnnotationHitPart,
-  scene: WseDifferenceScene | null,
-  engine: HydraulicEngine,
-  settings: FigureSettings,
-) {
-  if (
-    annotation.kind !== 'result' ||
-    !annotation.resultField ||
-    !scene ||
-    (dragPart !== 'start' && dragPart !== 'segment')
-  ) {
-    return annotation
-  }
-  const sample = sampleHydraulicResult(
-    scene,
-    engine.commonBounds(),
-    settings,
-    annotation.points[0],
-  )
-  return sample
-    ? {
-        ...annotation,
-        text: formatHydraulicResultLabel(annotation.resultField, sample),
-      }
-    : annotation
-}
-
-function defaultExtremumLabelPoint(
-  extremum: WseDifferenceExtremum,
-  bounds: Bounds,
-  settings: FigureSettings,
-) {
-  const frame = FRAMES[settings.orientation]
-  const target = mapPointToCanvas(extremum.point, bounds, settings)
-  const horizontalOffset = target.x < frame.width / 2 ? 190 : -190
-  const verticalOffset = extremum.kind === 'max-rise' ? -90 : 90
-  const label = {
-    x: Math.max(
-      190,
-      Math.min(frame.width - 190, target.x + horizontalOffset),
-    ),
-    y: Math.max(
-      65,
-      Math.min(frame.height - 65, target.y + verticalOffset),
-    ),
-  }
-  return canvasPointToMap(label.x, label.y, bounds, settings)
-}
-
-function extremumDisplayName(kind: WseExtremumKind) {
-  return kind === 'max-rise' ? 'Max WSE rise' : 'Max WSE reduction'
-}
-
-function annotationDisplayName(annotation: MapAnnotation, index: number) {
-  return annotation.hydraulicExtremum
-    ? extremumDisplayName(annotation.hydraulicExtremum)
-    : `${annotation.kind.charAt(0).toUpperCase()}${annotation.kind.slice(1)} ${index + 1}`
-}
-
-function annotationHasContentEditor(annotation: MapAnnotation) {
-  return annotation.kind !== 'line' && annotation.kind !== 'arrow'
-}
-
-function defaultEditorView(annotation: MapAnnotation): AnnotationEditorView {
-  return annotationHasContentEditor(annotation) ? 'content' : 'style'
-}
-
-function pointSegmentDistance(
-  point: { x: number; y: number },
-  start: { x: number; y: number },
-  end: { x: number; y: number },
-) {
-  const dx = end.x - start.x
-  const dy = end.y - start.y
-  const lengthSquared = dx * dx + dy * dy
-  if (lengthSquared === 0) {
-    return Math.hypot(point.x - start.x, point.y - start.y)
-  }
-  const fraction = Math.max(
-    0,
-    Math.min(
-      1,
-      ((point.x - start.x) * dx + (point.y - start.y) * dy) /
-        lengthSquared,
-    ),
-  )
-  return Math.hypot(
-    point.x - (start.x + dx * fraction),
-    point.y - (start.y + dy * fraction),
-  )
-}
-
-function assessmentLineAt(
-  lines: WseAssessmentLine[],
-  bounds: Bounds,
-  settings: FigureSettings,
-  point: { x: number; y: number },
-) {
-  let closest: { line: WseAssessmentLine; distance: number } | null = null
-  for (const line of lines) {
-    for (let index = 1; index < line.points.length; index += 1) {
-      const start = mapPointToCanvas(
-        line.points[index - 1],
-        bounds,
-        settings,
-      )
-      const end = mapPointToCanvas(line.points[index], bounds, settings)
-      const distance = pointSegmentDistance(point, start, end)
-      if (distance <= 10 && (!closest || distance < closest.distance)) {
-        closest = { line, distance }
-      }
-    }
-  }
-  return closest?.line ?? null
 }
 
 export function WseDifferenceWorkspace() {
