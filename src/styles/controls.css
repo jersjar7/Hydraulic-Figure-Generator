@@ -1,0 +1,145 @@
+.annotation-panel .color-field input[type="color"] {
+  height: 30px;
+}
+
+.annotation-panel .toggle-row {
+  min-height: 28px;
+}
+
+.annotation-panel .nudge-control {
+  margin-top: 7px;
+}
+
+.field-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.field-grid.two {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.field-grid.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.color-field input[type="color"] {
+  width: 100%;
+  height: 34px;
+}
+
+.toggle-row {
+  min-height: 35px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: #33465d;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.toggle-row input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle-track {
+  position: relative;
+  width: 34px;
+  height: 19px;
+  background: #b9c4d0;
+  border-radius: 12px;
+  transition: background 120ms ease;
+}
+
+.toggle-track span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 13px;
+  height: 13px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(24, 43, 67, 0.25);
+  transition: transform 120ms ease;
+}
+
+.toggle-row input:checked + .toggle-track {
+  background: var(--green);
+}
+
+.toggle-row input:checked + .toggle-track span {
+  transform: translateX(15px);
+}
+
+.toggle-row input:focus-visible + .toggle-track {
+  outline: 2px solid #1682cf;
+  outline-offset: 2px;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 3px;
+  margin: 8px 0 12px;
+  background: #edf1f5;
+  border: 1px solid #d4dce5;
+  border-radius: 6px;
+}
+
+.segmented button {
+  height: 30px;
+  color: #53647a;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.segmented button.active {
+  color: #123d63;
+  background: white;
+  box-shadow: 0 1px 3px rgba(21, 42, 66, 0.14);
+  font-weight: 700;
+}
+
+.range-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.range-field output {
+  color: #42627f;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--blue);
+}
+
+.nudge-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.nudge-control > span {
+  color: #3d4e63;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.nudge-buttons {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
