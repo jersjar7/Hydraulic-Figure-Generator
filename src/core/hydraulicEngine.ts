@@ -1,15 +1,9 @@
 import { generateWseAssessmentLines } from './assessmentLines'
-import {
-  findNearestNode,
-  meshMatchToleranceSquared,
-} from './meshMatching'
 import type {
   ConditionData,
   ConditionKey,
-  DatasetRun,
   IngestNotice,
   RunSelection,
-  WseDifferenceScene,
   WseAssessmentLineCollection,
 } from './types'
 import { conditionNodeCountsMatch } from './hydraulics/conditionCompatibility'
@@ -27,6 +21,10 @@ import {
   readDatasets,
   readGeometry,
 } from './hydraulics/smsH5Reader'
+import {
+  buildWseDifferenceScene,
+  findResultParam,
+} from './hydraulics/wseDifferenceBuilder'
 
 export { conditionNodeCountsMatch } from './hydraulics/conditionCompatibility'
 export {
@@ -40,52 +38,7 @@ export {
   type WseDifferenceExtremum,
 } from './hydraulics/wseExtrema'
 
-const VALID = (value: number) =>
-  value != null && Number.isFinite(value) && value > -900
-
 type ValueCacheEntry = Float32Array | { vx: Float32Array; vy: Float32Array }
-
-function findParam(run: DatasetRun, pattern: RegExp) {
-  return Object.keys(run.params).find((param) => pattern.test(param))
-}
-
-function maskedWetValues(
-  values: Float32Array,
-  depth: Float32Array,
-  dryDepth: number,
-) {
-  const output = new Float32Array(values.length)
-  for (let index = 0; index < values.length; index += 1) {
-    output[index] =
-      VALID(values[index]) &&
-      VALID(depth[index]) &&
-      depth[index] > dryDepth
-        ? values[index]
-        : -999
-  }
-  return output
-}
-
-function autoLegendBound(values: Float32Array) {
-  let maxAbsolute = 0
-  let valid = 0
-  for (const value of values) {
-    if (!VALID(value)) continue
-    maxAbsolute = Math.max(maxAbsolute, Math.abs(value))
-    valid += 1
-  }
-  if (valid === 0) return { maxAbs: 0.25, valid }
-  const rawStep = maxAbsolute / 6
-  const magnitude = 10 ** Math.floor(Math.log10(rawStep || 0.01))
-  const step =
-    [1, 2, 5, 10].map((factor) => factor * magnitude).find(
-      (candidate) => candidate >= rawStep,
-    ) ?? 10 * magnitude
-  return {
-    maxAbs: Math.max(0.25, Math.ceil(maxAbsolute / step) * step),
-    valid,
-  }
-}
 
 export function runDisplayName(name: string) {
   return String(name)
@@ -334,7 +287,7 @@ export class HydraulicEngine {
     comparisonKey: ConditionKey,
     comparisonIndex: number,
     dryDepth: number,
-  ): WseDifferenceScene {
+  ) {
     const existing = this.runOptions(baselineKey)[baselineIndex]
     const proposed = this.runOptions(comparisonKey)[comparisonIndex]
     if (!existing || !proposed) {
@@ -344,10 +297,10 @@ export class HydraulicEngine {
       throw new Error('Baseline and Comparison must use different scenarios.')
     }
 
-    const existingWseParam = findParam(existing.run, /Water_?Elev|WSE/i)
-    const proposedWseParam = findParam(proposed.run, /Water_?Elev|WSE/i)
-    const existingDepthParam = findParam(existing.run, /Water_?Depth/i)
-    const proposedDepthParam = findParam(proposed.run, /Water_?Depth/i)
+    const existingWseParam = findResultParam(existing.run, /Water_?Elev|WSE/i)
+    const proposedWseParam = findResultParam(proposed.run, /Water_?Elev|WSE/i)
+    const existingDepthParam = findResultParam(existing.run, /Water_?Depth/i)
+    const proposedDepthParam = findResultParam(proposed.run, /Water_?Depth/i)
     if (
       !existingWseParam ||
       !proposedWseParam ||
@@ -363,89 +316,15 @@ export class HydraulicEngine {
     const proposedWse = this.scalarValues(proposed, proposedWseParam)
     const existingDepth = this.scalarValues(existing, existingDepthParam)
     const proposedDepth = this.scalarValues(proposed, proposedDepthParam)
-    const existingProjected = existing.condition.projected
-    const proposedProjected = proposed.condition.projected
-    if (!existingProjected || !proposedProjected) {
-      throw new Error('Both selected scenarios need geometry.')
-    }
-    if (
-      existingWse.length !== existingProjected.N ||
-      existingDepth.length !== existingProjected.N ||
-      proposedWse.length !== proposedProjected.N ||
-      proposedDepth.length !== proposedProjected.N
-    ) {
-      throw new Error(
-        'Geometry and result datasets have different node counts. Replace the mismatched condition inputs.',
-      )
-    }
-
-    const diff = new Float32Array(existingProjected.N)
-    const wetDry = new Int8Array(existingProjected.N)
-    const proposedWetDry = new Int8Array(proposedProjected.N)
-    const proposedWseWet = maskedWetValues(
-      proposedWse,
-      proposedDepth,
-      dryDepth,
-    )
-    const existingMatchTolerance = meshMatchToleranceSquared(existingProjected)
-    const proposedMatchTolerance = meshMatchToleranceSquared(proposedProjected)
-
-    for (let index = 0; index < existingProjected.N; index += 1) {
-      const match = findNearestNode(
-        proposedProjected,
-        existingProjected.mx[index],
-        existingProjected.my[index],
-      )
-      const comparable =
-        match.index >= 0 && match.distance2 <= proposedMatchTolerance
-      const existingValue = existingWse[index]
-      const proposedValue = comparable ? proposedWse[match.index] : -999
-      diff[index] =
-        VALID(existingValue) && VALID(proposedValue)
-          ? proposedValue - existingValue
-          : -999
-
-      const existingWet =
-        VALID(existingDepth[index]) && existingDepth[index] > dryDepth
-      const proposedWet =
-        comparable &&
-        VALID(proposedDepth[match.index]) &&
-        proposedDepth[match.index] > dryDepth
-      wetDry[index] = !existingWet && proposedWet ? 1 : existingWet && !proposedWet ? -1 : 0
-    }
-
-    for (let index = 0; index < proposedProjected.N; index += 1) {
-      const match = findNearestNode(
-        existingProjected,
-        proposedProjected.mx[index],
-        proposedProjected.my[index],
-      )
-      const comparable =
-        match.index >= 0 && match.distance2 <= existingMatchTolerance
-      const existingHasResult =
-        comparable && VALID(existingDepth[match.index])
-      const proposedWet =
-        VALID(proposedDepth[index]) && proposedDepth[index] > dryDepth
-      proposedWetDry[index] = !existingHasResult && proposedWet ? 1 : 0
-    }
-
-    const legend = autoLegendBound(diff)
-    return {
+    return buildWseDifferenceScene({
       existing,
       proposed,
-      projected: existingProjected,
-      proposedProjected,
       existingWse,
       proposedWse,
       existingDepth,
       proposedDepth,
-      diff,
-      wetDry,
-      proposedWetDry,
-      proposedWseWet,
-      maxAbs: legend.maxAbs,
-      validDifferenceNodes: legend.valid,
-    }
+      dryDepth,
+    })
   }
 
   buildWseAssessmentLines(
@@ -459,8 +338,8 @@ export class HydraulicEngine {
     if (!selection || !scenario) {
       throw new Error('Select a complete assessment-source run before generating assessment lines.')
     }
-    const wseParam = findParam(selection.run, /Water_?Elev|WSE/i)
-    const depthParam = findParam(selection.run, /Water_?Depth/i)
+    const wseParam = findResultParam(selection.run, /Water_?Elev|WSE/i)
+    const depthParam = findResultParam(selection.run, /Water_?Depth/i)
     if (!wseParam || !depthParam) {
       throw new Error(
         `The selected ${scenario.label} run needs Water_Elev_ft and Water_Depth_ft datasets.`,
