@@ -5,6 +5,7 @@ import type {
   ConditionKey,
   MapOverlay,
   RunSelection,
+  ScenarioRole,
   WseAssessmentLineCollection,
 } from '../core/types'
 import {
@@ -16,7 +17,6 @@ import type { AssessmentPanelView } from '../features/assessment-lines/useAssess
 import { AssessmentWorkspace } from './project-data/AssessmentWorkspace'
 import { LayersWorkspace } from './project-data/LayersWorkspace'
 import { ModelsWorkspace } from './project-data/ModelsWorkspace'
-import type { ScenarioRole } from './project-data/ModelsWorkspace'
 import {
   ProjectWorkflowNav,
   type ProjectWorkflowSection,

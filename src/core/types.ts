@@ -2,6 +2,8 @@ export type ConditionKey = string
 
 export type ConditionKind = 'natural' | 'existing' | 'proposed' | 'other'
 
+export type ScenarioRole = 'baseline' | 'comparison' | 'assessment'
+
 export type Bounds = {
   x0: number
   x1: number

@@ -4,10 +4,9 @@ import type {
   ConditionData,
   ConditionKey,
   RunSelection,
+  ScenarioRole,
 } from '../../core/types'
 import { FileDrop } from '../FileDrop'
-
-export type ScenarioRole = 'baseline' | 'comparison' | 'assessment'
 
 type ModelsWorkspaceProps = {
   busy: boolean

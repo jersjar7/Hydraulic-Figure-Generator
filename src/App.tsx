@@ -49,7 +49,6 @@ import { ControlSection } from './components/ControlSection'
 import { DiagnosticsWidget } from './components/DiagnosticsWidget'
 import { FigureElementsPanel } from './components/FigureElementsPanel'
 import { ProjectDataPanel } from './components/ProjectDataPanel'
-import type { ScenarioRole } from './components/project-data/ModelsWorkspace'
 import {
   createDefaultAnnotationSettings,
   createDefaultFigureSettings,
@@ -66,8 +65,8 @@ import {
 import {
   findWseDifferenceExtrema,
   formatWseExtremumLabel,
-  HydraulicEngine,
   runDisplayName,
+  type HydraulicEngine,
   type WseDifferenceExtremum,
 } from './core/hydraulicEngine'
 import {
@@ -92,6 +91,7 @@ import {
 } from './core/projectFile'
 import { readShapefileOverlays } from './core/shapefile'
 import { useAssessmentWorkflow } from './features/assessment-lines/useAssessmentWorkflow'
+import { useProjectSession } from './features/project-session/useProjectSession'
 import type {
   AnnotationDefaults,
   AssessmentMapLayer,
@@ -108,6 +108,7 @@ import type {
   MapElementStyles,
   MapOverlay,
   ResultLabelField,
+  ScenarioRole,
   StationLabelOverride,
   WseAssessmentLine,
   WseExtremumKind,
@@ -353,23 +354,22 @@ function assessmentLineAt(
 }
 
 function App() {
-  const [engine] = useState(() => new HydraulicEngine())
-  const [dataVersion, setDataVersion] = useState(0)
+  const projectSession = useProjectSession()
+  const {
+    engine,
+    scenarios,
+    baselineId: baselineScenarioId,
+    comparisonId: comparisonScenarioId,
+    assessmentId: assessmentScenarioId,
+    runByScenario,
+    ready,
+  } = projectSession
   const [settings, setSettings] = useState<FigureSettings>(
     createDefaultFigureSettings,
   )
   const assessmentWorkflow = useAssessmentWorkflow(1)
   const assessmentState = assessmentWorkflow.state
   const assessmentLines = assessmentState.collection
-  const [baselineScenarioId, setBaselineScenarioId] =
-    useState<ConditionKey>('EX')
-  const [comparisonScenarioId, setComparisonScenarioId] =
-    useState<ConditionKey>('PR')
-  const [assessmentScenarioId, setAssessmentScenarioId] =
-    useState<ConditionKey>('EX')
-  const [runByScenario, setRunByScenario] = useState<
-    Record<ConditionKey, number>
-  >({})
   const [overlays, setOverlays] = useState<MapOverlay[]>([])
   const [annotations, setAnnotations] = useState<MapAnnotation[]>([])
   const [annotationTool, setAnnotationTool] =
@@ -423,9 +423,6 @@ function App() {
   )
   const figureElementDragRef = useRef<FigureElementDrag | null>(null)
   const elementBoundsRef = useRef<MapElementBounds[]>([])
-  const savedScenarioLabelsRef = useRef<Record<string, string>>({})
-
-  const scenarios = engine.scenarios()
   const baselineCondition = engine.condition(baselineScenarioId)
   const comparisonCondition = engine.condition(comparisonScenarioId)
   const assessmentCondition = engine.condition(assessmentScenarioId)
@@ -443,7 +440,6 @@ function App() {
     { value: 'existingDepth', label: `${baselineLabel} depth` },
     { value: 'proposedDepth', label: `${comparisonLabel} depth` },
   ]
-  const ready = engine.isReady(baselineScenarioId, comparisonScenarioId)
   const selectedAnnotation =
     annotations.find((annotation) => annotation.id === selectedAnnotationId) ??
     null
@@ -728,16 +724,10 @@ function App() {
     setScene(null)
     assessmentWorkflow.invalidate(settings.assessmentLineInterval)
     try {
-      const incoming = await engine.ingest(
+      const incoming = await projectSession.ingest(
         files.filter((file) => /\.h5$/i.test(file.name)),
       )
-      for (const [key, label] of Object.entries(
-        savedScenarioLabelsRef.current,
-      )) {
-        engine.renameCondition(key, label)
-      }
       appendNotices(incoming)
-      setDataVersion((value) => value + 1)
     } finally {
       setBusy(false)
     }
@@ -758,46 +748,27 @@ function App() {
   }
 
   const removeHydraulicCondition = (key: ConditionKey) => {
-    engine.removeCondition(key)
-    setRunByScenario((current) => {
-      const next = { ...current }
-      delete next[key]
-      return next
-    })
+    projectSession.removeCondition(key)
     setScene(null)
     if (key === assessmentScenarioId) {
       assessmentWorkflow.clear(settings.assessmentLineInterval)
     }
-    setDataVersion((value) => value + 1)
   }
 
   const renameHydraulicCondition = (key: ConditionKey, label: string) => {
-    engine.renameCondition(key, label)
-    setDataVersion((value) => value + 1)
+    projectSession.renameCondition(key, label)
   }
 
   const changeScenarioRole = (role: ScenarioRole, key: ConditionKey) => {
     setScene(null)
-    if (role === 'baseline') {
-      if (key === comparisonScenarioId) {
-        setComparisonScenarioId(baselineScenarioId)
-      }
-      setBaselineScenarioId(key)
-      return
+    projectSession.changeRole(role, key)
+    if (role === 'assessment') {
+      assessmentWorkflow.clear(settings.assessmentLineInterval)
     }
-    if (role === 'comparison') {
-      if (key === baselineScenarioId) {
-        setBaselineScenarioId(comparisonScenarioId)
-      }
-      setComparisonScenarioId(key)
-      return
-    }
-    setAssessmentScenarioId(key)
-    assessmentWorkflow.clear(settings.assessmentLineInterval)
   }
 
   const changeScenarioRun = (key: ConditionKey, index: number) => {
-    setRunByScenario((current) => ({ ...current, [key]: index }))
+    projectSession.changeRun(key, index)
     setScene(null)
     if (key === assessmentScenarioId) {
       assessmentWorkflow.clear(settings.assessmentLineInterval)
@@ -881,64 +852,6 @@ function App() {
       setBusy(false)
     }
   }
-
-  useEffect(() => {
-    const ids = scenarios.map((scenario) => scenario.key)
-    if (ids.length === 0) return
-
-    const nextBaseline = ids.includes(baselineScenarioId)
-      ? baselineScenarioId
-      : ids.includes('EX')
-        ? 'EX'
-        : ids.includes('NA')
-          ? 'NA'
-          : ids[0]
-    const comparisonCandidates = [
-      comparisonScenarioId,
-      'PR',
-      'NA',
-      ...ids,
-    ]
-    const nextComparison =
-      comparisonCandidates.find(
-        (key) => ids.includes(key) && key !== nextBaseline,
-      ) ?? nextBaseline
-    const nextAssessment = ids.includes(assessmentScenarioId)
-      ? assessmentScenarioId
-      : nextBaseline
-
-    if (nextBaseline !== baselineScenarioId) {
-      setBaselineScenarioId(nextBaseline)
-    }
-    if (nextComparison !== comparisonScenarioId) {
-      setComparisonScenarioId(nextComparison)
-    }
-    if (nextAssessment !== assessmentScenarioId) {
-      setAssessmentScenarioId(nextAssessment)
-      assessmentWorkflow.clear(settings.assessmentLineInterval)
-    }
-    setRunByScenario((current) => {
-      const next: Record<string, number> = {}
-      for (const id of ids) {
-        const runs = engine.runOptions(id)
-        const selected = current[id] ?? 0
-        next[id] = selected < runs.length ? selected : 0
-      }
-      const unchanged =
-        Object.keys(current).length === Object.keys(next).length &&
-        Object.entries(next).every(([key, value]) => current[key] === value)
-      return unchanged ? current : next
-    })
-  }, [
-    assessmentScenarioId,
-    assessmentWorkflow,
-    baselineScenarioId,
-    comparisonScenarioId,
-    dataVersion,
-    engine,
-    scenarios,
-    settings.assessmentLineInterval,
-  ])
 
   useEffect(() => {
     if (!scene || !canvasRef.current) return
@@ -2212,8 +2125,7 @@ function App() {
   }
 
   const resetProject = () => {
-    engine.reset()
-    setDataVersion((value) => value + 1)
+    projectSession.reset()
     setOverlays([])
     setAnnotations([])
     setSelectedAnnotationId(null)
@@ -2237,11 +2149,6 @@ function App() {
     setScene(null)
     assessmentWorkflow.reset(1)
     setNotices([])
-    setBaselineScenarioId('EX')
-    setComparisonScenarioId('PR')
-    setAssessmentScenarioId('EX')
-    setRunByScenario({})
-    savedScenarioLabelsRef.current = {}
     setSettings(createDefaultFigureSettings())
   }
 
@@ -2391,22 +2298,16 @@ function App() {
       setAnnotationEditorView('content')
       setLeftCollapsed(false)
       const scenarioSelection = project.scenarioSelection
-      setBaselineScenarioId(scenarioSelection?.baselineId ?? 'EX')
-      setComparisonScenarioId(scenarioSelection?.comparisonId ?? 'PR')
-      setAssessmentScenarioId(scenarioSelection?.assessmentId ?? 'EX')
-      setRunByScenario(
-        scenarioSelection?.runByScenario ?? {
+      projectSession.loadSelection({
+        baselineId: scenarioSelection?.baselineId ?? 'EX',
+        comparisonId: scenarioSelection?.comparisonId ?? 'PR',
+        assessmentId: scenarioSelection?.assessmentId ?? 'EX',
+        runByScenario: scenarioSelection?.runByScenario ?? {
           EX: project.selectedRuns?.existingRun ?? 0,
           PR: project.selectedRuns?.proposedRun ?? 0,
         },
-      )
-      savedScenarioLabelsRef.current = scenarioSelection?.labels ?? {}
-      for (const [key, label] of Object.entries(
-        savedScenarioLabelsRef.current,
-      )) {
-        engine.renameCondition(key, label)
-      }
-      setDataVersion((value) => value + 1)
+        labels: scenarioSelection?.labels,
+      })
       setScene(null)
       assessmentWorkflow.load(
         project.assessment ?? {},
