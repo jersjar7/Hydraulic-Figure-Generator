@@ -101,13 +101,13 @@ import type {
 } from '../../core/types'
 import {
   ANNOTATION_TOOLS,
-  FRAME_ASPECTS,
   SETTINGS_SECTIONS,
   type AnnotationEditorView,
   type AnnotationPanelView,
   type AnnotationPlacedView,
   type SettingsSectionKey,
 } from './workspaceConfiguration'
+import { useFittedCanvasSize } from './useFittedCanvasSize'
 import {
   annotationDisplayName,
   annotationHasContentEditor,
@@ -183,12 +183,12 @@ export function WseDifferenceWorkspace() {
   const [hoveredElement, setHoveredElement] =
     useState<MapElementKey | null>(null)
   const [elementDragging, setElementDragging] = useState(false)
-  const [canvasDisplaySize, setCanvasDisplaySize] = useState({
-    width: 0,
-    height: 0,
-  })
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const canvasFrameRef = useRef<HTMLDivElement>(null)
+  const canvasDisplaySize = useFittedCanvasSize(
+    canvasFrameRef,
+    settings.orientation,
+  )
   const projectInputRef = useRef<HTMLInputElement>(null)
   const renderSequence = useRef(0)
   const annotationDragRef = useRef<AnnotationDrag | null>(null)
@@ -716,31 +716,6 @@ export function WseDifferenceWorkspace() {
     selectedAnnotationId,
     settings,
   ])
-
-  useEffect(() => {
-    const frame = canvasFrameRef.current
-    if (!frame) return
-
-    const fitCanvas = () => {
-      const { width, height } = frame.getBoundingClientRect()
-      const aspect = FRAME_ASPECTS[settings.orientation]
-      const fittedWidth = Math.min(width, height * aspect)
-      const fittedHeight = fittedWidth / aspect
-
-      setCanvasDisplaySize((current) =>
-        Math.abs(current.width - fittedWidth) < 0.5 &&
-        Math.abs(current.height - fittedHeight) < 0.5
-          ? current
-          : { width: fittedWidth, height: fittedHeight },
-      )
-    }
-
-    const observer = new ResizeObserver(fitCanvas)
-    observer.observe(frame)
-    fitCanvas()
-
-    return () => observer.disconnect()
-  }, [settings.orientation])
 
   useEffect(() => {
     if (!scene) return
