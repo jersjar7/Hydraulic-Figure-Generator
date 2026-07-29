@@ -23,7 +23,6 @@ import { FigureElementsPanel } from '../../components/FigureElementsPanel'
 import { ProjectDataPanel } from '../../components/ProjectDataPanel'
 import {
   DEFAULT_ELEMENT_STYLES,
-  mergeElementStyles,
 } from '../../core/figureElements'
 import {
   findWseDifferenceExtrema,
@@ -40,11 +39,14 @@ import {
   sampleHydraulicResult,
   stationLabelPosition,
 } from '../../core/mapRenderer'
+import { importHydraulicFiles } from '../../application/importHydraulicFiles'
+import { importOverlayArchives } from '../../application/importOverlayArchives'
 import {
-  createHydraulicFigureProject,
-  parseHydraulicFigureProject,
-} from '../../core/projectFile'
-import { readShapefileOverlays } from '../../core/shapefile'
+  loadHydraulicProject,
+  saveHydraulicProject,
+} from '../../application/hydraulicProjectFiles'
+import { browserProjectFilePort } from '../../infrastructure/browser/browserProjectFilePort'
+import { shapefileArchivePort } from '../../infrastructure/shapefiles/shapefileArchivePort'
 import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
 import { useProjectSession } from '../project-session/useProjectSession'
 import { downloadWseDifferencePng } from './exportWseDifference'
@@ -87,6 +89,10 @@ import {
   defaultEditorView,
   defaultExtremumLabelPoint,
 } from './workspaceInteractions'
+import {
+  createWseProjectSnapshot,
+  hydrateWseProject,
+} from './wseProjectDocument'
 
 const ACTIVE_FIGURE = wseDifferenceFigure
 
@@ -111,6 +117,7 @@ export function WseDifferenceWorkspace() {
     setOverlays,
     setAnnotations,
     setAnnotationDefaults,
+    loadDocument,
     resetDocument,
   } = figureDocument
   const assessmentWorkflow = useAssessmentWorkflow(1)
@@ -334,9 +341,9 @@ export function WseDifferenceWorkspace() {
     setScene(null)
     assessmentWorkflow.invalidate(settings.assessmentLineInterval)
     try {
-      const incoming = await projectSession.ingest(
-        files.filter((file) => /\.h5$/i.test(file.name)),
-      )
+      const incoming = await importHydraulicFiles(files, {
+        ingest: projectSession.ingest,
+      })
       appendNotices(incoming)
     } finally {
       setBusy(false)
@@ -346,9 +353,10 @@ export function WseDifferenceWorkspace() {
   const handleOverlayFiles = async (files: File[]) => {
     setBusy(true)
     try {
-      const result = await readShapefileOverlays(
-        files.filter((file) => /\.zip$/i.test(file.name)),
+      const result = await importOverlayArchives(
+        files,
         overlays.length,
+        shapefileArchivePort,
       )
       setOverlays((current) => [...current, ...result.overlays])
       appendNotices(result.notices)
@@ -1251,7 +1259,7 @@ export function WseDifferenceWorkspace() {
   }
 
   const saveProject = () => {
-    const project = createHydraulicFigureProject({
+    const snapshot = createWseProjectSnapshot({
       settings,
       overlays,
       annotations,
@@ -1272,15 +1280,7 @@ export function WseDifferenceWorkspace() {
         overrides: assessmentState.overrides,
       },
     })
-    const blob = new Blob([JSON.stringify(project, null, 2)], {
-      type: 'application/json',
-    })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = 'Hydraulic_Figure_Project.hydfig'
-    anchor.click()
-    URL.revokeObjectURL(url)
+    saveHydraulicProject(snapshot, browserProjectFilePort)
   }
 
   const loadProject = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -1288,71 +1288,12 @@ export function WseDifferenceWorkspace() {
     event.currentTarget.value = ''
     if (!file) return
     try {
-      const project = parseHydraulicFigureProject(await file.text())
-      if (project.settings) {
-        const {
-          contourColor: legacyContourColor,
-          showContours: legacyShowContours,
-          ...projectSettings
-        } = project.settings
-        setSettings((current) => ({
-          ...current,
-          ...projectSettings,
-          differenceOutlineColor:
-            projectSettings.differenceOutlineColor ??
-            legacyContourColor ??
-            current.differenceOutlineColor,
-          showDifferenceOutlines:
-            projectSettings.showDifferenceOutlines ??
-            legacyShowContours ??
-            current.showDifferenceOutlines,
-          showWetDryKey:
-            projectSettings.showWetDryKey ?? current.showWetDryKey,
-          centerlineStationing: {
-            ...current.centerlineStationing,
-            ...(projectSettings.centerlineStationing ?? {}),
-            overrides: {
-              ...(projectSettings.centerlineStationing?.overrides ?? {}),
-            },
-          },
-          elementPositions: {
-            ...current.elementPositions,
-            ...(projectSettings.elementPositions ?? {}),
-          },
-          elementStyles: (() => {
-            const merged = mergeElementStyles(
-              current.elementStyles,
-              projectSettings.elementStyles,
-            )
-            if (
-              !projectSettings.elementStyles?.diffLegend &&
-              typeof projectSettings.legendFontSize === 'number'
-            ) {
-              merged.diffLegend.fontSize = projectSettings.legendFontSize
-            }
-            if (
-              !projectSettings.elementStyles?.wetDry &&
-              typeof projectSettings.legendFontSize === 'number'
-            ) {
-              merged.wetDry.fontSize = Math.max(
-                12,
-                projectSettings.legendFontSize - 1,
-              )
-            }
-            return merged
-          })(),
-        }))
-      }
-      if (Array.isArray(project.overlays)) setOverlays(project.overlays)
-      if (Array.isArray(project.annotations)) {
-        setAnnotations(project.annotations)
-      }
-      if (project.annotationDefaults) {
-        setAnnotationDefaults((current) => ({
-          ...current,
-          ...project.annotationDefaults,
-        }))
-      }
+      const project = await loadHydraulicProject(
+        file,
+        browserProjectFilePort,
+      )
+      const loaded = hydrateWseProject(project, figureDocument.document)
+      loadDocument(loaded.document)
       setSelectedAnnotationId(null)
       setSelectedStationLabelId(null)
       setAnnotationStart(null)
@@ -1360,22 +1301,11 @@ export function WseDifferenceWorkspace() {
       setAnnotationPlacedView('list')
       setAnnotationEditorView('content')
       setLeftCollapsed(false)
-      const scenarioSelection = project.scenarioSelection
-      projectSession.loadSelection({
-        baselineId: scenarioSelection?.baselineId ?? 'EX',
-        comparisonId: scenarioSelection?.comparisonId ?? 'PR',
-        assessmentId: scenarioSelection?.assessmentId ?? 'EX',
-        runByScenario: scenarioSelection?.runByScenario ?? {
-          EX: project.selectedRuns?.existingRun ?? 0,
-          PR: project.selectedRuns?.proposedRun ?? 0,
-        },
-        labels: scenarioSelection?.labels,
-      })
+      projectSession.loadSelection(loaded.scenarioSelection)
       setScene(null)
       assessmentWorkflow.load(
-        project.assessment ?? {},
-        project.settings?.assessmentLineInterval ??
-          settings.assessmentLineInterval,
+        loaded.assessment,
+        loaded.document.settings.assessmentLineInterval,
       )
       appendNotices([
         {
