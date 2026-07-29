@@ -1,22 +1,6 @@
-import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  BarChart3,
-  Compass,
-  Droplets,
-  Eye,
-  EyeOff,
-  Milestone,
-  RotateCcw,
-  Ruler,
-  Type,
-} from 'lucide-react'
-import type { KeyboardEvent, ReactNode } from 'react'
+import { Eye, EyeOff, RotateCcw } from 'lucide-react'
+import type { KeyboardEvent } from 'react'
 import type {
-  Anchor,
-  ElementBoxStyle,
   ElementPosition,
   FigureSettings,
   FigureElementPanelKey,
@@ -25,27 +9,17 @@ import type {
   MapElementStyles,
 } from '../core/types'
 import { CenterlineStationingPanel } from '../features/stationing/CenterlineStationingPanel'
-
-const ELEMENTS = [
-  { key: 'title', label: 'Title', icon: Type },
-  { key: 'diffLegend', label: 'Difference legend', icon: BarChart3 },
-  { key: 'wetDry', label: 'Wet/dry key', icon: Droplets },
-  { key: 'north', label: 'North arrow', icon: Compass },
-  { key: 'scale', label: 'Scale bar', icon: Ruler },
-  { key: 'stationing', label: 'Centerline stationing', icon: Milestone },
-] as const
-
-const ANCHORS: { value: Anchor; label: string }[] = [
-  { value: 'tl', label: 'Top left' },
-  { value: 'tc', label: 'Top center' },
-  { value: 'tr', label: 'Top right' },
-  { value: 'ml', label: 'Middle left' },
-  { value: 'mc', label: 'Center' },
-  { value: 'mr', label: 'Middle right' },
-  { value: 'bl', label: 'Bottom left' },
-  { value: 'bc', label: 'Bottom center' },
-  { value: 'br', label: 'Bottom right' },
-]
+import {
+  BoxControls,
+  PositionControls,
+  SectionHeading,
+  Toggle,
+} from './figure-elements/elementControls'
+import {
+  FIGURE_ELEMENTS,
+  isElementVisible,
+} from './figure-elements/elementDefinitions'
+import { numberValue } from './figure-elements/numberValue'
 
 type Props = {
   settings: FigureSettings
@@ -75,206 +49,6 @@ type Props = {
   onResetStationing(): void
 }
 
-function numberValue(value: string, fallback: number) {
-  const parsed = Number.parseFloat(value)
-  return Number.isFinite(parsed) ? parsed : fallback
-}
-
-function visibleFor(settings: FigureSettings, key: MapElementKey) {
-  if (key === 'title') return settings.showTitle
-  if (key === 'diffLegend') return settings.showLegend
-  if (key === 'wetDry') return settings.showWetDryKey
-  if (key === 'north') return settings.showNorth
-  return settings.showScale
-}
-
-function Toggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string
-  checked: boolean
-  onChange(value: boolean): void
-}) {
-  return (
-    <label className="toggle-row">
-      <span>{label}</span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-      />
-      <span className="toggle-track" aria-hidden="true">
-        <span />
-      </span>
-    </label>
-  )
-}
-
-function SectionHeading({ children }: { children: string }) {
-  return <h4 className="element-settings-heading">{children}</h4>
-}
-
-function BoxControls({
-  style,
-  onChange,
-}: {
-  style: ElementBoxStyle
-  onChange(patch: Partial<ElementBoxStyle>): void
-}) {
-  return (
-    <>
-      <Toggle
-        label="Background"
-        checked={style.background}
-        onChange={(background) => onChange({ background })}
-      />
-      <div className="field-grid two">
-        <label className="field color-field">
-          <span>Background</span>
-          <input
-            type="color"
-            value={style.backgroundColor}
-            disabled={!style.background}
-            onChange={(event) =>
-              onChange({ backgroundColor: event.target.value })
-            }
-          />
-        </label>
-        <label className="field">
-          <span>
-            Opacity <small>{Math.round(style.backgroundOpacity * 100)}%</small>
-          </span>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            value={style.backgroundOpacity}
-            disabled={!style.background}
-            onChange={(event) =>
-              onChange({
-                backgroundOpacity: numberValue(event.target.value, 0.88),
-              })
-            }
-          />
-        </label>
-      </div>
-      <div className="field-grid two">
-        <label className="field color-field">
-          <span>Border</span>
-          <input
-            type="color"
-            value={style.borderColor}
-            onChange={(event) => onChange({ borderColor: event.target.value })}
-          />
-        </label>
-        <label className="field">
-          <span>
-            Border width <small>px</small>
-          </span>
-          <input
-            type="number"
-            min="0"
-            max="8"
-            step="0.5"
-            value={style.borderWidth}
-            onChange={(event) =>
-              onChange({ borderWidth: numberValue(event.target.value, 1) })
-            }
-          />
-        </label>
-      </div>
-    </>
-  )
-}
-
-function PositionControls({
-  position,
-  label,
-  onChange,
-  onNudge,
-}: {
-  position: ElementPosition
-  label: string
-  onChange(patch: Partial<ElementPosition>): void
-  onNudge(dx: number, dy: number): void
-}) {
-  return (
-    <>
-      <label className="field">
-        <span>Anchor</span>
-        <select
-          value={position.anchor}
-          onChange={(event) =>
-            onChange({ anchor: event.target.value as Anchor })
-          }
-        >
-          {ANCHORS.map((anchor) => (
-            <option value={anchor.value} key={anchor.value}>
-              {anchor.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="element-position-row">
-        <span>
-          Offset <small>{position.offX}, {position.offY} px</small>
-        </span>
-        <div className="nudge-buttons">
-          <NudgeButton
-            label={`Move ${label} left`}
-            onClick={() => onNudge(-10, 0)}
-          >
-            <ArrowLeft size={14} />
-          </NudgeButton>
-          <NudgeButton
-            label={`Move ${label} up`}
-            onClick={() => onNudge(0, -10)}
-          >
-            <ArrowUp size={14} />
-          </NudgeButton>
-          <NudgeButton
-            label={`Move ${label} down`}
-            onClick={() => onNudge(0, 10)}
-          >
-            <ArrowDown size={14} />
-          </NudgeButton>
-          <NudgeButton
-            label={`Move ${label} right`}
-            onClick={() => onNudge(10, 0)}
-          >
-            <ArrowRight size={14} />
-          </NudgeButton>
-        </div>
-      </div>
-    </>
-  )
-}
-
-function NudgeButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string
-  onClick(): void
-  children: ReactNode
-}) {
-  return (
-    <button
-      className="icon-button tiny"
-      type="button"
-      title={label}
-      aria-label={label}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  )
-}
-
 export function FigureElementsPanel({
   settings,
   activeElement,
@@ -294,17 +68,17 @@ export function FigureElementsPanel({
   onNudgeStationLabel,
   onResetStationing,
 }: Props) {
-  const activeIndex = ELEMENTS.findIndex(
+  const activeIndex = FIGURE_ELEMENTS.findIndex(
     (element) => element.key === activeElement,
   )
-  const activeDefinition = ELEMENTS[activeIndex]
+  const activeDefinition = FIGURE_ELEMENTS[activeIndex]
   const activeMapElement =
     activeElement === 'stationing' ? null : activeElement
   const position = activeMapElement
     ? settings.elementPositions[activeMapElement]
     : null
   const visible = activeMapElement
-    ? visibleFor(settings, activeMapElement)
+    ? isElementVisible(settings, activeMapElement)
     : settings.centerlineStationing.visible
 
   const handleTabKeyDown = (
@@ -313,18 +87,19 @@ export function FigureElementsPanel({
   ) => {
     let nextIndex = index
     if (event.key === 'ArrowRight') {
-      nextIndex = (index + 1) % ELEMENTS.length
+      nextIndex = (index + 1) % FIGURE_ELEMENTS.length
     } else if (event.key === 'ArrowLeft') {
-      nextIndex = (index - 1 + ELEMENTS.length) % ELEMENTS.length
+      nextIndex =
+        (index - 1 + FIGURE_ELEMENTS.length) % FIGURE_ELEMENTS.length
     } else if (event.key === 'Home') {
       nextIndex = 0
     } else if (event.key === 'End') {
-      nextIndex = ELEMENTS.length - 1
+      nextIndex = FIGURE_ELEMENTS.length - 1
     } else {
       return
     }
     event.preventDefault()
-    onActiveElementChange(ELEMENTS[nextIndex].key)
+    onActiveElementChange(FIGURE_ELEMENTS[nextIndex].key)
     event.currentTarget.parentElement
       ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
       [nextIndex]?.focus()
@@ -360,12 +135,12 @@ export function FigureElementsPanel({
         role="tablist"
         aria-label="Figure elements"
       >
-        {ELEMENTS.map((element, index) => {
+        {FIGURE_ELEMENTS.map((element, index) => {
           const Icon = element.icon
           const elementVisible =
             element.key === 'stationing'
               ? settings.centerlineStationing.visible
-              : visibleFor(settings, element.key)
+              : isElementVisible(settings, element.key)
           return (
             <button
               className={`element-tab${activeElement === element.key ? ' active' : ''}`}
