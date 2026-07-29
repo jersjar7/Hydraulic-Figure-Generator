@@ -1,9 +1,7 @@
 import type {
   AssessmentMapLayer,
-  Anchor,
   Bounds,
   DifferenceLegendElementStyle,
-  ElementBoxStyle,
   FigureSettings,
   MapAnnotation,
   MapElementBounds,
@@ -12,12 +10,10 @@ import type {
   MapOverlay,
   NorthElementStyle,
   ScaleElementStyle,
-  TitleElementStyle,
   WetDryElementStyle,
   WseAssessmentLine,
   WseDifferenceScene,
 } from './types'
-import { runDisplayName } from './hydraulicEngine'
 import {
   drawAnnotations,
   drawAnnotationSelection,
@@ -42,7 +38,12 @@ import {
   fillWetDry,
   localCoordinates,
 } from './map/hydraulicLayers'
-import { roundedRectangle } from './map/drawingPrimitives'
+import {
+  anchorBox,
+  drawElementBox,
+  drawMapElementSelection,
+} from './map/mapElementLayout'
+import { drawTitle, resolveTitle } from './map/titleElement'
 import {
   FRAMES,
   makeMapView as makeView,
@@ -75,135 +76,6 @@ export {
   stationLabelPosition,
   type StationLabelHit,
 } from './map/stationingLayer'
-
-function anchorBox(
-  anchor: Anchor,
-  width: number,
-  height: number,
-  frame: Frame,
-  margin: number,
-  offX: number,
-  offY: number,
-) {
-  const x = {
-    l: margin,
-    c: (frame.width - width) / 2,
-    r: frame.width - width - margin,
-  }
-  const y = {
-    t: margin,
-    m: (frame.height - height) / 2,
-    b: frame.height - height - margin,
-  }
-  const rawX =
-    anchor === 'ml'
-      ? margin + offX
-      : anchor === 'mr'
-        ? x.r + offX
-        : x[anchor[1] as keyof typeof x] + offX
-  const rawY =
-    anchor === 'ml' || anchor === 'mr'
-      ? y.m + offY
-      : y[anchor[0] as keyof typeof y] + offY
-  return [
-    Math.max(0, Math.min(frame.width - width, rawX)),
-    Math.max(0, Math.min(frame.height - height, rawY)),
-  ] as const
-}
-
-function drawElementBox(
-  context: CanvasRenderingContext2D,
-  bounds: Omit<MapElementBounds, 'key'>,
-  style: ElementBoxStyle,
-) {
-  context.save()
-  roundedRectangle(context, bounds.x, bounds.y, bounds.width, bounds.height, 7)
-  if (style.background) {
-    context.globalAlpha = Math.max(0, Math.min(1, style.backgroundOpacity))
-    context.fillStyle = style.backgroundColor
-    context.fill()
-    context.globalAlpha = 1
-  }
-  if (style.borderWidth > 0) {
-    context.lineWidth = style.borderWidth
-    context.strokeStyle = style.borderColor
-    context.stroke()
-  }
-  context.restore()
-}
-
-function wrappedLines(
-  context: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-) {
-  const words = text.trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return ['']
-  const lines: string[] = []
-  let line = words[0]
-  for (const word of words.slice(1)) {
-    const candidate = `${line} ${word}`
-    if (context.measureText(candidate).width <= maxWidth) {
-      line = candidate
-    } else {
-      lines.push(line)
-      line = word
-    }
-  }
-  lines.push(line)
-  return lines
-}
-
-function drawTitle(
-  context: CanvasRenderingContext2D,
-  title: string,
-  frame: Frame,
-  position: MapElementPositions['title'],
-  style: TitleElementStyle,
-) {
-  const padding = 15
-  const lineHeight = Math.round(style.fontSize * 1.22)
-  context.save()
-  context.font = `${style.fontWeight} ${style.fontSize}px "Segoe UI", Arial, sans-serif`
-  const maxTextWidth = Math.max(120, style.maxWidth - padding * 2)
-  const lines = wrappedLines(context, title, maxTextWidth)
-  const measuredWidth = Math.max(
-    1,
-    ...lines.map((line) => context.measureText(line).width),
-  )
-  const width = Math.min(style.maxWidth, measuredWidth + padding * 2)
-  const height = lines.length * lineHeight + padding * 2
-  const [x, y] = anchorBox(
-    position.anchor,
-    width,
-    height,
-    frame,
-    18,
-    position.offX,
-    position.offY,
-  )
-  const bounds = { key: 'title', x, y, width, height } as const
-  drawElementBox(context, bounds, style)
-  context.fillStyle = style.textColor
-  context.textAlign = style.alignment
-  context.textBaseline = 'middle'
-  const textX =
-    style.alignment === 'left'
-      ? x + padding
-      : style.alignment === 'right'
-        ? x + width - padding
-        : x + width / 2
-  lines.forEach((line, index) => {
-    context.fillText(
-      line,
-      textX,
-      y + padding + lineHeight * (index + 0.5),
-      maxTextWidth,
-    )
-  })
-  context.restore()
-  return bounds
-}
 
 function formatLegendValue(value: number, decimalPlaces: number) {
   return value.toFixed(Math.max(0, Math.min(3, decimalPlaces)))
@@ -622,36 +494,6 @@ function drawWetDryKey(
   })
   context.restore()
   return bounds
-}
-
-function resolveTitle(scene: WseDifferenceScene, template: string) {
-  return template
-    .replaceAll('{type}', 'WSE Difference Map')
-    .replaceAll('{existing}', runDisplayName(scene.existing.run.name))
-    .replaceAll('{proposed}', runDisplayName(scene.proposed.run.name))
-    .replaceAll('{baseline}', scene.existing.condition.label)
-    .replaceAll('{comparison}', scene.proposed.condition.label)
-    .replaceAll('{baselineRun}', runDisplayName(scene.existing.run.name))
-    .replaceAll('{comparisonRun}', runDisplayName(scene.proposed.run.name))
-    .replace(/\s{2,}/g, ' ')
-    .trim()
-}
-
-function drawMapElementSelection(
-  context: CanvasRenderingContext2D,
-  bounds: MapElementBounds,
-) {
-  context.save()
-  context.strokeStyle = '#1682cf'
-  context.lineWidth = 2
-  context.setLineDash([7, 5])
-  context.strokeRect(
-    bounds.x - 4,
-    bounds.y - 4,
-    bounds.width + 8,
-    bounds.height + 8,
-  )
-  context.restore()
 }
 
 export async function renderWseDifferenceMap(
