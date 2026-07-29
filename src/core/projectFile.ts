@@ -3,9 +3,9 @@ import {
   PROJECT_FIGURE,
   PROJECT_FILE_VERSION,
   type HydraulicFigureProject,
-  type HydraulicFigureProjectFile,
 } from './projectFiles/schema'
 import { migrateAssessmentLabelSettings } from './projectFiles/migrations'
+import { serializeHydraulicFigureProject } from './projectFiles/serialization'
 import {
   annotation,
   annotationDefaults,
@@ -30,23 +30,8 @@ export {
 
 export function createHydraulicFigureProject(
   project: Omit<HydraulicFigureProject, 'version' | 'figure'>,
-): HydraulicFigureProjectFile {
-  return {
-    version: PROJECT_FILE_VERSION,
-    activeFigure: PROJECT_FIGURE,
-    project: {
-      overlays: project.overlays,
-      scenarioSelection: project.scenarioSelection,
-    },
-    figures: {
-      [PROJECT_FIGURE]: {
-        settings: project.settings,
-        annotations: project.annotations,
-        annotationDefaults: project.annotationDefaults,
-        assessment: project.assessment,
-      },
-    },
-  }
+) {
+  return serializeHydraulicFigureProject(project)
 }
 
 export function parseHydraulicFigureProject(
