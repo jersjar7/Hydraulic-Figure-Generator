@@ -30,5 +30,26 @@ describe('figure module registry', () => {
     assert.equal(settings.dryDepth, 0)
     assert.equal(settings.orientation, 'landscape')
     assert.equal(wseDifferenceFigure.label, 'WSE Difference')
+    assert.deepEqual(
+      wseDifferenceFigure.editor.requiredScenarioRoles,
+      ['baseline', 'comparison'],
+    )
+    assert.equal(wseDifferenceFigure.editor.shapefileOverlays, true)
+    assert.equal(wseDifferenceFigure.editor.assessmentLines, true)
+    assert.equal(wseDifferenceFigure.editor.centerlineStationing, true)
+    assert.equal(wseDifferenceFigure.editor.annotations, true)
+    assert.deepEqual(
+      wseDifferenceFigure.editor.settingsSections.map(
+        (section) => section.key,
+      ),
+      [
+        'calculation',
+        'legend',
+        'frame',
+        'elements',
+        'annotations',
+        'export',
+      ],
+    )
   })
 })
