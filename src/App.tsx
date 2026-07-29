@@ -88,6 +88,7 @@ import { readShapefileOverlays } from './core/shapefile'
 import { useAssessmentWorkflow } from './features/assessment-lines/useAssessmentWorkflow'
 import { DEFAULT_FIGURE_MODULE } from './features/figures/registry'
 import { useProjectSession } from './features/project-session/useProjectSession'
+import { downloadWseDifferencePng } from './features/wse-difference/exportWseDifference'
 import type {
   AnnotationDefaults,
   AssessmentMapLayer,
@@ -2164,9 +2165,7 @@ function App() {
     if (!scene) return
     setBusy(true)
     try {
-      const exportCanvas = document.createElement('canvas')
-      await ACTIVE_FIGURE.render({
-        canvas: exportCanvas,
+      await downloadWseDifferencePng({
         scene,
         commonBounds: engine.commonBounds(),
         settings,
@@ -2174,15 +2173,6 @@ function App() {
         assessment: assessmentExportLayer,
         annotations,
       })
-      exportCanvas.toBlob((blob) => {
-        if (!blob) return
-        const url = URL.createObjectURL(blob)
-        const anchor = document.createElement('a')
-        anchor.href = url
-        anchor.download = ACTIVE_FIGURE.exportFileName(scene)
-        anchor.click()
-        URL.revokeObjectURL(url)
-      }, 'image/png')
     } catch (error) {
       appendNotices([
         {
