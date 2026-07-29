@@ -4,7 +4,6 @@ import {
   FileJson,
   Map,
   MapPin,
-  X,
 } from 'lucide-react'
 import {
   useCallback,
@@ -19,6 +18,7 @@ import '../../App.css'
 import { ControlSection } from '../../components/ControlSection'
 import { FigureEditorShell } from '../../components/editor/FigureEditorShell'
 import { FigureMapWorkspace } from '../../components/editor/FigureMapWorkspace'
+import { FigureSettingsSidebar } from '../../components/editor/FigureSettingsSidebar'
 import { FigureElementsPanel } from '../../components/FigureElementsPanel'
 import { ProjectDataPanel } from '../../components/ProjectDataPanel'
 import {
@@ -75,6 +75,7 @@ import {
   SETTINGS_SECTIONS,
   type AnnotationEditorView,
   type AnnotationPanelView,
+  type SettingsSectionKey,
 } from './workspaceConfiguration'
 import { useFittedCanvasSize } from './useFittedCanvasSize'
 import { useWseEditorUi } from './useWseEditorUi'
@@ -1566,64 +1567,34 @@ export function WseDifferenceWorkspace() {
             </div>
         </FigureMapWorkspace>
 
-        <aside className={`sidebar right-sidebar${rightOpen ? ' is-mobile-open' : ''}`}>
-          <div className="sidebar-heading">
-            <div>
-              <span className="eyebrow">Output</span>
-              <h2>Figure settings</h2>
+        <FigureSettingsSidebar<SettingsSectionKey>
+          mobileOpen={rightOpen}
+          sections={SETTINGS_SECTIONS}
+          activeSection={activeSettingsSection}
+          onSectionChange={setActiveSettingsSection}
+          onSectionKeyDown={handleSettingsTabKeyDown}
+          onMobileClose={() => setRightOpen(false)}
+          footer={
+            <div className="generate-bar">
+              <button
+                className="button primary full"
+                type="button"
+                disabled={!ready || busy}
+                data-testid="generate-map"
+                onClick={generateMap}
+              >
+                <Map size={18} aria-hidden="true" />
+                {scene ? 'Regenerate map' : 'Generate map'}
+              </button>
+              {!ready ? (
+                <span className="generate-hint">
+                  <AlertCircle size={14} aria-hidden="true" />
+                  Add Baseline and Comparison scenarios first
+                </span>
+              ) : null}
             </div>
-            <button
-              className="icon-button mobile-close"
-              type="button"
-              title="Close figure settings"
-              aria-label="Close figure settings"
-              onClick={() => setRightOpen(false)}
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <nav
-            className="settings-switcher"
-            aria-label="Figure settings sections"
-            role="tablist"
-          >
-            {SETTINGS_SECTIONS.map((section, index) => {
-              const Icon = section.icon
-              const active = activeSettingsSection === section.key
-              return (
-                <button
-                  className={`settings-tab${active ? ' active' : ''}`}
-                  type="button"
-                  role="tab"
-                  id={`settings-tab-${section.key}`}
-                  aria-controls={`settings-panel-${section.key}`}
-                  aria-selected={active}
-                  tabIndex={active ? 0 : -1}
-                  title={section.title}
-                  key={section.key}
-                  onClick={() => setActiveSettingsSection(section.key)}
-                  onKeyDown={(event) =>
-                    handleSettingsTabKeyDown(event, index)
-                  }
-                >
-                  <Icon
-                    className="settings-tab-icon"
-                    size={18}
-                    aria-hidden="true"
-                  />
-                  <span className="settings-tab-label">{section.label}</span>
-                </button>
-              )
-            })}
-          </nav>
-
-          <div
-            className="right-scroll"
-            id={`settings-panel-${activeSettingsSection}`}
-            role="tabpanel"
-            aria-labelledby={`settings-tab-${activeSettingsSection}`}
-          >
+          }
+        >
             {activeSettingsSection === 'calculation' ? (
               <CalculationSettingsPanel
                 settings={settings}
@@ -1749,27 +1720,7 @@ export function WseDifferenceWorkspace() {
               </button>
             </ControlSection>
             ) : null}
-          </div>
-
-          <div className="generate-bar">
-            <button
-              className="button primary full"
-              type="button"
-              disabled={!ready || busy}
-              data-testid="generate-map"
-              onClick={generateMap}
-            >
-              <Map size={18} aria-hidden="true" />
-              {scene ? 'Regenerate map' : 'Generate map'}
-            </button>
-            {!ready ? (
-              <span className="generate-hint">
-                <AlertCircle size={14} aria-hidden="true" />
-                Add Baseline and Comparison scenarios first
-              </span>
-            ) : null}
-          </div>
-        </aside>
+        </FigureSettingsSidebar>
     </FigureEditorShell>
   )
 }
