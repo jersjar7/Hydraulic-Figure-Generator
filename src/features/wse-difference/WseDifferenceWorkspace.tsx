@@ -89,7 +89,6 @@ import type {
   IngestNotice,
   MapAnnotation,
   MapCoordinate,
-  MapElementBounds,
   MapElementKey,
   MapElementStyles,
   MapOverlay,
@@ -108,6 +107,7 @@ import {
   type SettingsSectionKey,
 } from './workspaceConfiguration'
 import { useFittedCanvasSize } from './useFittedCanvasSize'
+import { useWseMapRendering } from './useWseMapRendering'
 import {
   annotationDisplayName,
   annotationHasContentEditor,
@@ -190,7 +190,6 @@ export function WseDifferenceWorkspace() {
     settings.orientation,
   )
   const projectInputRef = useRef<HTMLInputElement>(null)
-  const renderSequence = useRef(0)
   const annotationDragRef = useRef<AnnotationDrag | null>(null)
   const assessmentCalloutDragRef = useRef<AssessmentCalloutDrag | null>(null)
   const stationLabelDragRef = useRef<StationLabelDrag | null>(null)
@@ -198,7 +197,6 @@ export function WseDifferenceWorkspace() {
     new globalThis.Map<string, HTMLButtonElement>(),
   )
   const figureElementDragRef = useRef<FigureElementDrag | null>(null)
-  const elementBoundsRef = useRef<MapElementBounds[]>([])
   const baselineCondition = engine.condition(baselineScenarioId)
   const comparisonCondition = engine.condition(comparisonScenarioId)
   const assessmentCondition = engine.condition(assessmentScenarioId)
@@ -638,84 +636,28 @@ export function WseDifferenceWorkspace() {
     }
   }
 
-  useEffect(() => {
-    if (!scene || !canvasRef.current) return
-    const sequence = ++renderSequence.current
-    const renderCanvas = document.createElement('canvas')
-    const controller = new AbortController()
-    if (
-      !annotationDragging &&
-      !assessmentCalloutDragging &&
-      !stationLabelDragging &&
-      !elementDragging
-    ) {
-      setBusy(true)
-    }
-    void ACTIVE_FIGURE.render({
-      canvas: renderCanvas,
-      scene,
-      commonBounds: engine.commonBounds(),
-      settings,
-      overlays,
-      assessment: assessmentDisplayLayer,
-      annotations,
-      selectedAnnotationId,
-      selectedElementKey:
-        activeSettingsSection === 'elements' &&
-        activeElement !== 'stationing'
-          ? activeElement
-          : null,
-      signal: controller.signal,
-    })
-      .then((elementBounds) => {
-        if (renderSequence.current !== sequence || !canvasRef.current) return
-        elementBoundsRef.current = elementBounds
-        const visibleCanvas = canvasRef.current
-        visibleCanvas.width = renderCanvas.width
-        visibleCanvas.height = renderCanvas.height
-        const context = visibleCanvas.getContext('2d')
-        if (!context) {
-          throw new Error('This browser could not publish the rendered map.')
-        }
-        context.drawImage(renderCanvas, 0, 0)
-      })
-      .catch((error) => {
-        if (renderSequence.current !== sequence) return
-        appendNotices([
-          {
-            level: 'error',
-            text: `Map rendering failed: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ])
-      })
-      .finally(() => {
-        if (
-          renderSequence.current === sequence &&
-          !annotationDragging &&
-          !assessmentCalloutDragging &&
-          !stationLabelDragging &&
-          !elementDragging
-        ) {
-          setBusy(false)
-        }
-      })
-    return () => controller.abort()
-  }, [
-    annotations,
-    assessmentDisplayLayer,
-    assessmentCalloutDragging,
-    stationLabelDragging,
-    annotationDragging,
-    activeElement,
-    activeSettingsSection,
-    appendNotices,
-    elementDragging,
-    engine,
-    overlays,
+  const elementBoundsRef = useWseMapRendering({
+    canvasRef,
     scene,
-    selectedAnnotationId,
+    engine,
     settings,
-  ])
+    overlays,
+    assessment: assessmentDisplayLayer,
+    annotations,
+    selectedAnnotationId,
+    selectedElementKey:
+      activeSettingsSection === 'elements' &&
+      activeElement !== 'stationing'
+        ? activeElement
+        : null,
+    interacting:
+      annotationDragging ||
+      assessmentCalloutDragging ||
+      stationLabelDragging ||
+      elementDragging,
+    setBusy,
+    appendNotices,
+  })
 
   useEffect(() => {
     if (!scene) return
