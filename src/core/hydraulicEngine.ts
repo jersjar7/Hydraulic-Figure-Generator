@@ -1,10 +1,8 @@
-import { generateWseAssessmentLines } from './assessmentLines'
 import type {
   ConditionData,
   ConditionKey,
   IngestNotice,
   RunSelection,
-  WseAssessmentLineCollection,
 } from './types'
 import { conditionNodeCountsMatch } from './hydraulics/conditionCompatibility'
 import { projectGeometry } from './hydraulics/geometryProjection'
@@ -14,6 +12,7 @@ import {
   type H5Runtime,
 } from './hydraulics/h5Runtime'
 import { inferScenarioDescriptor } from './hydraulics/scenarioDetection'
+import { buildWseAssessmentLineCollection } from './hydraulics/wseAssessmentBuilder'
 import {
   finalTimestep,
   isDatasetsFile,
@@ -37,15 +36,9 @@ export {
   type WseDifferenceExtrema,
   type WseDifferenceExtremum,
 } from './hydraulics/wseExtrema'
+export { runDisplayName } from './hydraulics/runDisplayName'
 
 type ValueCacheEntry = Float32Array | { vx: Float32Array; vy: Float32Array }
-
-export function runDisplayName(name: string) {
-  return String(name)
-    .replace(/\(SRH-2D\)/i, '')
-    .replaceAll('_', ' ')
-    .trim()
-}
 
 export class HydraulicEngine {
   private readonly conditions = new Map<ConditionKey, ConditionData>()
@@ -332,7 +325,7 @@ export class HydraulicEngine {
     runIndex: number,
     dryDepth: number,
     interval: number,
-  ): WseAssessmentLineCollection {
+  ) {
     const selection = this.runOptions(scenarioKey)[runIndex]
     const scenario = this.condition(scenarioKey)
     if (!selection || !scenario) {
@@ -345,26 +338,9 @@ export class HydraulicEngine {
         `The selected ${scenario.label} run needs Water_Elev_ft and Water_Depth_ft datasets.`,
       )
     }
-    const projected = selection.condition.projected
-    if (!projected) {
-      throw new Error(`${scenario.label} geometry is required for assessment lines.`)
-    }
-    const modelX = new Float64Array(projected.N)
-    const modelY = new Float64Array(projected.N)
-    for (let index = 0; index < projected.N; index += 1) {
-      modelX[index] = projected.xy[index * 2]
-      modelY[index] = projected.xy[index * 2 + 1]
-    }
-    return generateWseAssessmentLines({
-      source:
-        scenarioKey === 'EX'
-          ? 'existing-wse'
-          : `${scenarioKey.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-wse`,
-      mapX: projected.mx,
-      mapY: projected.my,
-      modelX,
-      modelY,
-      triangles: projected.tris,
+    return buildWseAssessmentLineCollection({
+      scenarioKey,
+      selection,
       wse: this.scalarValues(selection, wseParam),
       depth: this.scalarValues(selection, depthParam),
       dryDepth,
