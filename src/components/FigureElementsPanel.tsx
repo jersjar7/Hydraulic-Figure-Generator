@@ -20,8 +20,10 @@ import {
   FIGURE_ELEMENTS,
   isElementVisible,
 } from './figure-elements/elementDefinitions'
+import { NorthArrowEditor } from './figure-elements/NorthArrowEditor'
 import { numberValue } from './figure-elements/numberValue'
 import { TitleElementEditor } from './figure-elements/TitleElementEditor'
+import { WetDryKeyEditor } from './figure-elements/WetDryKeyEditor'
 
 type Props = {
   settings: FigureSettings
@@ -201,185 +203,11 @@ export function FigureElementsPanel({
           />
         ) : null}
         {activeMapElement === 'wetDry' ? (
-          <>
-            <SectionHeading>Content</SectionHeading>
-            <label className="field">
-              <span>Title</span>
-              <input
-                type="text"
-                value={settings.elementStyles.wetDry.title}
-                onChange={(event) =>
-                  onStyleChange('wetDry', { title: event.target.value })
-                }
-              />
-            </label>
-            <div className="field-grid two">
-              <label className="field">
-                <span>Wet label</span>
-                <input
-                  type="text"
-                  value={settings.elementStyles.wetDry.wetLabel}
-                  onChange={(event) =>
-                    onStyleChange('wetDry', { wetLabel: event.target.value })
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Dry label</span>
-                <input
-                  type="text"
-                  value={settings.elementStyles.wetDry.dryLabel}
-                  onChange={(event) =>
-                    onStyleChange('wetDry', { dryLabel: event.target.value })
-                  }
-                />
-              </label>
-            </div>
-            <SectionHeading>Layout</SectionHeading>
-            <div className="field-grid two">
-              <label className="field">
-                <span>Direction</span>
-                <select
-                  value={settings.elementStyles.wetDry.orientation}
-                  onChange={(event) =>
-                    onStyleChange('wetDry', {
-                      orientation: event.target.value as
-                        | 'vertical'
-                        | 'horizontal',
-                    })
-                  }
-                >
-                  <option value="vertical">Vertical</option>
-                  <option value="horizontal">Horizontal</option>
-                </select>
-              </label>
-              <label className="field">
-                <span>
-                  Font size <small>px</small>
-                </span>
-                <input
-                  type="number"
-                  min="10"
-                  max="34"
-                  value={settings.elementStyles.wetDry.fontSize}
-                  onChange={(event) =>
-                    onStyleChange('wetDry', {
-                      fontSize: numberValue(event.target.value, 18),
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <div className="field-grid two">
-              <label className="field">
-                <span>
-                  Swatch size <small>px</small>
-                </span>
-                <input
-                  type="number"
-                  min="12"
-                  max="46"
-                  value={settings.elementStyles.wetDry.swatchSize}
-                  onChange={(event) =>
-                    onStyleChange('wetDry', {
-                      swatchSize: numberValue(event.target.value, 24),
-                    })
-                  }
-                />
-              </label>
-              <label className="field color-field">
-                <span>Text</span>
-                <input
-                  type="color"
-                  value={settings.elementStyles.wetDry.textColor}
-                  onChange={(event) =>
-                    onStyleChange('wetDry', {
-                      textColor: event.target.value,
-                    })
-                  }
-                />
-              </label>
-            </div>
-          </>
+          <WetDryKeyEditor settings={settings} onStyleChange={onStyleChange} />
         ) : null}
-
         {activeMapElement === 'north' ? (
-          <>
-            <SectionHeading>Symbol</SectionHeading>
-            <div className="field-grid two">
-              <label className="field">
-                <span>Style</span>
-                <select
-                  value={settings.elementStyles.north.style}
-                  onChange={(event) =>
-                    onStyleChange('north', {
-                      style: event.target.value as
-                        | 'classic'
-                        | 'simple'
-                        | 'compass',
-                    })
-                  }
-                >
-                  <option value="classic">Classic</option>
-                  <option value="simple">Simple</option>
-                  <option value="compass">Compass</option>
-                </select>
-              </label>
-              <label className="field">
-                <span>
-                  Size <small>px</small>
-                </span>
-                <input
-                  type="number"
-                  min="48"
-                  max="150"
-                  value={settings.elementStyles.north.size}
-                  onChange={(event) =>
-                    onStyleChange('north', {
-                      size: numberValue(event.target.value, 88),
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <div className="field-grid two">
-              <label className="field color-field">
-                <span>Symbol</span>
-                <input
-                  type="color"
-                  value={settings.elementStyles.north.color}
-                  onChange={(event) =>
-                    onStyleChange('north', { color: event.target.value })
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Orientation</span>
-                <select
-                  value={settings.elementStyles.north.rotationMode}
-                  onChange={(event) =>
-                    onStyleChange('north', {
-                      rotationMode: event.target.value as
-                        | 'true-north'
-                        | 'page-up',
-                    })
-                  }
-                >
-                  <option value="true-north">True north</option>
-                  <option value="page-up">Page up</option>
-                </select>
-              </label>
-            </div>
-            <Toggle
-              label="Show N label"
-              checked={settings.elementStyles.north.showLabel}
-              onChange={(showLabel) =>
-                onStyleChange('north', { showLabel })
-              }
-            />
-          </>
+          <NorthArrowEditor settings={settings} onStyleChange={onStyleChange} />
         ) : null}
-
         {activeMapElement === 'scale' ? (
           <>
             <SectionHeading>Scale</SectionHeading>
