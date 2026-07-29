@@ -44,11 +44,6 @@ import { FigureElementsPanel } from '../../components/FigureElementsPanel'
 import { ProjectDataPanel } from '../../components/ProjectDataPanel'
 import { createDefaultAnnotationSettings } from '../../core/defaults'
 import {
-  extractCenterlineCandidates,
-  generateCenterlineStationTicks,
-  stationAssessmentLines,
-} from '../../core/centerlineStationing'
-import {
   DEFAULT_ELEMENT_STYLES,
   mergeElementStyles,
 } from '../../core/figureElements'
@@ -78,10 +73,10 @@ import { readShapefileOverlays } from '../../core/shapefile'
 import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
 import { useProjectSession } from '../project-session/useProjectSession'
 import { downloadWseDifferencePng } from './exportWseDifference'
+import { useAssessmentMapLayers } from './useAssessmentMapLayers'
 import { wseDifferenceFigure } from './wseDifferenceFigure'
 import type {
   AnnotationDefaults,
-  AssessmentMapLayer,
   AnnotationTool,
   ConditionKey,
   FigureElementPanelKey,
@@ -112,7 +107,6 @@ import {
   annotationDisplayName,
   annotationHasContentEditor,
   assessmentLineAt,
-  assessmentWseLabel,
   defaultEditorView,
   defaultExtremumLabelPoint,
   draggedAnnotationPoints,
@@ -242,173 +236,22 @@ export function WseDifferenceWorkspace() {
   const extremaCalloutCount = annotations.filter(
     (annotation) => annotation.hydraulicExtremum,
   ).length
-  const centerlineCandidates = useMemo(() => {
-    const modelWkt = assessmentCondition?.geometry?.wkt
-    if (!modelWkt) return []
-    try {
-      return extractCenterlineCandidates(overlays, modelWkt)
-    } catch {
-      return []
-    }
-  }, [assessmentCondition?.geometry?.wkt, overlays])
-  const selectedCenterline =
-    centerlineCandidates.find(
-      (candidate) => candidate.id === assessmentState.centerlineId,
-    ) ?? null
-  const centerlineStationTicks = useMemo(() => {
-    if (!selectedCenterline) return []
-    try {
-      return generateCenterlineStationTicks(
-        selectedCenterline,
-        assessmentState.direction,
-        assessmentState.startStation,
-        settings.centerlineStationing,
-      )
-    } catch {
-      return []
-    }
-  }, [
-    assessmentState.direction,
-    assessmentState.startStation,
+  const {
+    centerlineCandidates,
     selectedCenterline,
-    settings.centerlineStationing,
-  ])
-  const centerlineStationLayer = useMemo(
-    () =>
-      selectedCenterline
-        ? {
-            centerline: selectedCenterline,
-            direction: assessmentState.direction,
-            ticks: centerlineStationTicks,
-          }
-        : undefined,
-    [
-      assessmentState.direction,
-      centerlineStationTicks,
-      selectedCenterline,
-    ],
-  )
-  const stationedAssessmentLines = useMemo(
-    () =>
-      selectedCenterline
-        ? stationAssessmentLines(
-            assessmentLines.lines,
-            selectedCenterline,
-            assessmentState.direction,
-            assessmentState.startStation,
-            assessmentState.overrides,
-          )
-        : null,
-    [
-      assessmentLines.lines,
-      assessmentState.direction,
-      assessmentState.overrides,
-      assessmentState.startStation,
-      selectedCenterline,
-    ],
-  )
-  const assessmentExportLayer = useMemo<AssessmentMapLayer>(() => {
-    if (!stationedAssessmentLines) {
-      return {
-        lines: assessmentLines.lines,
-        centerlineStationing: centerlineStationLayer,
-      }
-    }
-    const included = stationedAssessmentLines.items.filter(
-      (item) => item.status === 'included' && item.selectedIntersection,
-    )
-    return {
-      lines: included.map((item) => item.line),
-      centerlineStationing: centerlineStationLayer,
-      wseCallouts: included
-        .filter(
-          (item) =>
-            assessmentState.overrides[item.line.id]?.labelVisible !== false,
-        )
-        .map((item) => ({
-          lineId: item.line.id,
-          text: assessmentWseLabel(item.line.level),
-          target: item.selectedIntersection!.mapPoint,
-          tangent: item.selectedIntersection!.mapTangent,
-          labelPoint:
-            assessmentState.overrides[item.line.id]?.labelPoint,
-        })),
-    }
-  }, [
-    assessmentLines.lines,
-    assessmentState.overrides,
+    centerlineStationTicks,
     centerlineStationLayer,
     stationedAssessmentLines,
-  ])
-  const assessmentDisplayLayer = useMemo<AssessmentMapLayer>(() => {
-    const displayLayer = {
-      ...assessmentExportLayer,
-      selectedCalloutId: assessmentState.selectedLineId,
-      centerlineStationing: assessmentExportLayer.centerlineStationing
-        ? {
-            ...assessmentExportLayer.centerlineStationing,
-            selectedLabelId: selectedStationLabelId,
-          }
-        : undefined,
-    }
-    if (
-      assessmentState.panelView !== 'review' ||
-      !stationedAssessmentLines
-    ) {
-      return displayLayer
-    }
-    const selectedItem =
-      stationedAssessmentLines.items.find(
-        (item) => item.line.id === assessmentState.selectedLineId,
-      ) ?? null
-    return {
-      ...displayLayer,
-      selectedLine: selectedItem?.line ?? null,
-      endpoints: {
-        a: stationedAssessmentLines.centerline.mapPoints[0],
-        b: stationedAssessmentLines.centerline.mapPoints.at(-1)!,
-      },
-      intersections:
-        selectedItem?.intersections.map((intersection) => ({
-          point: intersection.mapPoint,
-          index: intersection.index,
-          selected:
-            intersection.index === selectedItem.selectedIntersectionIndex,
-        })) ?? [],
-    }
-  }, [
-    assessmentExportLayer,
-    assessmentState.panelView,
-    assessmentState.selectedLineId,
+    exportLayer: assessmentExportLayer,
+    displayLayer: assessmentDisplayLayer,
+  } = useAssessmentMapLayers({
+    modelWkt: assessmentCondition?.geometry?.wkt,
+    overlays,
+    state: assessmentState,
+    stationing: settings.centerlineStationing,
     selectedStationLabelId,
-    stationedAssessmentLines,
-  ])
-
-  useEffect(() => {
-    if (
-      assessmentState.centerlineId &&
-      assessmentCondition?.geometry?.wkt &&
-      overlays.length > 0 &&
-      !centerlineCandidates.some(
-        (candidate) => candidate.id === assessmentState.centerlineId,
-      )
-    ) {
-      assessmentWorkflow.setCenterline('')
-      return
-    }
-    if (
-      !assessmentState.centerlineId &&
-      centerlineCandidates.length === 1
-    ) {
-      assessmentWorkflow.setCenterline(centerlineCandidates[0].id)
-    }
-  }, [
-    assessmentState.centerlineId,
-    centerlineCandidates,
-    assessmentCondition?.geometry?.wkt,
-    overlays.length,
-    assessmentWorkflow,
-  ])
+    setCenterline: assessmentWorkflow.setCenterline,
+  })
 
   useEffect(() => {
     if (
