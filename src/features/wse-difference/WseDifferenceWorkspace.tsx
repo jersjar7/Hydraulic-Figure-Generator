@@ -21,7 +21,6 @@ import {
   useState,
   type ChangeEvent,
   type KeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
 } from 'react'
 import '../../App.css'
 import { ControlSection } from '../../components/ControlSection'
@@ -43,9 +42,6 @@ import {
   duplicateAnnotation,
   formatHydraulicResultLabel,
   FRAMES,
-  hitTestAnnotation,
-  hitTestAssessmentCallout,
-  hitTestStationLabel,
   mapPointToCanvas,
   sampleHydraulicResult,
   stationLabelPosition,
@@ -89,18 +85,12 @@ import {
 import { useFittedCanvasSize } from './useFittedCanvasSize'
 import { useWseEditorUi } from './useWseEditorUi'
 import { useWseMapRendering } from './useWseMapRendering'
+import { useWseMapInteractions } from './useWseMapInteractions'
 import { useWseFigureDocument } from './useWseFigureDocument'
 import {
   annotationHasContentEditor,
-  assessmentLineAt,
   defaultEditorView,
   defaultExtremumLabelPoint,
-  draggedAnnotationPoints,
-  updateDraggedResultAnnotation,
-  type AnnotationDrag,
-  type AssessmentCalloutDrag,
-  type FigureElementDrag,
-  type StationLabelDrag,
 } from './workspaceInteractions'
 
 const ACTIVE_FIGURE = wseDifferenceFigure
@@ -179,13 +169,9 @@ export function WseDifferenceWorkspace() {
     settings.orientation,
   )
   const projectInputRef = useRef<HTMLInputElement>(null)
-  const annotationDragRef = useRef<AnnotationDrag | null>(null)
-  const assessmentCalloutDragRef = useRef<AssessmentCalloutDrag | null>(null)
-  const stationLabelDragRef = useRef<StationLabelDrag | null>(null)
   const annotationListItemRefs = useRef(
     new globalThis.Map<string, HTMLButtonElement>(),
   )
-  const figureElementDragRef = useRef<FigureElementDrag | null>(null)
   const baselineCondition = engine.condition(baselineScenarioId)
   const comparisonCondition = engine.condition(comparisonScenarioId)
   const assessmentCondition = engine.condition(assessmentScenarioId)
@@ -812,60 +798,6 @@ export function WseDifferenceWorkspace() {
     )
   }
 
-  const pointerCanvasPoint = (
-    event: ReactPointerEvent<HTMLCanvasElement>,
-  ) => {
-    const canvas = event.currentTarget
-    const rect = canvas.getBoundingClientRect()
-    const x = ((event.clientX - rect.left) * canvas.width) / rect.width
-    const y = ((event.clientY - rect.top) * canvas.height) / rect.height
-    return {
-      x: Math.max(0, Math.min(canvas.width, x)),
-      y: Math.max(0, Math.min(canvas.height, y)),
-    }
-  }
-
-  const figureElementAt = (point: { x: number; y: number }) =>
-    [...elementBoundsRef.current]
-      .reverse()
-      .find(
-        (bounds) =>
-          point.x >= bounds.x - 6 &&
-          point.x <= bounds.x + bounds.width + 6 &&
-          point.y >= bounds.y - 6 &&
-          point.y <= bounds.y + bounds.height + 6,
-      )
-
-  const moveFigureElementDrag = (point: { x: number; y: number }) => {
-    const drag = figureElementDragRef.current
-    if (!drag) return
-    const frame = FRAMES[settings.orientation]
-    const rawDx = point.x - drag.start.x
-    const rawDy = point.y - drag.start.y
-    const dx = Math.max(
-      -drag.originalBounds.x,
-      Math.min(
-        frame.width -
-          drag.originalBounds.x -
-          drag.originalBounds.width,
-        rawDx,
-      ),
-    )
-    const dy = Math.max(
-      -drag.originalBounds.y,
-      Math.min(
-        frame.height -
-          drag.originalBounds.y -
-          drag.originalBounds.height,
-        rawDy,
-      ),
-    )
-    updateElementPosition(drag.key, {
-      offX: drag.originalPosition.offX + Math.round(dx),
-      offY: drag.originalPosition.offY + Math.round(dy),
-    })
-  }
-
   const chooseAnnotationTool = (tool: AnnotationTool) => {
     setAnnotationPanelView('create')
     setAnnotationTool(tool)
@@ -1011,452 +943,6 @@ export function WseDifferenceWorkspace() {
     requestAnimationFrame(() =>
       annotationListItemRefs.current.get(next.id)?.focus(),
     )
-  }
-
-  const handleCanvasPointerDown = (
-    event: ReactPointerEvent<HTMLCanvasElement>,
-  ) => {
-    if (!scene) return
-    event.preventDefault()
-    const screenPoint = pointerCanvasPoint(event)
-    const bounds = engine.commonBounds()
-    const mapPoint = canvasPointToMap(
-      screenPoint.x,
-      screenPoint.y,
-      bounds,
-      settings,
-    )
-
-    if (activeSettingsSection === 'elements') {
-      const elementHit = figureElementAt(screenPoint)
-      if (elementHit) {
-        setActiveElement(elementHit.key)
-        figureElementDragRef.current = {
-          key: elementHit.key,
-          start: screenPoint,
-          originalPosition: {
-            ...settings.elementPositions[elementHit.key],
-          },
-          originalBounds: { ...elementHit },
-        }
-        setElementDragging(true)
-        setHoveredElement(elementHit.key)
-        event.currentTarget.setPointerCapture(event.pointerId)
-        return
-      }
-    }
-
-    if (annotationTool === 'select') {
-      const stationHit = hitTestStationLabel(
-        centerlineStationLayer,
-        bounds,
-        settings,
-        screenPoint.x,
-        screenPoint.y,
-      )
-      if (stationHit) {
-        const originalOverride =
-          settings.centerlineStationing.overrides[stationHit.id]
-        setActiveSettingsSection('elements')
-        setActiveElement('stationing')
-        setSelectedStationLabelId(stationHit.id)
-        setRightOpen(true)
-        stationLabelDragRef.current = {
-          id: stationHit.id,
-          startScreen: screenPoint,
-          startPointer: mapPoint,
-          originalRenderedPoint: stationHit.labelPoint,
-          originalOverride: originalOverride
-            ? { ...originalOverride }
-            : undefined,
-          moved: false,
-        }
-        setStationLabelDragging(true)
-        event.currentTarget.setPointerCapture(event.pointerId)
-        return
-      }
-    }
-
-    if (
-      annotationTool === 'select' ||
-      assessmentState.panelView === 'review'
-    ) {
-      const calloutHit = hitTestAssessmentCallout(
-        assessmentDisplayLayer,
-        bounds,
-        settings,
-        screenPoint.x,
-        screenPoint.y,
-      )
-      if (calloutHit) {
-        const originalOverridePoint =
-          assessmentState.overrides[calloutHit.lineId]?.labelPoint
-        const stationedItem = stationedAssessmentLines?.items.find(
-          (item) => item.line.id === calloutHit.lineId,
-        )
-        if (stationedItem) {
-          assessmentWorkflow.setReviewTab(stationedItem.status)
-        }
-        assessmentWorkflow.selectLine(calloutHit.lineId)
-        assessmentCalloutDragRef.current = {
-          lineId: calloutHit.lineId,
-          startScreen: screenPoint,
-          startPointer: mapPoint,
-          originalRenderedPoint: calloutHit.labelPoint,
-          originalOverridePoint: originalOverridePoint
-            ? { ...originalOverridePoint }
-            : undefined,
-          moved: false,
-        }
-        setAssessmentCalloutDragging(true)
-        event.currentTarget.setPointerCapture(event.pointerId)
-        return
-      }
-    }
-
-    if (
-      assessmentState.panelView === 'review' &&
-      stationedAssessmentLines
-    ) {
-      const line = assessmentLineAt(
-        stationedAssessmentLines.items.map((item) => item.line),
-        engine.commonBounds(),
-        settings,
-        screenPoint,
-      )
-      if (line) {
-        const item = stationedAssessmentLines.items.find(
-          (candidate) => candidate.line.id === line.id,
-        )
-        if (item) assessmentWorkflow.setReviewTab(item.status)
-        assessmentWorkflow.selectLine(line.id)
-        return
-      }
-    }
-
-    if (annotationTool === 'extrema') return
-
-    if (annotationTool === 'select') {
-      const hit = hitTestAnnotation(
-        annotations,
-        bounds,
-        settings,
-        screenPoint.x,
-        screenPoint.y,
-      )
-      setSelectedAnnotationId(hit?.id ?? null)
-      if (hit) {
-        const annotation = annotations.find((item) => item.id === hit.id)
-        if (annotation) {
-          setAnnotationPanelView('placed')
-          setAnnotationPlacedView('detail')
-          setAnnotationEditorView(defaultEditorView(annotation))
-          if (annotation.hydraulicExtremum && hit.part !== 'body') {
-            return
-          }
-          annotationDragRef.current = {
-            id: hit.id,
-            part: hit.part,
-            start: mapPoint,
-            end: mapPoint,
-            originalPoints: annotation.points.map((point) => ({ ...point })),
-          }
-          setAnnotationDragging(true)
-          event.currentTarget.setPointerCapture(event.pointerId)
-        }
-      }
-      return
-    }
-
-    if (annotationTool === 'text') {
-      createAnnotation('text', [mapPoint])
-      return
-    }
-
-    if (annotationTool === 'result') {
-      const sample = sampleHydraulicResult(
-        scene,
-        bounds,
-        settings,
-        mapPoint,
-      )
-      if (!sample) {
-        appendNotices([
-          {
-            level: 'warning',
-            text: 'No hydraulic result was found close enough to that point.',
-          },
-        ])
-        return
-      }
-      const frame = FRAMES[settings.orientation]
-      const labelScreenPoint = {
-        x: Math.min(frame.width - 40, screenPoint.x + 135),
-        y: Math.max(40, screenPoint.y - 80),
-      }
-      const labelMapPoint = canvasPointToMap(
-        labelScreenPoint.x,
-        labelScreenPoint.y,
-        bounds,
-        settings,
-      )
-      createAnnotation(
-        'result',
-        [mapPoint, labelMapPoint],
-        formatHydraulicResultLabel(annotationDefaults.resultField, sample),
-        annotationDefaults.resultField,
-      )
-      return
-    }
-
-    if (!annotationStart) {
-      setAnnotationStart(mapPoint)
-      return
-    }
-
-    createAnnotation(annotationTool, [annotationStart, mapPoint])
-    setAnnotationStart(null)
-  }
-
-  const moveAssessmentCalloutDrag = (screenPoint: {
-    x: number
-    y: number
-  }) => {
-    const drag = assessmentCalloutDragRef.current
-    if (!drag) return
-    if (
-      !drag.moved &&
-      Math.hypot(
-        screenPoint.x - drag.startScreen.x,
-        screenPoint.y - drag.startScreen.y,
-      ) < 3
-    ) {
-      return
-    }
-    drag.moved = true
-    const pointer = canvasPointToMap(
-      screenPoint.x,
-      screenPoint.y,
-      engine.commonBounds(),
-      settings,
-    )
-    assessmentWorkflow.setOverride(drag.lineId, {
-      labelPoint: {
-        x:
-          drag.originalRenderedPoint.x +
-          pointer.x -
-          drag.startPointer.x,
-        y:
-          drag.originalRenderedPoint.y +
-          pointer.y -
-          drag.startPointer.y,
-      },
-    })
-  }
-
-  const moveStationLabelDrag = (screenPoint: {
-    x: number
-    y: number
-  }) => {
-    const drag = stationLabelDragRef.current
-    if (!drag) return
-    if (
-      !drag.moved &&
-      Math.hypot(
-        screenPoint.x - drag.startScreen.x,
-        screenPoint.y - drag.startScreen.y,
-      ) < 3
-    ) {
-      return
-    }
-    drag.moved = true
-    const pointer = canvasPointToMap(
-      screenPoint.x,
-      screenPoint.y,
-      engine.commonBounds(),
-      settings,
-    )
-    updateStationLabelOverride(drag.id, {
-      ...drag.originalOverride,
-      labelPoint: {
-        x:
-          drag.originalRenderedPoint.x +
-          pointer.x -
-          drag.startPointer.x,
-        y:
-          drag.originalRenderedPoint.y +
-          pointer.y -
-          drag.startPointer.y,
-      },
-    })
-  }
-
-  const handleCanvasPointerMove = (
-    event: ReactPointerEvent<HTMLCanvasElement>,
-  ) => {
-    const screenPoint = pointerCanvasPoint(event)
-    if (figureElementDragRef.current) {
-      moveFigureElementDrag(screenPoint)
-      return
-    }
-    if (stationLabelDragRef.current) {
-      moveStationLabelDrag(pointerCanvasPoint(event))
-      stationLabelDragRef.current = null
-      setStationLabelDragging(false)
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId)
-      }
-      return
-    }
-    if (assessmentCalloutDragRef.current) {
-      moveAssessmentCalloutDrag(screenPoint)
-      return
-    }
-    if (stationLabelDragRef.current) {
-      moveStationLabelDrag(screenPoint)
-      return
-    }
-    if (activeSettingsSection === 'elements') {
-      setHoveredElement(figureElementAt(screenPoint)?.key ?? null)
-    } else if (hoveredElement) {
-      setHoveredElement(null)
-    }
-    const drag = annotationDragRef.current
-    if (!drag) return
-    drag.end = canvasPointToMap(
-      screenPoint.x,
-      screenPoint.y,
-      engine.commonBounds(),
-      settings,
-    )
-    setAnnotations((current) =>
-      current.map((annotation) =>
-        annotation.id === drag.id
-          ? {
-              ...annotation,
-              points: draggedAnnotationPoints(annotation, drag),
-            }
-          : annotation,
-      ),
-    )
-  }
-
-  const finishAnnotationDrag = (
-    event: ReactPointerEvent<HTMLCanvasElement>,
-  ) => {
-    if (figureElementDragRef.current) {
-      moveFigureElementDrag(pointerCanvasPoint(event))
-      figureElementDragRef.current = null
-      setElementDragging(false)
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId)
-      }
-      return
-    }
-    if (assessmentCalloutDragRef.current) {
-      moveAssessmentCalloutDrag(pointerCanvasPoint(event))
-      const openSelectedReview =
-        !assessmentCalloutDragRef.current.moved
-      assessmentCalloutDragRef.current = null
-      setAssessmentCalloutDragging(false)
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId)
-      }
-      if (openSelectedReview) {
-        assessmentWorkflow.openReview()
-        setLeftCollapsed(false)
-        setLeftOpen(true)
-      }
-      return
-    }
-    const drag = annotationDragRef.current
-    if (!drag) return
-    const point = pointerCanvasPoint(event)
-    drag.end = canvasPointToMap(
-      point.x,
-      point.y,
-      engine.commonBounds(),
-      settings,
-    )
-    setAnnotations((current) =>
-      current.map((annotation) =>
-        annotation.id === drag.id
-          ? updateDraggedResultAnnotation(
-              {
-                ...annotation,
-                points: draggedAnnotationPoints(annotation, drag),
-              },
-              drag.part,
-              scene,
-              engine,
-              settings,
-            )
-          : annotation,
-      ),
-    )
-    annotationDragRef.current = null
-    setAnnotationDragging(false)
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
-  }
-
-  const cancelAnnotationDrag = (
-    event: ReactPointerEvent<HTMLCanvasElement>,
-  ) => {
-    const elementDrag = figureElementDragRef.current
-    if (elementDrag) {
-      updateElementPosition(elementDrag.key, elementDrag.originalPosition)
-      figureElementDragRef.current = null
-      setElementDragging(false)
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId)
-      }
-      return
-    }
-    const assessmentDrag = assessmentCalloutDragRef.current
-    if (assessmentDrag) {
-      assessmentWorkflow.setOverride(assessmentDrag.lineId, {
-        labelPoint: assessmentDrag.originalOverridePoint,
-      })
-      assessmentCalloutDragRef.current = null
-      setAssessmentCalloutDragging(false)
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId)
-      }
-      return
-    }
-    const stationDrag = stationLabelDragRef.current
-    if (stationDrag) {
-      updateStationLabelOverride(
-        stationDrag.id,
-        stationDrag.originalOverride ?? null,
-      )
-      stationLabelDragRef.current = null
-      setStationLabelDragging(false)
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId)
-      }
-      return
-    }
-    const drag = annotationDragRef.current
-    if (drag) {
-      setAnnotations((current) =>
-        current.map((annotation) =>
-          annotation.id === drag.id
-            ? {
-                ...annotation,
-                points: drag.originalPoints.map((point) => ({ ...point })),
-              }
-            : annotation,
-        ),
-      )
-    }
-    annotationDragRef.current = null
-    setAnnotationDragging(false)
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId)
-    }
   }
 
   const deleteSelectedAnnotation = () => {
@@ -1681,7 +1167,53 @@ export function WseDifferenceWorkspace() {
     }))
   }
 
+  const mapInteractions = useWseMapInteractions({
+    scene,
+    engine,
+    settings,
+    elementBoundsRef,
+    activeSettingsSection,
+    annotationTool,
+    annotations,
+    annotationStart,
+    annotationDefaults,
+    centerlineStationLayer,
+    assessmentDisplayLayer,
+    stationedAssessmentLines,
+    assessmentReviewOpen: assessmentState.panelView === 'review',
+    assessmentOverrides: assessmentState.overrides,
+    setAnnotations,
+    setAnnotationStart,
+    setSelectedAnnotationId,
+    showPlacedAnnotation: selectPlacedAnnotation,
+    createAnnotation,
+    appendNotices,
+    setAnnotationDragging,
+    selectFigureElement: (key) => setActiveElement(key),
+    updateElementPosition,
+    setElementDragging,
+    setHoveredElement,
+    selectStationLabel: (id) => {
+      setActiveSettingsSection('elements')
+      setActiveElement('stationing')
+      setSelectedStationLabelId(id)
+      setRightOpen(true)
+    },
+    updateStationLabelOverride,
+    setStationLabelDragging,
+    selectAssessmentLine: assessmentWorkflow.selectLine,
+    selectAssessmentStatus: assessmentWorkflow.setReviewTab,
+    updateAssessmentOverride: assessmentWorkflow.setOverride,
+    setAssessmentCalloutDragging,
+    openAssessmentReview: () => {
+      assessmentWorkflow.openReview()
+      setLeftCollapsed(false)
+      setLeftOpen(true)
+    },
+  })
+
   const resetProject = () => {
+    mapInteractions.resetInteractions()
     projectSession.reset()
     resetDocument()
     setSelectedAnnotationId(null)
@@ -1691,15 +1223,8 @@ export function WseDifferenceWorkspace() {
     setAnnotationPlacedView('list')
     setAnnotationEditorView('content')
     setLeftCollapsed(false)
-    assessmentCalloutDragRef.current = null
-    setAssessmentCalloutDragging(false)
-    stationLabelDragRef.current = null
-    setStationLabelDragging(false)
     setSelectedStationLabelId(null)
-    figureElementDragRef.current = null
     elementBoundsRef.current = []
-    setElementDragging(false)
-    setHoveredElement(null)
     setActiveElement('title')
     setScene(null)
     assessmentWorkflow.reset(1)
@@ -2095,10 +1620,10 @@ export function WseDifferenceWorkspace() {
                 data-element-dragging={
                   elementDragging ? 'true' : undefined
                 }
-                onPointerDown={handleCanvasPointerDown}
-                onPointerMove={handleCanvasPointerMove}
-                onPointerUp={finishAnnotationDrag}
-                onPointerCancel={cancelAnnotationDrag}
+                onPointerDown={mapInteractions.handlePointerDown}
+                onPointerMove={mapInteractions.handlePointerMove}
+                onPointerUp={mapInteractions.handlePointerUp}
+                onPointerCancel={mapInteractions.handlePointerCancel}
                 onPointerLeave={() => {
                   if (!elementDragging) setHoveredElement(null)
                 }}
