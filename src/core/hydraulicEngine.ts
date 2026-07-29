@@ -7,91 +7,33 @@ import {
 import type {
   Bounds,
   ConditionData,
-  ConditionKind,
   ConditionKey,
   DatasetCatalog,
   DatasetRun,
   Geometry,
   IngestNotice,
-  MapCoordinate,
   ProjectedGeometry,
   RunSelection,
-  WseExtremumKind,
   WseDifferenceScene,
   WseAssessmentLineCollection,
 } from './types'
+import { conditionNodeCountsMatch } from './hydraulics/conditionCompatibility'
+import { inferScenarioDescriptor } from './hydraulics/scenarioDetection'
+
+export { conditionNodeCountsMatch } from './hydraulics/conditionCompatibility'
+export {
+  inferScenarioDescriptor,
+  type ScenarioDescriptor,
+} from './hydraulics/scenarioDetection'
+export {
+  findWseDifferenceExtrema,
+  formatWseExtremumLabel,
+  type WseDifferenceExtrema,
+  type WseDifferenceExtremum,
+} from './hydraulics/wseExtrema'
 
 const VALID = (value: number) =>
   value != null && Number.isFinite(value) && value > -900
-
-export type WseDifferenceExtremum = {
-  kind: WseExtremumKind
-  index: number
-  value: number
-  point: MapCoordinate
-}
-
-export type WseDifferenceExtrema = {
-  rise: WseDifferenceExtremum | null
-  reduction: WseDifferenceExtremum | null
-}
-
-export function findWseDifferenceExtrema(
-  scene: WseDifferenceScene,
-): WseDifferenceExtrema {
-  let riseIndex = -1
-  let riseValue = 0
-  let reductionIndex = -1
-  let reductionValue = 0
-
-  for (let index = 0; index < scene.diff.length; index += 1) {
-    const value = scene.diff[index]
-    if (!VALID(value)) continue
-    if (value > riseValue) {
-      riseValue = value
-      riseIndex = index
-    }
-    if (value < reductionValue) {
-      reductionValue = value
-      reductionIndex = index
-    }
-  }
-
-  const result = (
-    kind: WseExtremumKind,
-    index: number,
-    value: number,
-  ): WseDifferenceExtremum | null =>
-    index < 0
-      ? null
-      : {
-          kind,
-          index,
-          value,
-          point: {
-            x: scene.projected.mx[index],
-            y: scene.projected.my[index],
-          },
-        }
-
-  return {
-    rise: result('max-rise', riseIndex, riseValue),
-    reduction: result(
-      'max-reduction',
-      reductionIndex,
-      reductionValue,
-    ),
-  }
-}
-
-export function formatWseExtremumLabel(
-  kind: WseExtremumKind,
-  value: number,
-) {
-  const label = kind === 'max-rise' ? 'Max WSE rise' : 'Max WSE reduction'
-  const sign = value > 0 ? '+' : ''
-  return `${label}: ${sign}${value.toFixed(2)} ft`
-}
 
 type H5Runtime = {
   ready: Promise<unknown>
@@ -128,73 +70,6 @@ type H5File = {
 }
 
 type ValueCacheEntry = Float32Array | { vx: Float32Array; vy: Float32Array }
-
-export function conditionNodeCountsMatch(condition: ConditionData) {
-  if (!condition.geometry || !condition.datasets) return false
-  const expected = condition.geometry.N
-  const nodeCounts = condition.datasets.runs.flatMap((run) =>
-    Object.values(run.params)
-      .map((param) => param.shape[1])
-      .filter((count): count is number => Number.isInteger(count)),
-  )
-  return nodeCounts.length > 0 && nodeCounts.every((count) => count === expected)
-}
-
-function conditionToken(text: string) {
-  const existing = /(^|[^a-z0-9])(existing|ex)(?=[^a-z0-9]|$)/i.test(text)
-  const proposed = /(^|[^a-z0-9])(proposed|pr|fhd)(?=[^a-z0-9]|$)/i.test(text)
-  const natural = /(^|[^a-z0-9])(natural|na)(?=[^a-z0-9]|$)/i.test(text)
-  if (existing && !proposed && !natural) {
-    return { key: 'EX', label: 'Existing', kind: 'existing' } as const
-  }
-  if (proposed && !existing && !natural) {
-    return { key: 'PR', label: 'Proposed', kind: 'proposed' } as const
-  }
-  if (natural && !existing && !proposed) {
-    return { key: 'NA', label: 'Natural', kind: 'natural' } as const
-  }
-  return null
-}
-
-export type ScenarioDescriptor = {
-  key: ConditionKey
-  label: string
-  kind: ConditionKind
-}
-
-function customScenario(text: string): ScenarioDescriptor | null {
-  const stem = text.replace(/\.(h5|hdf5)$/i, '')
-  const label = stem
-    .replace(
-      /(^|[\s_-]+)(geometry|geo|datasets?|results?|mesh|srh-?2d)(?=$|[\s_-]+)/gi,
-      ' ',
-    )
-    .replace(/[\s_-]+/g, ' ')
-    .trim()
-  if (!label || /^(geometry|datasets?|results?|mesh)$/i.test(label)) return null
-  const key = label
-    .replace(/[^a-z0-9]+/gi, '_')
-    .replace(/^_+|_+$/g, '')
-    .toUpperCase()
-  if (!key) return null
-  return {
-    key,
-    label: label.replace(/\b\w/g, (letter) => letter.toUpperCase()),
-    kind: 'other',
-  }
-}
-
-export function inferScenarioDescriptor(
-  name: string,
-  fileName: string,
-): ScenarioDescriptor | null {
-  return (
-    conditionToken(fileName) ??
-    customScenario(fileName) ??
-    conditionToken(name) ??
-    customScenario(name)
-  )
-}
 
 function hasMeshGeometry(file: H5File, base: string) {
   try {
