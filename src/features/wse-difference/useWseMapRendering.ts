@@ -1,5 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import type { HydraulicEngine } from '../../core/hydraulicEngine'
+import { createWseDifferenceRenderDocument } from '../../core/mapRenderer'
 import type {
   AssessmentMapLayer,
   FigureSettings,
@@ -55,14 +56,16 @@ export function useWseMapRendering({
     void wseDifferenceFigure
       .render({
         canvas: renderCanvas,
-        scene,
-        commonBounds: engine.commonBounds(),
-        settings,
-        overlays,
-        assessment,
-        annotations,
-        selectedAnnotationId,
-        selectedElementKey,
+        document: createWseDifferenceRenderDocument({
+          scene,
+          commonBounds: engine.commonBounds(),
+          settings,
+          overlays,
+          assessment,
+          annotations,
+          selectedAnnotationId,
+          selectedElementKey,
+        }),
         signal: controller.signal,
       })
       .then((elementBounds) => {

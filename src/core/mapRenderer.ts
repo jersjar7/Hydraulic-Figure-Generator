@@ -6,6 +6,7 @@ import type {
   MapElementBounds,
   MapElementKey,
   MapOverlay,
+  FigureRenderDocument,
   WseAssessmentLine,
   WseDifferenceScene,
 } from './types'
@@ -66,18 +67,80 @@ export {
   type StationLabelHit,
 } from './map/stationingLayer'
 
-export async function renderWseDifferenceMap(
-  canvas: HTMLCanvasElement,
+export type WseDifferenceRenderLayers = {
+  overlays: MapOverlay[]
+  assessment: AssessmentMapLayer | WseAssessmentLine[]
+  annotations: MapAnnotation[]
+}
+
+export type WseDifferenceRenderSelection = {
+  annotationId: string | null
+  elementKey: MapElementKey | null
+}
+
+export type WseDifferenceRenderDocument = FigureRenderDocument<
+  WseDifferenceScene,
+  FigureSettings,
+  Bounds,
+  WseDifferenceRenderLayers,
+  WseDifferenceRenderSelection
+>
+
+export type CreateWseDifferenceRenderDocumentOptions = {
   scene: WseDifferenceScene,
   commonBounds: Bounds,
   settings: FigureSettings,
-  overlays: MapOverlay[],
-  assessmentInput: AssessmentMapLayer | WseAssessmentLine[] = [],
-  annotations: MapAnnotation[] = [],
-  selectedAnnotationId: string | null = null,
-  selectedElementKey: MapElementKey | null = null,
+  overlays?: MapOverlay[]
+  assessment?: AssessmentMapLayer | WseAssessmentLine[]
+  annotations?: MapAnnotation[]
+  selectedAnnotationId?: string | null
+  selectedElementKey?: MapElementKey | null
+}
+
+export function createWseDifferenceRenderDocument({
+  scene,
+  commonBounds,
+  settings,
+  overlays = [],
+  assessment = [],
+  annotations = [],
+  selectedAnnotationId = null,
+  selectedElementKey = null,
+}: CreateWseDifferenceRenderDocumentOptions): WseDifferenceRenderDocument {
+  return {
+    scene,
+    view: {
+      bounds: commonBounds,
+      settings,
+    },
+    layers: {
+      overlays,
+      assessment,
+      annotations,
+    },
+    selection: {
+      annotationId: selectedAnnotationId,
+      elementKey: selectedElementKey,
+    },
+  }
+}
+
+export async function renderWseDifferenceDocument(
+  canvas: HTMLCanvasElement,
+  document: WseDifferenceRenderDocument,
   signal?: AbortSignal,
 ) {
+  const { scene } = document
+  const { bounds: commonBounds, settings } = document.view
+  const {
+    overlays,
+    assessment: assessmentInput,
+    annotations,
+  } = document.layers
+  const {
+    annotationId: selectedAnnotationId,
+    elementKey: selectedElementKey,
+  } = document.selection
   const frame = FRAMES[settings.orientation]
   canvas.width = frame.width
   canvas.height = frame.height
@@ -256,4 +319,32 @@ export async function renderWseDifferenceMap(
     drawMapElementSelection(context, selectedElement)
   }
   return elementBounds
+}
+
+export function renderWseDifferenceMap(
+  canvas: HTMLCanvasElement,
+  scene: WseDifferenceScene,
+  commonBounds: Bounds,
+  settings: FigureSettings,
+  overlays: MapOverlay[],
+  assessmentInput: AssessmentMapLayer | WseAssessmentLine[] = [],
+  annotations: MapAnnotation[] = [],
+  selectedAnnotationId: string | null = null,
+  selectedElementKey: MapElementKey | null = null,
+  signal?: AbortSignal,
+) {
+  return renderWseDifferenceDocument(
+    canvas,
+    createWseDifferenceRenderDocument({
+      scene,
+      commonBounds,
+      settings,
+      overlays,
+      assessment: assessmentInput,
+      annotations,
+      selectedAnnotationId,
+      selectedElementKey,
+    }),
+    signal,
+  )
 }

@@ -38,6 +38,7 @@ import {
   mapPointToCanvas,
   sampleHydraulicResult,
   stationLabelPosition,
+  createWseDifferenceRenderDocument,
 } from '../../core/mapRenderer'
 import { importHydraulicFiles } from '../../application/importHydraulicFiles'
 import { importOverlayArchives } from '../../application/importOverlayArchives'
@@ -1239,12 +1240,14 @@ export function WseDifferenceWorkspace() {
     setBusy(true)
     try {
       await downloadWseDifferencePng({
-        scene,
-        commonBounds: engine.commonBounds(),
-        settings,
-        overlays,
-        assessment: assessmentExportLayer,
-        annotations,
+        document: createWseDifferenceRenderDocument({
+          scene,
+          commonBounds: engine.commonBounds(),
+          settings,
+          overlays,
+          assessment: assessmentExportLayer,
+          annotations,
+        }),
       })
     } catch (error) {
       appendNotices([

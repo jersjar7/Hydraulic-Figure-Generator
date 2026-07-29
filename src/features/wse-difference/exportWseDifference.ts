@@ -31,7 +31,9 @@ export async function downloadWseDifferencePng(
   try {
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = wseDifferenceFigure.exportFileName(request.scene)
+    anchor.download = wseDifferenceFigure.exportFileName(
+      request.document.scene,
+    )
     anchor.click()
   } finally {
     URL.revokeObjectURL(url)

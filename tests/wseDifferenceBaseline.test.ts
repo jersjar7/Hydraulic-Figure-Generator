@@ -3,8 +3,9 @@ import { describe, it } from 'node:test'
 import { createCanvas } from '@napi-rs/canvas'
 import { createDefaultFigureSettings } from '../src/core/defaults'
 import {
+  createWseDifferenceRenderDocument,
   FRAMES,
-  renderWseDifferenceMap,
+  renderWseDifferenceDocument,
 } from '../src/core/mapRenderer'
 import type {
   ConditionData,
@@ -116,12 +117,13 @@ describe('WSE Difference production baseline', () => {
       }
       const frame = FRAMES[orientation]
       const canvas = createCanvas(frame.width, frame.height)
-      const elements = await renderWseDifferenceMap(
+      const elements = await renderWseDifferenceDocument(
         canvas as unknown as HTMLCanvasElement,
-        scene,
-        commonBounds,
-        settings,
-        [],
+        createWseDifferenceRenderDocument({
+          scene,
+          commonBounds,
+          settings,
+        }),
       )
 
       assert.equal(canvas.width, frame.width)

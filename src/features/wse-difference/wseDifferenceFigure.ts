@@ -4,16 +4,13 @@ import {
   runDisplayName,
   type HydraulicEngine,
 } from '../../core/hydraulicEngine'
-import { renderWseDifferenceMap } from '../../core/mapRenderer'
+import {
+  renderWseDifferenceDocument,
+  type WseDifferenceRenderDocument,
+} from '../../core/mapRenderer'
 import type {
-  AssessmentMapLayer,
-  Bounds,
   ConditionKey,
   FigureSettings,
-  MapAnnotation,
-  MapElementKey,
-  MapOverlay,
-  WseAssessmentLine,
   WseDifferenceScene,
 } from '../../core/types'
 import type { FigureModule } from '../figures/figureModule'
@@ -35,14 +32,7 @@ export type WseDifferenceBuildRequest = {
 
 export type WseDifferenceRenderRequest = {
   canvas: HTMLCanvasElement
-  scene: WseDifferenceScene
-  commonBounds: Bounds
-  settings: FigureSettings
-  overlays?: MapOverlay[]
-  assessment?: AssessmentMapLayer | WseAssessmentLine[]
-  annotations?: MapAnnotation[]
-  selectedAnnotationId?: string | null
-  selectedElementKey?: MapElementKey | null
+  document: WseDifferenceRenderDocument
   signal?: AbortSignal
 }
 
@@ -85,30 +75,8 @@ export const wseDifferenceFigure: FigureModule<
       comparisonRun,
       dryDepth,
     ),
-  render: ({
-    canvas,
-    scene,
-    commonBounds,
-    settings,
-    overlays = [],
-    assessment = [],
-    annotations = [],
-    selectedAnnotationId = null,
-    selectedElementKey = null,
-    signal,
-  }) =>
-    renderWseDifferenceMap(
-      canvas,
-      scene,
-      commonBounds,
-      settings,
-      overlays,
-      assessment,
-      annotations,
-      selectedAnnotationId,
-      selectedElementKey,
-      signal,
-    ),
+  render: ({ canvas, document, signal }) =>
+    renderWseDifferenceDocument(canvas, document, signal),
   exportFileName: (scene) =>
     [
       'FRA_WSE_Difference',
