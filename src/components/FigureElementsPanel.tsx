@@ -15,11 +15,13 @@ import {
   SectionHeading,
   Toggle,
 } from './figure-elements/elementControls'
+import { DifferenceLegendEditor } from './figure-elements/DifferenceLegendEditor'
 import {
   FIGURE_ELEMENTS,
   isElementVisible,
 } from './figure-elements/elementDefinitions'
 import { numberValue } from './figure-elements/numberValue'
+import { TitleElementEditor } from './figure-elements/TitleElementEditor'
 
 type Props = {
   settings: FigureSettings
@@ -186,216 +188,18 @@ export function FigureElementsPanel({
             {commonHeader}
 
         {activeMapElement === 'title' ? (
-          <>
-            <SectionHeading>Content</SectionHeading>
-            <label className="field">
-              <span>Figure title</span>
-              <input
-                type="text"
-                value={settings.titleTemplate}
-                onChange={(event) => onTitleTemplateChange(event.target.value)}
-              />
-            </label>
-            <div className="template-tokens" aria-label="Available title fields">
-              <code>{'{type}'}</code>
-              <code>{'{baseline}'}</code>
-              <code>{'{baselineRun}'}</code>
-              <code>{'{comparison}'}</code>
-              <code>{'{comparisonRun}'}</code>
-              <code>{'{existing}'}</code>
-              <code>{'{proposed}'}</code>
-            </div>
-            <SectionHeading>Typography</SectionHeading>
-            <div className="field-grid two">
-              <label className="field">
-                <span>
-                  Font size <small>px</small>
-                </span>
-                <input
-                  type="number"
-                  min="12"
-                  max="64"
-                  value={settings.elementStyles.title.fontSize}
-                  onChange={(event) =>
-                    onStyleChange('title', {
-                      fontSize: numberValue(event.target.value, 26),
-                    })
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Weight</span>
-                <select
-                  value={settings.elementStyles.title.fontWeight}
-                  onChange={(event) =>
-                    onStyleChange('title', {
-                      fontWeight: Number(event.target.value) as 400 | 600 | 700,
-                    })
-                  }
-                >
-                  <option value="400">Regular</option>
-                  <option value="600">Semibold</option>
-                  <option value="700">Bold</option>
-                </select>
-              </label>
-            </div>
-            <div className="field-grid two">
-              <label className="field color-field">
-                <span>Text</span>
-                <input
-                  type="color"
-                  value={settings.elementStyles.title.textColor}
-                  onChange={(event) =>
-                    onStyleChange('title', { textColor: event.target.value })
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Alignment</span>
-                <select
-                  value={settings.elementStyles.title.alignment}
-                  onChange={(event) =>
-                    onStyleChange('title', {
-                      alignment: event.target.value as
-                        | 'left'
-                        | 'center'
-                        | 'right',
-                    })
-                  }
-                >
-                  <option value="left">Left</option>
-                  <option value="center">Center</option>
-                  <option value="right">Right</option>
-                </select>
-              </label>
-            </div>
-            <label className="field">
-              <span>
-                Maximum width <small>px</small>
-              </span>
-              <input
-                type="number"
-                min="240"
-                max="1500"
-                step="20"
-                value={settings.elementStyles.title.maxWidth}
-                onChange={(event) =>
-                  onStyleChange('title', {
-                    maxWidth: numberValue(event.target.value, 1100),
-                  })
-                }
-              />
-            </label>
-          </>
+          <TitleElementEditor
+            settings={settings}
+            onStyleChange={onStyleChange}
+            onTitleTemplateChange={onTitleTemplateChange}
+          />
         ) : null}
-
         {activeMapElement === 'diffLegend' ? (
-          <>
-            <SectionHeading>Content</SectionHeading>
-            <div className="field-grid two">
-              <label className="field">
-                <span>Title</span>
-                <input
-                  type="text"
-                  value={settings.elementStyles.diffLegend.title}
-                  onChange={(event) =>
-                    onStyleChange('diffLegend', { title: event.target.value })
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Units</span>
-                <input
-                  type="text"
-                  value={settings.elementStyles.diffLegend.units}
-                  onChange={(event) =>
-                    onStyleChange('diffLegend', { units: event.target.value })
-                  }
-                />
-              </label>
-            </div>
-            <SectionHeading>Layout</SectionHeading>
-            <div className="field-grid two">
-              <label className="field">
-                <span>Direction</span>
-                <select
-                  value={settings.elementStyles.diffLegend.orientation}
-                  onChange={(event) =>
-                    onStyleChange('diffLegend', {
-                      orientation: event.target.value as
-                        | 'vertical'
-                        | 'horizontal',
-                    })
-                  }
-                >
-                  <option value="vertical">Vertical</option>
-                  <option value="horizontal">Horizontal</option>
-                </select>
-              </label>
-              <label className="field">
-                <span>Decimals</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="3"
-                  value={settings.elementStyles.diffLegend.decimalPlaces}
-                  onChange={(event) =>
-                    onStyleChange('diffLegend', {
-                      decimalPlaces: numberValue(event.target.value, 1),
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <div className="field-grid two">
-              <label className="field">
-                <span>
-                  Font size <small>px</small>
-                </span>
-                <input
-                  type="number"
-                  min="10"
-                  max="34"
-                  value={settings.elementStyles.diffLegend.fontSize}
-                  onChange={(event) =>
-                    onStyleChange('diffLegend', {
-                      fontSize: numberValue(event.target.value, 19),
-                    })
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>
-                  Swatch size <small>px</small>
-                </span>
-                <input
-                  type="number"
-                  min="12"
-                  max="46"
-                  value={settings.elementStyles.diffLegend.swatchSize}
-                  onChange={(event) =>
-                    onStyleChange('diffLegend', {
-                      swatchSize: numberValue(event.target.value, 25),
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <label className="field color-field">
-              <span>Text</span>
-              <input
-                type="color"
-                value={settings.elementStyles.diffLegend.textColor}
-                onChange={(event) =>
-                  onStyleChange('diffLegend', {
-                    textColor: event.target.value,
-                  })
-                }
-              />
-            </label>
-          </>
+          <DifferenceLegendEditor
+            settings={settings}
+            onStyleChange={onStyleChange}
+          />
         ) : null}
-
         {activeMapElement === 'wetDry' ? (
           <>
             <SectionHeading>Content</SectionHeading>
