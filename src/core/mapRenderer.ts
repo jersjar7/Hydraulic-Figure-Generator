@@ -16,7 +16,6 @@ import type {
   MapOverlay,
   NorthElementStyle,
   ProjectedGeometry,
-  ResultLabelField,
   ScaleElementStyle,
   TitleElementStyle,
   WetDryElementStyle,
@@ -25,108 +24,35 @@ import type {
 } from './types'
 import { formatStation } from './centerlineStationing'
 import { runDisplayName } from './hydraulicEngine'
+import type { AnnotationHitPart } from './map/annotationGeometry'
+import {
+  FRAMES,
+  makeMapView as makeView,
+  type MapFrame as Frame,
+  type MapView as View,
+} from './map/view'
+
+export {
+  duplicateAnnotation,
+  moveAnnotationPoints,
+  type AnnotationHitPart,
+} from './map/annotationGeometry'
+export {
+  formatHydraulicResultLabel,
+  sampleHydraulicResult,
+  type HydraulicResultSample,
+} from './map/hydraulicSampling'
+export {
+  canvasPointToMap,
+  DEFAULT_ELEMENT_POSITIONS,
+  FRAMES,
+  mapPointToCanvas,
+} from './map/view'
 
 const EARTH_RADIUS = 6_378_137
 const EARTH_CIRCUMFERENCE = 2 * Math.PI * EARTH_RADIUS
 const VALID = (value: number) =>
   value != null && Number.isFinite(value) && value > -900
-
-export const FRAMES = {
-  landscape: { width: 1650, height: 1275 },
-  portrait: { width: 1275, height: 1650 },
-} as const
-
-export const DEFAULT_ELEMENT_POSITIONS: MapElementPositions = {
-  title: { anchor: 'tc', offX: 0, offY: 0 },
-  diffLegend: { anchor: 'br', offX: 0, offY: 0 },
-  north: { anchor: 'tr', offX: 0, offY: 0 },
-  scale: { anchor: 'bl', offX: 0, offY: 0 },
-  wetDry: { anchor: 'mr', offX: 0, offY: 0 },
-}
-
-type Frame = {
-  width: number
-  height: number
-}
-
-type View = {
-  scale: number
-  originX: number
-  originY: number
-  rotationRadians: number
-  centerX: number
-  centerY: number
-  toLocal(mx: number, my: number): [number, number]
-  toScreen(mx: number, my: number): [number, number]
-  screenToMerc(x: number, y: number): { x: number; y: number }
-  coverBounds(): Bounds
-}
-
-function makeView(
-  bounds: Bounds,
-  frame: Frame,
-  settings: FigureSettings,
-): View {
-  const centerX = (bounds.x0 + bounds.x1) / 2
-  const centerY = (bounds.y0 + bounds.y1) / 2
-  const scale =
-    Math.min(
-      frame.width / (bounds.x1 - bounds.x0 || 1),
-      frame.height / (bounds.y1 - bounds.y0 || 1),
-    ) *
-    0.88 *
-    settings.zoom
-  const originX = frame.width / 2 + settings.panX
-  const originY = frame.height / 2 + settings.panY
-  const rotationRadians = (settings.rotation * Math.PI) / 180
-  const cosine = Math.cos(rotationRadians)
-  const sine = Math.sin(rotationRadians)
-
-  const view: View = {
-    scale,
-    originX,
-    originY,
-    rotationRadians,
-    centerX,
-    centerY,
-    toLocal(mx, my) {
-      return [(mx - centerX) * scale, -(my - centerY) * scale]
-    },
-    toScreen(mx, my) {
-      const [localX, localY] = this.toLocal(mx, my)
-      return [
-        originX + localX * cosine - localY * sine,
-        originY + localX * sine + localY * cosine,
-      ]
-    },
-    screenToMerc(x, y) {
-      const dx = x - originX
-      const dy = y - originY
-      const localX = dx * cosine + dy * sine
-      const localY = -dx * sine + dy * cosine
-      return {
-        x: centerX + localX / scale,
-        y: centerY - localY / scale,
-      }
-    },
-    coverBounds() {
-      const corners = [
-        this.screenToMerc(0, 0),
-        this.screenToMerc(frame.width, 0),
-        this.screenToMerc(0, frame.height),
-        this.screenToMerc(frame.width, frame.height),
-      ]
-      return {
-        x0: Math.min(...corners.map((corner) => corner.x)),
-        x1: Math.max(...corners.map((corner) => corner.x)),
-        y0: Math.min(...corners.map((corner) => corner.y)),
-        y1: Math.max(...corners.map((corner) => corner.y)),
-      }
-    },
-  }
-
-  return view
-}
 
 const mercatorToGlobal = (mx: number, my: number, worldPixels: number) => [
   ((mx + Math.PI * EARTH_RADIUS) / EARTH_CIRCUMFERENCE) * worldPixels,
@@ -1576,26 +1502,6 @@ function drawAnnotationSelection(
   context.restore()
 }
 
-export function canvasPointToMap(
-  x: number,
-  y: number,
-  bounds: Bounds,
-  settings: FigureSettings,
-): MapCoordinate {
-  const view = makeView(bounds, FRAMES[settings.orientation], settings)
-  return view.screenToMerc(x, y)
-}
-
-export function mapPointToCanvas(
-  point: MapCoordinate,
-  bounds: Bounds,
-  settings: FigureSettings,
-) {
-  const view = makeView(bounds, FRAMES[settings.orientation], settings)
-  const [x, y] = view.toScreen(point.x, point.y)
-  return { x, y }
-}
-
 export type AssessmentCalloutHit = {
   lineId: string
   labelPoint: MapCoordinate
@@ -1727,69 +1633,9 @@ function pointToSegmentDistance(
   )
 }
 
-export type AnnotationHitPart = 'body' | 'segment' | 'start' | 'end'
-
 export type AnnotationHit = {
   id: string
   part: AnnotationHitPart
-}
-
-export function moveAnnotationPoints(
-  annotation: MapAnnotation,
-  part: AnnotationHitPart,
-  originalPoints: MapCoordinate[],
-  dx: number,
-  dy: number,
-) {
-  const points = originalPoints.map((point) => ({ ...point }))
-  if (annotation.hydraulicExtremum) {
-    if (part !== 'body' || !points[1]) return points
-    points[1] = {
-      x: points[1].x + dx,
-      y: points[1].y + dy,
-    }
-    return points
-  }
-  const pointIndex =
-    part === 'start'
-      ? 0
-      : part === 'end'
-        ? 1
-        : part === 'body' &&
-            (annotation.kind === 'leader' || annotation.kind === 'result')
-          ? 1
-          : null
-
-  if (pointIndex === null) {
-    return points.map((point) => ({
-      x: point.x + dx,
-      y: point.y + dy,
-    }))
-  }
-  if (!points[pointIndex]) return points
-  points[pointIndex] = {
-    x: points[pointIndex].x + dx,
-    y: points[pointIndex].y + dy,
-  }
-  return points
-}
-
-export function duplicateAnnotation(
-  annotation: MapAnnotation,
-  id: string,
-  dx: number,
-  dy: number,
-): MapAnnotation {
-  const { hydraulicExtremum: _hydraulicExtremum, ...copy } = annotation
-  return {
-    ...copy,
-    id,
-    rotation: annotation.rotation ?? 0,
-    points: annotation.points.map((point) => ({
-      x: point.x + dx,
-      y: point.y + dy,
-    })),
-  }
 }
 
 function estimatedTextBox(annotation: MapAnnotation, point: MapCoordinate) {
@@ -1883,104 +1729,6 @@ export function hitTestAnnotation(
     }
   }
   return null
-}
-
-type HydraulicResultSample = {
-  baselineLabel: string
-  comparisonLabel: string
-  existingWse: number | null
-  proposedWse: number | null
-  difference: number | null
-  existingDepth: number | null
-  proposedDepth: number | null
-}
-
-function nearestNode(
-  geometry: ProjectedGeometry,
-  point: MapCoordinate,
-) {
-  let nearestIndex = -1
-  let nearestDistance2 = Number.POSITIVE_INFINITY
-  for (let index = 0; index < geometry.N; index += 1) {
-    const dx = geometry.mx[index] - point.x
-    const dy = geometry.my[index] - point.y
-    const distance2 = dx * dx + dy * dy
-    if (distance2 < nearestDistance2) {
-      nearestDistance2 = distance2
-      nearestIndex = index
-    }
-  }
-  return { index: nearestIndex, distance2: nearestDistance2 }
-}
-
-const validResult = (value: number | undefined) =>
-  value != null && VALID(value) ? value : null
-
-export function sampleHydraulicResult(
-  scene: WseDifferenceScene,
-  bounds: Bounds,
-  settings: FigureSettings,
-  point: MapCoordinate,
-): HydraulicResultSample | null {
-  const view = makeView(bounds, FRAMES[settings.orientation], settings)
-  const existing = nearestNode(scene.projected, point)
-  const proposed = nearestNode(scene.proposedProjected, point)
-  const tolerance2 = (45 / view.scale) ** 2
-  const existingNear = existing.distance2 <= tolerance2
-  const proposedNear = proposed.distance2 <= tolerance2
-  if (!existingNear && !proposedNear) return null
-
-  return {
-    baselineLabel: scene.existing.condition.label,
-    comparisonLabel: scene.proposed.condition.label,
-    existingWse: existingNear
-      ? validResult(scene.existingWse[existing.index])
-      : null,
-    proposedWse: proposedNear
-      ? validResult(scene.proposedWse[proposed.index])
-      : null,
-    difference: existingNear
-      ? validResult(scene.diff[existing.index])
-      : null,
-    existingDepth: existingNear
-      ? validResult(scene.existingDepth[existing.index])
-      : null,
-    proposedDepth: proposedNear
-      ? validResult(scene.proposedDepth[proposed.index])
-      : null,
-  }
-}
-
-function formattedResult(value: number | null, signed = false) {
-  if (value == null) return 'No result'
-  const sign = signed && value > 0 ? '+' : ''
-  return `${sign}${value.toFixed(2)} ft`
-}
-
-export function formatHydraulicResultLabel(
-  field: ResultLabelField,
-  sample: HydraulicResultSample,
-) {
-  if (field === 'difference') {
-    return `WSE difference: ${formattedResult(sample.difference, true)}`
-  }
-  if (field === 'existingWse') {
-    return `${sample.baselineLabel} WSE: ${formattedResult(sample.existingWse)}`
-  }
-  if (field === 'proposedWse') {
-    return `${sample.comparisonLabel} WSE: ${formattedResult(sample.proposedWse)}`
-  }
-  if (field === 'existingDepth') {
-    return `${sample.baselineLabel} depth: ${formattedResult(sample.existingDepth)}`
-  }
-  if (field === 'proposedDepth') {
-    return `${sample.comparisonLabel} depth: ${formattedResult(sample.proposedDepth)}`
-  }
-  return [
-    `${sample.baselineLabel} WSE: ${formattedResult(sample.existingWse)}`,
-    `${sample.comparisonLabel} WSE: ${formattedResult(sample.proposedWse)}`,
-    `Difference: ${formattedResult(sample.difference, true)}`,
-  ].join('\n')
 }
 
 function roundedRectangle(
