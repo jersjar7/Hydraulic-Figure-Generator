@@ -8,15 +8,15 @@ Run before merging or deploying:
 npm run lint
 npm test
 npm run build
+npm run test:e2e
 ```
 
-GitHub Pages runs these commands in this order and deploys only after all three
-pass.
+GitHub Pages runs these commands and deploys only after all four gates pass.
 
 ## Checked-In Regression Tests
 
-Tests under `tests/` use the Node.js test runner and require no project data.
-They cover:
+Tests directly under `tests/` use the Node.js test runner and require no
+project data. They cover:
 
 - Exact nearest-node matching across spatial-index cell boundaries.
 - Mesh-spacing tolerance behavior.
@@ -29,9 +29,20 @@ They cover:
 - Persistence validation for centerline, per-line review decisions, and callout
   visibility and placement.
 - Known and arbitrary scenario-name detection plus version 11 role migration.
+- WSE figure registration, accepted engineering defaults, class boundaries,
+  and synthetic landscape/portrait raster output.
+- Version 14 shared/figure project separation and version 13 migration.
 
 Add a focused test for every bug fixed in a core module. Prefer small synthetic
 geometry where the expected engineering result can be calculated by hand.
+
+Component tests under `tests/ui/` use Vitest, jsdom, and Testing Library. They
+cover keyboard/pointer navigation and persistent diagnostics behavior.
+
+Browser tests under `tests/e2e/` use Playwright Chromium. They verify the shared
+desktop workflow, settings navigation, and mobile access to both sidebars.
+GitHub Actions installs its own Chromium build; local Windows runs use installed
+Google Chrome.
 
 ## Site 6 Acceptance Test
 
@@ -63,7 +74,7 @@ $env:HFG_NATURAL_DATA = "C:\SMS\Report Figures\Site 6\Data"
 npm run test:natural
 ```
 
-## Next Coverage
+## Remaining Coverage Opportunities
 
 Before adding another figure type, add checked-in synthetic coverage for:
 
@@ -72,8 +83,6 @@ Before adding another figure type, add checked-in synthetic coverage for:
 - Nonoverlapping and differently spaced meshes.
 - CRS failures and projected shapefile fixtures.
 - Basemap failure and cache behavior.
-- Additional save-file migrations after version 10.
-
-Browser interaction tests should be added when a second figure workflow is
-introduced, because navigation and shared-shell regressions then become more
-likely.
+- Basemap failure and cache behavior in a browser-level test.
+- A public-safe synthetic H5 browser fixture for upload-to-export automation.
+- Figure-specific browser tests as each new output module is introduced.

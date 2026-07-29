@@ -77,7 +77,7 @@ dry.
 
 Assessment lines are generated from the final-timestep WSE surface of the
 scenario assigned to the Assessment source role.
-surface. Only triangles whose three nodes have valid WSE and depth greater than
+Only triangles whose three nodes have valid WSE and depth greater than
 the dry-depth threshold are contoured. The user may generate lines at 1.0-foot
 or 0.5-foot elevation intervals.
 

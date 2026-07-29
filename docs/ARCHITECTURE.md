@@ -2,13 +2,17 @@
 
 ## Dependency Direction
 
-The application uses four layers:
+The application uses five layers:
 
 1. `src/core/types.ts` defines shared hydraulic and figure contracts.
 2. Core services parse files, compare meshes, validate projects, and render
    figures without depending on React.
-3. Components own focused controls and widgets.
-4. `App.tsx` coordinates the current WSE Difference workspace.
+3. Feature hooks own bounded workflow state such as project sessions and
+   assessment review.
+4. Figure modules own calculation, settings, rendering, export, and workspace
+   composition for one output.
+5. `App.tsx` selects a registered figure workspace and contains no
+   figure-specific behavior.
 
 Dependencies should point toward the core. Core modules must not import React,
 DOM components, or application state.
@@ -23,10 +27,17 @@ DOM components, or application state.
   CRS, intersects them with assessment paths, and assigns directed stations.
 - `features/assessment-lines/` owns review navigation and user decisions. The
   core stationing service remains independent of React.
-- `mapRenderer.ts` receives a complete scene and settings snapshot and renders
-  it without mutating application state.
+- `core/map/` owns reusable view transforms, annotation geometry, hydraulic
+  sampling, and WSE class layers.
+- `mapRenderer.ts` orchestrates a complete scene and settings snapshot without
+  mutating application state.
 - `projectFile.ts` is the only boundary for persisted project JSON.
 - `shapefile.ts` converts imported archives into internal overlays.
+- `features/project-session/` owns the mutable engine revision, scenario
+  catalog, role assignments, and per-scenario run selections.
+- `features/figures/registry.ts` registers headless figure modules.
+- `features/figures/workspaceRegistry.ts` associates those modules with React
+  workspaces without pulling CSS or React into Node-based core tests.
 
 New figure modules should consume these contracts rather than read H5 files or
 draw shared map elements independently.
@@ -50,18 +61,16 @@ contract.
 
 ## Frontend Growth
 
-`App.tsx` remains larger than the desired long-term shell. Extract behavior in
-this order, preserving tests after every step:
-
-1. Project commands and defaults.
-2. H5 and overlay input workspace.
-3. Annotation state and pointer interactions.
-4. Map render scheduling and export.
-5. WSE Difference settings panels.
+`App.tsx` is a figure-workspace host. The current full editor lives in
+`features/wse-difference/WseDifferenceWorkspace.tsx`; controls that become
+useful to a second figure should be promoted into a focused shared component or
+hook rather than copied.
 
 Prefer one reducer or feature hook per workflow over adding more independent
 top-level state variables. A new figure type should live under
-`src/features/<figure-name>/` and register with the workspace shell.
+`src/features/<figure-name>/`, implement the `FigureModule` contract, and
+register its headless module and React workspace separately. See
+`docs/ADDING-A-FIGURE.md`.
 
 Global project inputs and reusable analysis objects belong in the left panel.
 The center workspace owns the selected output, while the right panel owns
@@ -94,13 +103,15 @@ image bitmaps remain render-local.
 
 ## Persistence
 
-Saved projects have both a `version` and a `figure` discriminator. Load all
-project JSON through `parseHydraulicFigureProject`; never cast parsed JSON
+Saved project version 14 has an `activeFigure` discriminator, shared `project`
+state, and a `figures` record containing versioned figure-specific state. Load
+all project JSON through `parseHydraulicFigureProject`; never cast parsed JSON
 directly into application types. Add an explicit migration and regression test
 whenever the persisted shape changes.
 
-Version 12 stores scenario role IDs, per-scenario run selections, and user
-scenario labels. Version 11 Existing/Proposed run selections migrate to
+Version 13 and earlier flat files migrate into the normalized version 14
+project. Version 12 stores scenario role IDs, per-scenario run selections, and
+user scenario labels. Version 11 Existing/Proposed run selections migrate to
 Baseline `EX`, Comparison `PR`, and assessment source `EX`.
 
 Generated assessment geometry is reproducible and is not stored in the project.

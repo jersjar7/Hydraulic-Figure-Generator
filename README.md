@@ -35,18 +35,22 @@ src/
   components/          Reusable workspace controls and project workflow views
     project-data/      Models, Layers, Assess, and Review navigation
   core/
+    map/               Reusable view, sampling, interaction, and hydraulic layers
     hydraulicEngine.ts SMS H5 parsing, run metadata, mesh matching, WSE logic
     assessmentLines.ts Existing WSE contour generation and polyline stitching
     centerlineStationing.ts Centerline extraction, intersections, and stationing
     meshMatching.ts    Exact spatial matching and mesh-spacing tolerance
-    mapRenderer.ts     Canvas map composition and report elements
+    mapRenderer.ts     Canvas layer orchestration and report elements
     projectFile.ts     Versioned save-file validation and migrations
     shapefile.ts       Zipped shapefile ingestion
     types.ts           Hydraulic and figure contracts
   features/
     assessment-lines/  Stationing controls, bounded review state, and interface
+    figures/           Figure contracts plus calculation and workspace registries
+    project-session/   H5 scenario catalog, role, run, and resource ownership
     stationing/        Centerline station figure-element controls
-  App.tsx              FRA WSE Difference workspace
+    wse-difference/    Complete WSE Difference workspace, renderer, and export
+  App.tsx              Figure workspace host
 ```
 
 The `core` modules are intentionally independent of the React interface so
@@ -70,6 +74,7 @@ Run the checked-in regression suite, build, and lint:
 npm test
 npm run build
 npm run lint
+npm run test:e2e
 ```
 
 The optional Site 6 integration test reads data from a local directory and
@@ -88,5 +93,5 @@ npm run test:natural
 ```
 
 GitHub Pages deploys automatically from `main`.
-The Pages workflow requires lint, regression tests, and the production build to
-pass before deployment.
+The Pages workflow requires lint, unit/component regression tests, the
+production build, and Chromium smoke tests to pass before deployment.
