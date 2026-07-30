@@ -11,33 +11,9 @@ import type {
   WseDifferenceScene,
 } from './types'
 import {
-  drawAnnotations,
-  drawAnnotationSelection,
-} from './map/annotationLayer'
-import {
-  drawAssessmentCallouts,
-  drawAssessmentLines,
-  drawAssessmentReviewMarkers,
-  drawAssessmentSelection,
   normalizeAssessmentMapLayer,
 } from './map/assessmentLayer'
-import { drawBasemap } from './map/basemapLayer'
-import { drawDifferenceLegend } from './map/differenceLegendElement'
-import { drawOverlays } from './map/overlayLayer'
-import { drawCenterlineStationing } from './map/stationingLayer'
-import {
-  differenceBreaks,
-  drawContourLevels,
-  drawValidBoundary,
-  fillDifferenceBands,
-  fillWetDry,
-  localCoordinates,
-} from './map/hydraulicLayers'
-import { drawMapElementSelection } from './map/mapElementLayout'
-import { drawNorthArrow } from './map/northArrowElement'
-import { drawScaleBar } from './map/scaleBarElement'
-import { drawTitle, resolveTitle } from './map/titleElement'
-import { drawWetDryKey } from './map/wetDryKeyElement'
+import { renderWseDifferenceLayers } from './map/wseDifferenceRenderLayers'
 import { FRAMES, makeMapView as makeView } from './map/view'
 
 export {
@@ -153,171 +129,22 @@ export async function renderWseDifferenceDocument(
       ? settings.legendBound
       : scene.maxAbs
 
-  context.clearRect(0, 0, frame.width, frame.height)
-  context.fillStyle = '#dce4ec'
-  context.fillRect(0, 0, frame.width, frame.height)
-  await drawBasemap(context, view, settings.basemapOpacity, signal)
-
-  context.save()
-  context.translate(view.originX, view.originY)
-  context.rotate(view.rotationRadians)
-  const existingCoordinates = localCoordinates(scene.projected, view)
-  fillDifferenceBands(
+  const elementBounds: MapElementBounds[] = []
+  await renderWseDifferenceLayers({
     context,
-    existingCoordinates.localX,
-    existingCoordinates.localY,
-    scene.projected.tris,
-    scene.diff,
-    legendBound,
-    settings.legendInterval,
-  )
-
-  const proposedCoordinates = localCoordinates(scene.proposedProjected, view)
-  if (settings.showWetDry) {
-    fillWetDry(
-      context,
-      existingCoordinates.localX,
-      existingCoordinates.localY,
-      scene.projected.tris,
-      scene.wetDry,
-      settings,
-    )
-    fillWetDry(
-      context,
-      proposedCoordinates.localX,
-      proposedCoordinates.localY,
-      scene.proposedProjected.tris,
-      scene.proposedWetDry,
-      settings,
-    )
-  }
-  if (settings.showDifferenceOutlines) {
-    drawContourLevels(
-      context,
-      existingCoordinates.localX,
-      existingCoordinates.localY,
-      scene.projected.tris,
-      scene.diff,
-      differenceBreaks(legendBound, settings.legendInterval),
-      settings.differenceOutlineColor,
-    )
-    drawValidBoundary(
-      context,
-      existingCoordinates.localX,
-      existingCoordinates.localY,
-      scene.projected.tris,
-      scene.diff,
-      settings.differenceOutlineColor,
-    )
-  }
-  if (settings.showAssessmentLines) {
-    drawAssessmentLines(
-      context,
-      assessmentLayer.lines,
-      view,
-      settings.assessmentLineColor,
-      settings.assessmentLineWidth,
-    )
-    drawAssessmentSelection(
-      context,
-      assessmentLayer.selectedLine,
-      view,
-      settings.assessmentLineWidth,
-    )
-  }
-  if (settings.showOverlays) drawOverlays(context, overlays, view)
-  context.restore()
-
-  drawCenterlineStationing(
-    context,
-    assessmentLayer.centerlineStationing,
-    view,
+    scene,
     settings,
     frame,
-  )
-  if (settings.showAssessmentLines) {
-    drawAssessmentCallouts(
-      context,
-      assessmentLayer,
-      view,
-      settings,
-      frame,
-    )
-    drawAssessmentReviewMarkers(context, assessmentLayer, view)
-  }
-  drawAnnotations(context, annotations, view)
-  const selectedAnnotation = annotations.find(
-    (annotation) => annotation.id === selectedAnnotationId,
-  )
-  if (selectedAnnotation) {
-    drawAnnotationSelection(context, selectedAnnotation, view)
-  }
-
-  const positions = settings.elementPositions
-  const styles = settings.elementStyles
-  const elementBounds: MapElementBounds[] = []
-  if (settings.showTitle) {
-    elementBounds.push(
-      drawTitle(
-        context,
-        resolveTitle(scene, settings.titleTemplate),
-        frame,
-        positions.title,
-        styles.title,
-      ),
-    )
-  }
-  if (settings.showLegend) {
-    elementBounds.push(
-      drawDifferenceLegend(
-        context,
-        legendBound,
-        settings.legendInterval,
-        frame,
-        positions.diffLegend,
-        styles.diffLegend,
-      ),
-    )
-  }
-  if (settings.showNorth) {
-    elementBounds.push(
-      drawNorthArrow(
-        context,
-        frame,
-        view.rotationRadians,
-        positions.north,
-        styles.north,
-      ),
-    )
-  }
-  if (settings.showScale) {
-    elementBounds.push(
-      drawScaleBar(
-        context,
-        frame,
-        scene.projected.ftPerMerc / view.scale,
-        positions.scale,
-        styles.scale,
-      ),
-    )
-  }
-  if (settings.showWetDry && settings.showWetDryKey) {
-    elementBounds.push(
-      drawWetDryKey(
-        context,
-        frame,
-        settings,
-        positions.wetDry,
-        styles.wetDry,
-      ),
-    )
-  }
-  const selectedElement = elementBounds.find(
-    (bounds) => bounds.key === selectedElementKey,
-  )
-  if (selectedElement) {
-    drawMapElementSelection(context, selectedElement)
-  }
+    view,
+    overlays,
+    assessment: assessmentLayer,
+    annotations,
+    selectedAnnotationId,
+    selectedElementKey,
+    legendBound,
+    elementBounds,
+    signal,
+  })
   return elementBounds
 }
 
