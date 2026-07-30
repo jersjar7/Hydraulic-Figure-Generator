@@ -9,6 +9,8 @@ export type CrossSectionLine = {
   points: MapCoordinate[]
   direction: CrossSectionDirection
   stationLabel?: string
+  source?: 'manual' | 'assessment'
+  lengthFeet?: number
 }
 
 export type CrossSectionSample = {

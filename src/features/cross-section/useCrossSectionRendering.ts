@@ -15,6 +15,7 @@ import {
   renderCrossSectionDocument,
 } from './crossSectionRenderer'
 import type { CrossSectionFigureSettings } from './crossSectionSettings'
+import { drawCrossSectionSelectionOverlay } from './crossSectionSelectionOverlay'
 
 type Options = {
   canvasRef: RefObject<HTMLCanvasElement | null>
@@ -26,7 +27,6 @@ type Options = {
   settings: CrossSectionFigureSettings
   overlays: MapOverlay[]
   assessmentLines: WseAssessmentLineCollection
-  selectedAssessmentLineId: string
   selectedLine: CrossSectionLine | null
   setBusy: (busy: boolean) => void
   appendNotices: (notices: IngestNotice[]) => void
@@ -42,7 +42,6 @@ export function useCrossSectionRendering({
   settings,
   overlays,
   assessmentLines,
-  selectedAssessmentLineId,
   selectedLine,
   setBusy,
   appendNotices,
@@ -55,21 +54,6 @@ export function useCrossSectionRendering({
       return
     }
     if (view !== 'map' || !mapScene) return
-    const selectedAssessment =
-      assessmentLines.lines.find(
-        (line) => line.id === selectedAssessmentLineId,
-      ) ?? null
-    const manualLine =
-      selectedLine && !selectedAssessment
-        ? {
-            id: selectedLine.id,
-            source: 'manual-cross-section',
-            level: Number.NaN,
-            points: selectedLine.points,
-            modelPoints: [],
-            lengthFeet: 0,
-          }
-        : null
     const controller = new AbortController()
     setBusy(true)
     void wseDifferenceFigure
@@ -82,10 +66,23 @@ export function useCrossSectionRendering({
           overlays,
           assessment: {
             lines: assessmentLines.lines,
-            selectedLine: selectedAssessment ?? manualLine,
           },
         }),
         signal: controller.signal,
+      })
+      .then(() => {
+        if (controller.signal.aborted) return
+        const context = canvas.getContext('2d')
+        if (!context) {
+          throw new Error('Selection overlay canvas is unavailable.')
+        }
+        drawCrossSectionSelectionOverlay(
+          context,
+          selectedLine,
+          engine.commonBounds(),
+          mapSettings,
+          settings,
+        )
       })
       .catch((error) =>
         appendNotices([
@@ -108,7 +105,6 @@ export function useCrossSectionRendering({
     mapScene,
     mapSettings,
     overlays,
-    selectedAssessmentLineId,
     selectedLine,
     setBusy,
     settings,

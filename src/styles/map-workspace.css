@@ -202,10 +202,89 @@
   cursor: not-allowed;
 }
 
+.cross-section-drawing-hint {
+  position: absolute;
+  z-index: 4;
+  top: 58px;
+  left: 16px;
+  display: grid;
+  gap: 1px;
+  padding: 7px 10px;
+  color: #294159;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #aac3d6;
+  border-radius: 5px;
+  box-shadow: 0 2px 7px rgba(25, 44, 66, 0.13);
+  pointer-events: none;
+}
+
+.cross-section-drawing-hint strong {
+  color: #0f4f7b;
+  font-size: 11px;
+}
+
+.cross-section-drawing-hint span {
+  font-size: 10px;
+}
+
 .cross-settings-stack {
   display: grid;
   gap: 10px;
   padding-top: 8px;
+}
+
+.selected-section-card {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  background: #f4f8fb;
+  border: 1px solid #b8cfdf;
+  border-radius: 6px;
+}
+
+.selected-section-summary {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.selected-section-summary > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.selected-section-summary strong {
+  overflow: hidden;
+  color: #173a57;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.selected-section-summary span {
+  color: #62778c;
+  font-size: 10px;
+}
+
+.selected-section-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.field-readout {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 0 9px;
+  color: #52687d;
+  background: #f5f8fa;
+  border: 1px solid #d5dfe7;
+  border-radius: 4px;
+  font-size: 10px;
 }
 
 .cross-line-style {

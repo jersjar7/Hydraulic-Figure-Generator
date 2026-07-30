@@ -11,6 +11,7 @@ export type CrossSectionFigureSettings = {
   title: string
   sectionName: string
   lookingDirection: 'downstream' | 'upstream'
+  downstreamSide: 'left' | 'right'
   showGrid: boolean
   showLegend: boolean
   showExistingGround: boolean
@@ -36,6 +37,7 @@ export function createDefaultCrossSectionSettings(): CrossSectionFigureSettings 
     title: '100-Year Water-Surface Elevation Comparison',
     sectionName: 'Assessment Section',
     lookingDirection: 'downstream',
+    downstreamSide: 'right',
     showGrid: true,
     showLegend: true,
     showExistingGround: true,

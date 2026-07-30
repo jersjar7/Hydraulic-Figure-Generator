@@ -28,6 +28,7 @@ import type {
   CrossSectionLine,
   HydraulicCrossSectionScene,
   IngestNotice,
+  MapCoordinate,
   WseAssessmentLine,
   WseDifferenceScene,
 } from '../../core/types'
@@ -89,6 +90,20 @@ function downloadCanvas(canvas: HTMLCanvasElement, fileName: string) {
   link.download = fileName
   link.href = canvas.toDataURL('image/png')
   link.click()
+}
+
+function mapPolylineLengthFeet(
+  points: MapCoordinate[],
+  feetPerMapUnit: number,
+) {
+  let length = 0
+  for (let index = 1; index < points.length; index += 1) {
+    length += Math.hypot(
+      points[index].x - points[index - 1].x,
+      points[index].y - points[index - 1].y,
+    )
+  }
+  return length * feetPerMapUnit
 }
 
 export function CrossSectionWorkspace() {
@@ -197,6 +212,8 @@ export function CrossSectionWorkspace() {
         stationLabel: label.startsWith('Section ') ? label.slice(8) : undefined,
         points: line.points,
         direction: 'a-to-b',
+        source: 'assessment',
+        lengthFeet: line.lengthFeet,
       })
       setSettings((current) => ({ ...current, sectionName: label }))
       setDrawing(false)
@@ -205,6 +222,41 @@ export function CrossSectionWorkspace() {
     },
     [assessmentOptions, labelForAssessmentLine],
   )
+
+  const cancelDrawing = useCallback(() => {
+    setDrawing(false)
+    setDrawingStart(null)
+  }, [])
+
+  const clearSelectedLine = useCallback(() => {
+    cancelDrawing()
+    setSelectedLine(null)
+    setSelectedAssessmentLineId('')
+    setChartScene(null)
+    setView('map')
+  }, [cancelDrawing])
+
+  const startDrawing = useCallback(() => {
+    if (drawing) {
+      cancelDrawing()
+      return
+    }
+    setView('map')
+    setDrawing(true)
+    setDrawingStart(null)
+    setSelectedLine(null)
+    setSelectedAssessmentLineId('')
+    setChartScene(null)
+  }, [cancelDrawing, drawing])
+
+  useEffect(() => {
+    if (!drawing) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') cancelDrawing()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [cancelDrawing, drawing])
 
   const buildSelectionMap = useCallback(() => {
     if (!ready) return
@@ -252,7 +304,6 @@ export function CrossSectionWorkspace() {
     settings,
     overlays,
     assessmentLines: assessmentState.collection,
-    selectedAssessmentLineId,
     selectedLine,
     setBusy,
     appendNotices,
@@ -309,11 +360,16 @@ export function CrossSectionWorkspace() {
         return
       }
       const label = `Manual Section ${Date.now().toString().slice(-4)}`
+      const manualPoints = [drawingStart, mapPoint]
+      const feetPerMapUnit =
+        engine.condition(baselineId)?.projected?.ftPerMerc ?? 1
       setSelectedLine({
         id: `manual-${Date.now()}`,
         label,
-        points: [drawingStart, mapPoint],
+        points: manualPoints,
         direction: 'a-to-b',
+        source: 'manual',
+        lengthFeet: mapPolylineLengthFeet(manualPoints, feetPerMapUnit),
       })
       setSettings((current) => ({ ...current, sectionName: label }))
       setSelectedAssessmentLineId('')
@@ -614,6 +670,8 @@ export function CrossSectionWorkspace() {
           chartScene={chartScene}
           ready={ready}
           drawing={drawing}
+          drawingStartSet={Boolean(drawingStart)}
+          orientation={settings.orientation}
           canvasRef={canvasRef}
           onViewChange={setView}
           onGenerateMap={buildSelectionMap}
@@ -632,12 +690,7 @@ export function CrossSectionWorkspace() {
           canDownload={Boolean(chartScene)}
           onSettingsChange={setSettings}
           onAssessmentLineChange={chooseAssessmentLine}
-          onStartDrawing={() => {
-            setView('map')
-            setDrawing(true)
-            setDrawingStart(null)
-            setSelectedAssessmentLineId('')
-          }}
+          onStartDrawing={startDrawing}
           onReverseLine={() => {
             setSelectedLine((current) =>
               current
@@ -650,6 +703,15 @@ export function CrossSectionWorkspace() {
             )
             setChartScene(null)
           }}
+          onFlipViewSide={() => {
+            setSettings((current) => ({
+              ...current,
+              downstreamSide:
+                current.downstreamSide === 'right' ? 'left' : 'right',
+            }))
+            setChartScene(null)
+          }}
+          onClearLine={clearSelectedLine}
           onShowMap={() => setView('map')}
           onGenerate={generateChart}
           onDownload={downloadChart}

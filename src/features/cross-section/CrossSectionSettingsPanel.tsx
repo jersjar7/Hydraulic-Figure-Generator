@@ -1,4 +1,13 @@
-import { ArrowLeftRight, Download, LineChart, Map, MousePointer2 } from 'lucide-react'
+import {
+  ArrowLeftRight,
+  Download,
+  Eye,
+  LineChart,
+  Map,
+  MousePointer2,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { ControlSection } from '../../components/ControlSection'
 import type {
   CrossSectionLine,
@@ -26,6 +35,8 @@ type Props = {
   onAssessmentLineChange(id: string): void
   onStartDrawing(): void
   onReverseLine(): void
+  onFlipViewSide(): void
+  onClearLine(): void
   onShowMap(): void
   onGenerate(): void
   onDownload(): void
@@ -101,6 +112,8 @@ export function CrossSectionSettingsPanel({
   onAssessmentLineChange,
   onStartDrawing,
   onReverseLine,
+  onFlipViewSide,
+  onClearLine,
   onShowMap,
   onGenerate,
   onDownload,
@@ -138,9 +151,60 @@ export function CrossSectionSettingsPanel({
             type="button"
             onClick={onStartDrawing}
           >
-            <MousePointer2 size={16} aria-hidden="true" />
-            {drawing ? 'Click two map points' : 'Draw manual section'}
+            {drawing ? (
+              <X size={16} aria-hidden="true" />
+            ) : (
+              <MousePointer2 size={16} aria-hidden="true" />
+            )}
+            {drawing ? 'Cancel drawing' : 'Draw manual section'}
           </button>
+          {selectedLine ? (
+            <div
+              className="selected-section-card"
+              data-testid="selected-section-card"
+            >
+              <div className="selected-section-summary">
+                <div>
+                  <strong>{selectedLine.label}</strong>
+                  <span>
+                    {selectedLine.source === 'assessment'
+                      ? 'Assessment line'
+                      : 'Manual section'}
+                    {selectedLine.lengthFeet != null
+                      ? ` · ${selectedLine.lengthFeet.toFixed(0)} ft`
+                      : ''}
+                  </span>
+                </div>
+                <button
+                  className="icon-button danger"
+                  type="button"
+                  aria-label="Remove selected section"
+                  title="Remove selected section"
+                  onClick={onClearLine}
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                </button>
+              </div>
+              <div className="selected-section-actions">
+                <button
+                  className="button secondary compact"
+                  type="button"
+                  onClick={onReverseLine}
+                >
+                  <ArrowLeftRight size={15} aria-hidden="true" />
+                  Reverse A/B
+                </button>
+                <button
+                  className="button secondary compact"
+                  type="button"
+                  onClick={onFlipViewSide}
+                >
+                  <Eye size={15} aria-hidden="true" />
+                  Flip look arrow
+                </button>
+              </div>
+            </div>
+          ) : null}
           <Field label="Section name">
             <input
               value={settings.sectionName}
@@ -162,16 +226,10 @@ export function CrossSectionSettingsPanel({
                 <option value="upstream">Upstream</option>
               </select>
             </Field>
-            <Field label="Direction">
-              <button
-                className="button secondary compact"
-                type="button"
-                disabled={!selectedLine}
-                onClick={onReverseLine}
-              >
-                <ArrowLeftRight size={15} aria-hidden="true" />
-                Reverse A/B
-              </button>
+            <Field label="View arrow side">
+              <span className="field-readout">
+                {settings.downstreamSide === 'right' ? 'Right of A→B' : 'Left of A→B'}
+              </span>
             </Field>
           </div>
           <div className="field-grid two">

@@ -1,12 +1,16 @@
 import { LineChart, Map } from 'lucide-react'
-import type {
-  PointerEventHandler,
-  RefObject,
+import {
+  useRef,
+  type PointerEventHandler,
+  type RefObject,
 } from 'react'
+import { FRAMES } from '../../core/mapRenderer'
 import type {
   HydraulicCrossSectionScene,
   WseDifferenceScene,
 } from '../../core/types'
+import { useFittedCanvasAspect } from '../figures/useFittedCanvasAspect'
+import { CROSS_SECTION_FRAMES } from './crossSectionRenderer'
 
 type Props = {
   view: 'map' | 'chart'
@@ -14,6 +18,8 @@ type Props = {
   chartScene: HydraulicCrossSectionScene | null
   ready: boolean
   drawing: boolean
+  drawingStartSet: boolean
+  orientation: 'landscape' | 'portrait'
   canvasRef: RefObject<HTMLCanvasElement | null>
   onViewChange(view: 'map' | 'chart'): void
   onGenerateMap(): void
@@ -26,12 +32,25 @@ export function CrossSectionCanvas({
   chartScene,
   ready,
   drawing,
+  drawingStartSet,
+  orientation,
   canvasRef,
   onViewChange,
   onGenerateMap,
   onPointerDown,
 }: Props) {
+  const canvasFrameRef = useRef<HTMLDivElement>(null)
   const visible = view === 'map' ? Boolean(mapScene) : Boolean(chartScene)
+  const aspect =
+    view === 'map'
+      ? FRAMES.landscape.width / FRAMES.landscape.height
+      : CROSS_SECTION_FRAMES[orientation].width /
+        CROSS_SECTION_FRAMES[orientation].height
+  const displaySize = useFittedCanvasAspect(
+    canvasFrameRef,
+    aspect,
+    10,
+  )
   return (
     <>
       <div className="cross-section-view-tabs" role="tablist" aria-label="Cross-section workspace view">
@@ -83,7 +102,7 @@ export function CrossSectionCanvas({
           ) : null}
         </div>
       ) : null}
-      <div className="map-canvas-frame">
+      <div className="map-canvas-frame" ref={canvasFrameRef}>
         <canvas
           ref={canvasRef}
           className={visible ? 'map-canvas is-visible' : 'map-canvas'}
@@ -94,8 +113,24 @@ export function CrossSectionCanvas({
           }
           data-cross-section-drawing={drawing ? 'true' : undefined}
           onPointerDown={view === 'map' ? onPointerDown : undefined}
+          style={{
+            width: displaySize.width || undefined,
+            height: displaySize.height || undefined,
+          }}
         />
       </div>
+      {view === 'map' && drawing ? (
+        <div className="cross-section-drawing-hint" role="status">
+          <strong>
+            {drawingStartSet ? 'Endpoint A set' : 'Draw cross section'}
+          </strong>
+          <span>
+            {drawingStartSet
+              ? 'Click endpoint B · Esc to cancel'
+              : 'Click endpoint A · Esc to cancel'}
+          </span>
+        </div>
+      ) : null}
     </>
   )
 }
