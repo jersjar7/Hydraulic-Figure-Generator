@@ -133,15 +133,54 @@ test('loaded scenarios carry into the cross-section map-to-chart workflow', asyn
 
   const selectionMap = page.getByLabel('Cross-section selection map')
   await expect(selectionMap).toHaveClass(/is-visible/)
+  const mapFit = await selectionMap.evaluate((element) => {
+    const canvas = element.getBoundingClientRect()
+    const frame = element.parentElement!.getBoundingClientRect()
+    return {
+      ratio: canvas.width / canvas.height,
+      fits:
+        canvas.width <= frame.width &&
+        canvas.height <= frame.height,
+      centerDeltaX: Math.abs(
+        canvas.left + canvas.width / 2 - (frame.left + frame.width / 2),
+      ),
+      centerDeltaY: Math.abs(
+        canvas.top + canvas.height / 2 - (frame.top + frame.height / 2),
+      ),
+    }
+  })
+  expect(mapFit.fits).toBe(true)
+  expect(Math.abs(mapFit.ratio - 1650 / 1275)).toBeLessThan(0.02)
+  expect(mapFit.centerDeltaX).toBeLessThan(2)
+  expect(mapFit.centerDeltaY).toBeLessThan(2)
+
+  await page.getByRole('button', { name: 'Draw manual section' }).click()
+  await expect(page.getByText('Click endpoint A · Esc to cancel')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(
+    page.getByRole('button', { name: 'Draw manual section' }),
+  ).toBeVisible()
+  await expect(
+    page.getByText('Click endpoint A · Esc to cancel'),
+  ).not.toBeVisible()
+
   await page.getByRole('button', { name: 'Draw manual section' }).click()
   const box = await selectionMap.boundingBox()
   expect(box).not.toBeNull()
   await selectionMap.click({
     position: { x: box!.width * 0.32, y: box!.height * 0.5 },
   })
+  await expect(page.getByText('Endpoint A set')).toBeVisible()
   await selectionMap.click({
     position: { x: box!.width * 0.68, y: box!.height * 0.5 },
   })
+  await expect(page.getByTestId('selected-section-card')).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Reverse A/B' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Flip look arrow' }),
+  ).toBeVisible()
 
   const generate = page.getByTestId('generate-cross-section')
   await expect(generate).toBeEnabled()
@@ -151,6 +190,26 @@ test('loaded scenarios carry into the cross-section map-to-chart workflow', asyn
     'Generated hydraulic cross-section comparison',
   )
   await expect(chart).toHaveClass(/is-visible/)
+  const chartFit = await chart.evaluate((element) => {
+    const canvas = element.getBoundingClientRect()
+    const frame = element.parentElement!.getBoundingClientRect()
+    return {
+      ratio: canvas.width / canvas.height,
+      fits:
+        canvas.width <= frame.width &&
+        canvas.height <= frame.height,
+      centerDeltaX: Math.abs(
+        canvas.left + canvas.width / 2 - (frame.left + frame.width / 2),
+      ),
+      centerDeltaY: Math.abs(
+        canvas.top + canvas.height / 2 - (frame.top + frame.height / 2),
+      ),
+    }
+  })
+  expect(chartFit.fits).toBe(true)
+  expect(Math.abs(chartFit.ratio - 1500 / 900)).toBeLessThan(0.02)
+  expect(chartFit.centerDeltaX).toBeLessThan(2)
+  expect(chartFit.centerDeltaY).toBeLessThan(2)
   await expect
     .poll(() =>
       chart.evaluate((element) => {
@@ -173,4 +232,11 @@ test('loaded scenarios carry into the cross-section map-to-chart workflow', asyn
       }),
     )
     .toBeGreaterThan(100)
+
+  await page.getByRole('tab', { name: 'Select line' }).click()
+  await page
+    .getByRole('button', { name: 'Remove selected section' })
+    .click()
+  await expect(page.getByTestId('selected-section-card')).not.toBeVisible()
+  await expect(generate).toBeDisabled()
 })
