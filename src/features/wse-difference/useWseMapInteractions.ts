@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useRef,
   type PointerEvent as ReactPointerEvent,
   type RefObject,
   type SetStateAction,
@@ -26,12 +25,10 @@ import type {
   WseDifferenceScene,
 } from '../../core/types'
 import {
-  beginMapInteraction,
-  updateMapToolHover,
-  type MapInteractionSession,
   type MapInteractionTool,
   type MapPointerInput,
 } from '../map-interactions/mapInteraction'
+import { useCanvasInteractionRuntime } from '../map-interactions/useCanvasInteractionRuntime'
 import type { SettingsSectionKey } from './workspaceConfiguration'
 import { createAnnotationMapTool } from './map-tools/annotationTool'
 import {
@@ -106,15 +103,7 @@ function canvasScreenPoint(
   }
 }
 
-function releasePointer(event: ReactPointerEvent<HTMLCanvasElement>) {
-  if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-    event.currentTarget.releasePointerCapture(event.pointerId)
-  }
-}
-
 export function useWseMapInteractions(options: Options) {
-  const activeSessionRef = useRef<MapInteractionSession | null>(null)
-
   const pointerInput = useCallback(
     (
       event: ReactPointerEvent<HTMLCanvasElement>,
@@ -201,63 +190,16 @@ export function useWseMapInteractions(options: Options) {
     ]
   }
 
-  const handlePointerDown = (
-    event: ReactPointerEvent<HTMLCanvasElement>,
-  ) => {
-    if (!options.scene) return
-    event.preventDefault()
-    const result = beginMapInteraction(tools(), pointerInput(event))
-    activeSessionRef.current = result?.session ?? null
-    if (result?.capturePointer) {
-      event.currentTarget.setPointerCapture(event.pointerId)
-    }
-  }
-
-  const handlePointerMove = (
-    event: ReactPointerEvent<HTMLCanvasElement>,
-  ) => {
-    if (!options.scene) return
-    const input = pointerInput(event)
-    if (activeSessionRef.current) {
-      activeSessionRef.current.move?.(input)
-      return
-    }
-    updateMapToolHover(tools(), input)
-  }
-
-  const handlePointerUp = (
-    event: ReactPointerEvent<HTMLCanvasElement>,
-  ) => {
-    if (!options.scene) return
-    const session = activeSessionRef.current
-    if (!session) return
-    session.finish?.(pointerInput(event))
-    activeSessionRef.current = null
-    releasePointer(event)
-  }
-
-  const handlePointerCancel = (
-    event: ReactPointerEvent<HTMLCanvasElement>,
-  ) => {
-    activeSessionRef.current?.cancel?.()
-    activeSessionRef.current = null
-    releasePointer(event)
-  }
-
-  const resetInteractions = () => {
-    activeSessionRef.current = null
-    options.setAnnotationDragging(false)
-    options.setAssessmentCalloutDragging(false)
-    options.setStationLabelDragging(false)
-    options.setElementDragging(false)
-    options.setHoveredElement(null)
-  }
-
-  return {
-    handlePointerDown,
-    handlePointerMove,
-    handlePointerUp,
-    handlePointerCancel,
-    resetInteractions,
-  }
+  return useCanvasInteractionRuntime({
+    enabled: Boolean(options.scene),
+    tools,
+    pointerInput,
+    onReset: () => {
+      options.setAnnotationDragging(false)
+      options.setAssessmentCalloutDragging(false)
+      options.setStationLabelDragging(false)
+      options.setElementDragging(false)
+      options.setHoveredElement(null)
+    },
+  })
 }
