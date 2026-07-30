@@ -1,7 +1,5 @@
 import {
   AlertCircle,
-  Download,
-  FileJson,
   Map,
   MapPin,
 } from 'lucide-react'
@@ -14,11 +12,9 @@ import {
   type KeyboardEvent,
 } from 'react'
 import '../../App.css'
-import { ControlSection } from '../../components/ControlSection'
 import { FigureEditorShell } from '../../components/editor/FigureEditorShell'
 import { FigureMapWorkspace } from '../../components/editor/FigureMapWorkspace'
 import { FigureSettingsSidebar } from '../../components/editor/FigureSettingsSidebar'
-import { FigureElementsPanel } from '../../components/FigureElementsPanel'
 import { ProjectDataPanel } from '../../components/ProjectDataPanel'
 import {
   createWseDifferenceRenderDocument,
@@ -34,10 +30,6 @@ import { shapefileArchivePort } from '../../infrastructure/shapefiles/shapefileA
 import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
 import { useProjectSession } from '../project-session/useProjectSession'
 import { downloadWseDifferencePng } from './exportWseDifference'
-import { CalculationSettingsPanel } from './components/CalculationSettingsPanel'
-import { AnnotationSettingsPanel } from './components/AnnotationSettingsPanel'
-import { FrameSettingsPanel } from './components/FrameSettingsPanel'
-import { LegendSettingsPanel } from './components/LegendSettingsPanel'
 import { useAssessmentMapLayers } from './useAssessmentMapLayers'
 import { wseDifferenceFigure } from './wseDifferenceFigure'
 import type {
@@ -48,10 +40,7 @@ import type {
   ScenarioRole,
   WseDifferenceScene,
 } from '../../core/types'
-import {
-  SETTINGS_SECTIONS,
-  type SettingsSectionKey,
-} from './workspaceConfiguration'
+import type { SettingsSectionKey } from './workspaceConfiguration'
 import { useFittedCanvasSize } from './useFittedCanvasSize'
 import { useWseEditorUi } from './useWseEditorUi'
 import { useWseMapRendering } from './useWseMapRendering'
@@ -63,6 +52,11 @@ import {
   createWseProjectSnapshot,
   hydrateWseProject,
 } from './wseProjectDocument'
+import {
+  WSE_SETTINGS_SECTIONS,
+  wseSettingsSectionByKey,
+  type WseSettingsSectionContext,
+} from './wseSettingsSections'
 
 const ACTIVE_FIGURE = wseDifferenceFigure
 
@@ -241,20 +235,21 @@ export function WseDifferenceWorkspace() {
   ) => {
     let nextIndex = index
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-      nextIndex = (index + 1) % SETTINGS_SECTIONS.length
+      nextIndex = (index + 1) % WSE_SETTINGS_SECTIONS.length
     } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
       nextIndex =
-        (index - 1 + SETTINGS_SECTIONS.length) % SETTINGS_SECTIONS.length
+        (index - 1 + WSE_SETTINGS_SECTIONS.length) %
+        WSE_SETTINGS_SECTIONS.length
     } else if (event.key === 'Home') {
       nextIndex = 0
     } else if (event.key === 'End') {
-      nextIndex = SETTINGS_SECTIONS.length - 1
+      nextIndex = WSE_SETTINGS_SECTIONS.length - 1
     } else {
       return
     }
 
     event.preventDefault()
-    const nextSection = SETTINGS_SECTIONS[nextIndex]
+    const nextSection = WSE_SETTINGS_SECTIONS[nextIndex]
     setActiveSettingsSection(nextSection.key)
     const tabs =
       event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
@@ -586,6 +581,59 @@ export function WseDifferenceWorkspace() {
     }
   }
 
+  const settingsSectionContext: WseSettingsSectionContext = {
+    calculation: {
+      settings,
+      assessmentLabel,
+      onSettingsChange: updateSettings,
+      onDryDepthChange: (dryDepth) => {
+        updateSettings('dryDepth', dryDepth)
+        setScene(null)
+        assessmentWorkflow.clear(settings.assessmentLineInterval)
+      },
+    },
+    legend: {
+      settings,
+      onSettingsChange: updateSettings,
+    },
+    frame: {
+      settings,
+      onSettingsChange: updateSettings,
+      onResetView: figureElements.resetView,
+    },
+    elements: {
+      settings,
+      activeElement,
+      onActiveElementChange: setActiveElement,
+      onVisibilityChange: figureElements.updateElementVisibility,
+      onTitleTemplateChange: (value) =>
+        updateSettings('titleTemplate', value),
+      onStyleChange: figureElements.updateElementStyle,
+      onPositionChange: figureElements.updateElementPosition,
+      onNudge: figureElements.nudgeElement,
+      onResetElement: figureElements.resetElement,
+      stationTicks: centerlineStationTicks,
+      selectedStationLabelId,
+      hasCenterline: Boolean(selectedCenterline),
+      onStationingChange: figureElements.updateCenterlineStationing,
+      onStationLabelSelect: setSelectedStationLabelId,
+      onStationLabelOverrideChange:
+        figureElements.updateStationLabelOverride,
+      onNudgeStationLabel: figureElements.nudgeStationLabel,
+      onResetStationing: figureElements.resetCenterlineStationing,
+    },
+    annotations: {
+      model: annotationController.model,
+      actions: annotationController.actions,
+    },
+    export: {
+      canDownload: Boolean(scene),
+      onDownload: downloadMap,
+    },
+  }
+  const ActiveSettingsSection =
+    wseSettingsSectionByKey(activeSettingsSection).component
+
   return (
     <FigureEditorShell
       workspaceLabel={ACTIVE_FIGURE.workspaceLabel}
@@ -762,7 +810,7 @@ export function WseDifferenceWorkspace() {
 
         <FigureSettingsSidebar<SettingsSectionKey>
           mobileOpen={rightOpen}
-          sections={SETTINGS_SECTIONS}
+          sections={WSE_SETTINGS_SECTIONS}
           activeSection={activeSettingsSection}
           onSectionChange={setActiveSettingsSection}
           onSectionKeyDown={handleSettingsTabKeyDown}
@@ -788,94 +836,7 @@ export function WseDifferenceWorkspace() {
             </div>
           }
         >
-            {activeSettingsSection === 'calculation' ? (
-              <CalculationSettingsPanel
-                settings={settings}
-                assessmentLabel={assessmentLabel}
-                onSettingsChange={updateSettings}
-                onDryDepthChange={(dryDepth) => {
-                  updateSettings('dryDepth', dryDepth)
-                  setScene(null)
-                  assessmentWorkflow.clear(
-                    settings.assessmentLineInterval,
-                  )
-                }}
-              />
-            ) : null}
-
-            {activeSettingsSection === 'legend' ? (
-              <LegendSettingsPanel
-                settings={settings}
-                onSettingsChange={updateSettings}
-              />
-            ) : null}
-
-            {activeSettingsSection === 'frame' ? (
-              <FrameSettingsPanel
-                settings={settings}
-                onSettingsChange={updateSettings}
-                onResetView={figureElements.resetView}
-              />
-            ) : null}
-
-            {activeSettingsSection === 'elements' ? (
-            <ControlSection>
-              <FigureElementsPanel
-                settings={settings}
-                activeElement={activeElement}
-                onActiveElementChange={setActiveElement}
-                onVisibilityChange={figureElements.updateElementVisibility}
-                onTitleTemplateChange={(value) =>
-                  updateSettings('titleTemplate', value)
-                }
-                onStyleChange={figureElements.updateElementStyle}
-                onPositionChange={figureElements.updateElementPosition}
-                onNudge={figureElements.nudgeElement}
-                onResetElement={figureElements.resetElement}
-                stationTicks={centerlineStationTicks}
-                selectedStationLabelId={selectedStationLabelId}
-                hasCenterline={Boolean(selectedCenterline)}
-                onStationingChange={
-                  figureElements.updateCenterlineStationing
-                }
-                onStationLabelSelect={setSelectedStationLabelId}
-                onStationLabelOverrideChange={
-                  figureElements.updateStationLabelOverride
-                }
-                onNudgeStationLabel={figureElements.nudgeStationLabel}
-                onResetStationing={
-                  figureElements.resetCenterlineStationing
-                }
-              />
-            </ControlSection>
-            ) : null}
-
-            {activeSettingsSection === 'annotations' ? (
-              <AnnotationSettingsPanel
-                model={annotationController.model}
-                actions={annotationController.actions}
-              />
-            ) : null}
-            {activeSettingsSection === 'export' ? (
-            <ControlSection>
-              <div className="export-note">
-                <FileJson size={17} aria-hidden="true" />
-                <span>
-                  Project files retain figure settings, overlays, and
-                  annotations. H5 files remain local and must be re-added.
-                </span>
-              </div>
-              <button
-                className="button secondary full"
-                type="button"
-                disabled={!scene}
-                onClick={downloadMap}
-              >
-                <Download size={17} aria-hidden="true" />
-                Download map PNG
-              </button>
-            </ControlSection>
-            ) : null}
+          <ActiveSettingsSection context={settingsSectionContext} />
         </FigureSettingsSidebar>
     </FigureEditorShell>
   )
