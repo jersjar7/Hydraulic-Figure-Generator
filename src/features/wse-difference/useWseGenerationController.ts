@@ -10,6 +10,7 @@ import type {
   WseAssessmentLineCollection,
   WseDifferenceScene,
 } from '../../core/types'
+import { generateWseAssessmentLines } from '../../application/hydraulics/generateWseAssessmentLines'
 import { wseDifferenceFigure } from './wseDifferenceFigure'
 
 type WseGenerationControllerOptions = {
@@ -52,12 +53,12 @@ export function useWseGenerationController({
   const generateAssessmentLines = () => {
     setBusy(true)
     try {
-      const collection = engine.buildWseAssessmentLines(
-        assessmentId,
-        assessmentRun,
-        settings.dryDepth,
-        settings.assessmentLineInterval,
-      )
+      const collection = generateWseAssessmentLines(engine, {
+        scenarioId: assessmentId,
+        run: assessmentRun,
+        dryDepth: settings.dryDepth,
+        interval: settings.assessmentLineInterval,
+      })
       if (collection.lines.length === 0) {
         throw new Error(
           `No ${assessmentLabel} WSE assessment lines were found at this interval and dry-depth threshold.`,
@@ -95,18 +96,13 @@ export function useWseGenerationController({
         comparisonRun,
         dryDepth: settings.dryDepth,
       })
-      if (nextScene.validDifferenceNodes === 0) {
-        throw new Error(
-          'The selected runs have no overlapping valid WSE values at this dry-depth threshold.',
-        )
-      }
       setScene(nextScene)
-      const assessment = engine.buildWseAssessmentLines(
-        assessmentId,
-        assessmentRun,
-        settings.dryDepth,
-        settings.assessmentLineInterval,
-      )
+      const assessment = generateWseAssessmentLines(engine, {
+        scenarioId: assessmentId,
+        run: assessmentRun,
+        dryDepth: settings.dryDepth,
+        interval: settings.assessmentLineInterval,
+      })
       setAssessmentCollection(assessment)
       appendNotices([
         {

@@ -1,4 +1,8 @@
 import { createDefaultFigureSettings } from '../../core/defaults'
+import {
+  canCompareWse,
+  compareWse,
+} from '../../application/hydraulics/compareWse'
 import { WSE_DIFFERENCE_FIGURE_ID } from '../../core/figureIds'
 import {
   runDisplayName,
@@ -59,7 +63,7 @@ export const wseDifferenceFigure: FigureModule<
   },
   createDefaultSettings: createDefaultFigureSettings,
   canGenerate: ({ engine, baselineId, comparisonId }) =>
-    engine.isReady(baselineId, comparisonId),
+    canCompareWse(engine, { baselineId, comparisonId }),
   buildScene: ({
     engine,
     baselineId,
@@ -68,13 +72,13 @@ export const wseDifferenceFigure: FigureModule<
     comparisonRun,
     dryDepth,
   }) =>
-    engine.buildWseDifference(
+    compareWse(engine, {
       baselineId,
       baselineRun,
       comparisonId,
       comparisonRun,
       dryDepth,
-    ),
+    }),
   render: ({ canvas, document, signal }) =>
     renderWseDifferenceDocument(canvas, document, signal),
   exportFileName: (scene) =>

@@ -6,10 +6,10 @@ import {
   type SetStateAction,
 } from 'react'
 import {
-  findWseDifferenceExtrema,
   formatWseExtremumLabel,
   type HydraulicEngine,
 } from '../../core/hydraulicEngine'
+import { detectWseDifferenceExtrema } from '../../application/hydraulics/detectWseDifferenceExtrema'
 import {
   canvasPointToMap,
   duplicateAnnotation,
@@ -114,7 +114,7 @@ export function useWseAnnotationController({
       ? (selected.resultField ?? annotationDefaults.resultField)
       : annotationDefaults.resultField
   const extrema = useMemo(
-    () => (scene ? findWseDifferenceExtrema(scene) : null),
+    () => (scene ? detectWseDifferenceExtrema(scene) : null),
     [scene],
   )
   const extremaCalloutCount = annotations.filter(

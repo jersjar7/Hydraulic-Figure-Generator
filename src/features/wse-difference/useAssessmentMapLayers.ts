@@ -2,8 +2,8 @@ import { useEffect, useMemo } from 'react'
 import {
   extractCenterlineCandidates,
   generateCenterlineStationTicks,
-  stationAssessmentLines,
 } from '../../core/centerlineStationing'
+import { stationWseAssessmentLines } from '../../application/hydraulics/stationWseAssessmentLines'
 import type {
   AssessmentMapLayer,
   FigureSettings,
@@ -77,13 +77,13 @@ export function useAssessmentMapLayers({
   const stationedAssessmentLines = useMemo(
     () =>
       selectedCenterline
-        ? stationAssessmentLines(
-            state.collection.lines,
-            selectedCenterline,
-            state.direction,
-            state.startStation,
-            state.overrides,
-          )
+        ? stationWseAssessmentLines({
+            lines: state.collection.lines,
+            centerline: selectedCenterline,
+            direction: state.direction,
+            startStation: state.startStation,
+            overrides: state.overrides,
+          })
         : null,
     [
       selectedCenterline,
