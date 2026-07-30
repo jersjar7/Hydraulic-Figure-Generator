@@ -6,16 +6,22 @@ import {
   figureModuleById,
 } from '../src/features/figures/registry'
 import {
+  CROSS_SECTION_FIGURE_ID,
   WSE_DIFFERENCE_FIGURE_ID,
-  wseDifferenceFigure,
-} from '../src/features/wse-difference/wseDifferenceFigure'
+} from '../src/core/figureIds'
+import { wseDifferenceFigure } from '../src/features/wse-difference/wseDifferenceFigure'
+import { crossSectionFigure } from '../src/features/cross-section/crossSectionFigure'
 
 describe('figure module registry', () => {
   it('registers WSE Difference as the default figure workflow', () => {
     assert.equal(DEFAULT_FIGURE_MODULE, wseDifferenceFigure)
     assert.deepEqual(
       FIGURE_MODULES.map((figure) => figure.id),
-      [WSE_DIFFERENCE_FIGURE_ID],
+      [WSE_DIFFERENCE_FIGURE_ID, CROSS_SECTION_FIGURE_ID],
+    )
+    assert.equal(
+      figureModuleById(CROSS_SECTION_FIGURE_ID),
+      crossSectionFigure,
     )
     assert.equal(
       figureModuleById(WSE_DIFFERENCE_FIGURE_ID),
