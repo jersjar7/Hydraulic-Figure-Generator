@@ -1,5 +1,5 @@
 import type { FigureId } from '../../core/figureIds'
-import { useHydraulicProjectWorkspace } from '../project-workspace/HydraulicProjectWorkspaceProvider'
+import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { FIGURE_MODULES } from './registry'
 
 export function FigurePicker() {

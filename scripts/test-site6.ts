@@ -6,6 +6,7 @@ import { createCanvas, loadImage } from '@napi-rs/canvas'
 import { cloneDefaultElementStyles } from '../src/core/figureElements'
 import {
   extractCenterlineCandidates,
+  formatStation,
   generateCenterlineStationTicks,
   stationAssessmentLines,
 } from '../src/core/centerlineStationing'
@@ -35,6 +36,8 @@ import type {
   FigureSettings,
   MapAnnotation,
 } from '../src/core/types'
+import { renderCrossSectionDocument } from '../src/features/cross-section/crossSectionRenderer'
+import { createDefaultCrossSectionSettings } from '../src/features/cross-section/crossSectionSettings'
 
 const dataDirectory = process.env.HFG_SITE6_DATA
 if (!dataDirectory) {
@@ -263,6 +266,169 @@ if (stationedAssessmentLines.includedCount <= 0) {
 }
 const includedStationedLines = stationedAssessmentLines.items.filter(
   (item) => item.status === 'included' && item.selectedIntersection,
+)
+const crossSectionAttempts = includedStationedLines.map((item) => {
+    try {
+      return {
+        item,
+        scene: engine.buildCrossSection(
+          'EX',
+          existingIndex,
+          'PR',
+          proposedIndex,
+          {
+            id: item.line.id,
+            label: `Section ${formatStation(item.selectedIntersection!.stationFeet)}`,
+            stationLabel: formatStation(
+              item.selectedIntersection!.stationFeet,
+            ),
+            points: item.line.points,
+            direction: 'a-to-b',
+          },
+          0,
+          1,
+        ),
+      }
+    } catch (error) {
+      throw new Error(
+        `Site 6 cross-section build failed for ${item.line.id}: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  })
+const crossSectionCandidates = crossSectionAttempts
+  .filter(
+    (
+      candidate,
+    ): candidate is NonNullable<typeof candidate> =>
+      candidate?.scene.baselineAverage.value != null &&
+      candidate.scene.comparisonAverage.value != null,
+  )
+if (crossSectionCandidates.length === 0) {
+  throw new Error(
+    `No included Site 6 assessment line produced both discharge-weighted WSE averages: ${JSON.stringify({
+      existingParams: existingRuns[existingIndex].run.params,
+      proposedParams: proposedRuns[proposedIndex].run.params,
+      attempts: crossSectionAttempts.slice(0, 3).map((candidate) =>
+        candidate
+          ? {
+              existingAverage: candidate.scene.baselineAverage,
+              proposedAverage: candidate.scene.comparisonAverage,
+              validExistingWse: candidate.scene.samples.filter(
+                (sample) => sample.baselineWse != null,
+              ).length,
+              validProposedWse: candidate.scene.samples.filter(
+                (sample) => sample.comparisonWse != null,
+              ).length,
+              validExistingVelocity: candidate.scene.samples.filter(
+                (sample) => sample.baselineNormalVelocity != null,
+              ).length,
+              validProposedVelocity: candidate.scene.samples.filter(
+                (sample) => sample.comparisonNormalVelocity != null,
+              ).length,
+              warnings: candidate.scene.warnings,
+            }
+          : null,
+      ),
+    })}`,
+  )
+}
+const crossSectionCandidate = crossSectionCandidates.reduce(
+  (closest, candidate) =>
+    Math.abs(candidate.item.selectedIntersection!.stationFeet - 300) <
+    Math.abs(closest.item.selectedIntersection!.stationFeet - 300)
+      ? candidate
+      : closest,
+)
+const crossSectionScene = crossSectionCandidate.scene
+const expectedCrossSection = {
+  section: 'Section 4+20',
+  samples: 25,
+  existingAverage: 59.00000000572065,
+  proposedAverage: 59.003314179696176,
+  difference: 0.0033141739755251365,
+}
+if (
+  crossSectionScene.samples.length < 25 ||
+  crossSectionScene.warnings.length > 0 ||
+  crossSectionScene.wseDifference == null ||
+  !Number.isFinite(crossSectionScene.wseDifference)
+) {
+  throw new Error(
+    `Site 6 cross-section sampling is incomplete: ${JSON.stringify({
+      samples: crossSectionScene.samples.length,
+      warnings: crossSectionScene.warnings,
+      existingAverage: crossSectionScene.baselineAverage.value,
+      proposedAverage: crossSectionScene.comparisonAverage.value,
+      difference: crossSectionScene.wseDifference,
+    })}`,
+  )
+}
+if (
+  crossSectionScene.line.label !== expectedCrossSection.section ||
+  crossSectionScene.samples.length !== expectedCrossSection.samples ||
+  Math.abs(
+    crossSectionScene.baselineAverage.value! -
+      expectedCrossSection.existingAverage,
+  ) > 1e-8 ||
+  Math.abs(
+    crossSectionScene.comparisonAverage.value! -
+      expectedCrossSection.proposedAverage,
+  ) > 1e-8 ||
+  Math.abs(crossSectionScene.wseDifference - expectedCrossSection.difference) >
+    1e-8
+) {
+  throw new Error(
+    `Site 6 cross-section hydraulics changed: ${JSON.stringify({
+      actual: {
+        section: crossSectionScene.line.label,
+        samples: crossSectionScene.samples.length,
+        existingAverage: crossSectionScene.baselineAverage.value,
+        proposedAverage: crossSectionScene.comparisonAverage.value,
+        difference: crossSectionScene.wseDifference,
+      },
+      expected: expectedCrossSection,
+    })}`,
+  )
+}
+const crossSectionCanvas = createCanvas(1500, 900)
+renderCrossSectionDocument(
+  crossSectionCanvas as unknown as HTMLCanvasElement,
+  {
+    scene: crossSectionScene,
+    settings: {
+      ...createDefaultCrossSectionSettings(),
+      sectionName: crossSectionScene.line.label,
+    },
+  },
+)
+const crossSectionPixels = crossSectionCanvas
+  .getContext('2d')
+  .getImageData(
+    0,
+    0,
+    crossSectionCanvas.width,
+    crossSectionCanvas.height,
+  ).data
+let crossSectionColoredSamples = 0
+for (let index = 0; index < crossSectionPixels.length; index += 64) {
+  const red = crossSectionPixels[index]
+  const green = crossSectionPixels[index + 1]
+  const blue = crossSectionPixels[index + 2]
+  if (Math.max(red, green, blue) - Math.min(red, green, blue) > 20) {
+    crossSectionColoredSamples += 1
+  }
+}
+if (crossSectionColoredSamples < 150) {
+  throw new Error(
+    `Rendered Site 6 cross section appears blank (${crossSectionColoredSamples} colored samples).`,
+  )
+}
+const crossSectionOutputPath =
+  process.env.HFG_TEST_CROSS_SECTION_OUTPUT ||
+  join(tmpdir(), 'hydraulic-site6-cross-section.png')
+await writeFile(
+  crossSectionOutputPath,
+  crossSectionCanvas.toBuffer('image/png'),
 )
 const stationRange = includedStationedLines.reduce(
   (range, item) => {
@@ -1034,6 +1200,15 @@ console.log(
         differenceOutlinePixels,
         assessmentLinePixels: renderedAssessmentPixels,
         selectedStationLabelId,
+        crossSection: {
+          outputPath: crossSectionOutputPath,
+          section: crossSectionScene.line.label,
+          samples: crossSectionScene.samples.length,
+          existingAverage: crossSectionScene.baselineAverage.value,
+          proposedAverage: crossSectionScene.comparisonAverage.value,
+          difference: crossSectionScene.wseDifference,
+          coloredPixelSamples: crossSectionColoredSamples,
+        },
       },
     },
     null,

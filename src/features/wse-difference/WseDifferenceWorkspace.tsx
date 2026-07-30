@@ -16,7 +16,7 @@ import {
   createWseDifferenceRenderDocument,
 } from '../../core/mapRenderer'
 import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
-import { useHydraulicProjectWorkspace } from '../project-workspace/HydraulicProjectWorkspaceProvider'
+import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { FigurePicker } from '../figures/FigurePicker'
 import { downloadWseDifferencePng } from './exportWseDifference'
 import { useAssessmentMapLayers } from './useAssessmentMapLayers'

@@ -278,7 +278,7 @@ export function renderCrossSectionDocument(
   context.textAlign = 'center'
   context.textBaseline = 'top'
   for (
-    let distance = Math.ceil(0 / distanceStep) * distanceStep;
+    let distance = 0;
     distance <= maximumDistance + distanceStep * 0.01;
     distance += distanceStep
   ) {
@@ -367,12 +367,14 @@ export function renderCrossSectionDocument(
         label: 'Avg. Existing WSE',
         color: settings.existingWseStyle.color,
         labelX: plot.left + 18,
+        labelOffsetY: -22,
       },
       {
         average: scene.comparisonAverage,
         label: 'Avg. Proposed WSE',
         color: settings.proposedWseStyle.color,
-        labelX: plot.left + 18,
+        labelX: plot.left + plot.width * 0.28,
+        labelOffsetY: 22,
       },
     ]
     for (const item of averages) {
@@ -394,7 +396,7 @@ export function renderCrossSectionDocument(
         item.average.value,
         item.color,
         item.labelX,
-        y(item.average.value),
+        y(item.average.value) + item.labelOffsetY,
         Math.max(14, settings.fontSize - 2),
       )
     }
@@ -404,7 +406,7 @@ export function renderCrossSectionDocument(
     drawDifferenceArrow(
       context,
       scene,
-      plot.left + plot.width * 0.68,
+      plot.left + plot.width * 0.58,
       y,
       settings.arrowColor,
       Math.max(14, settings.fontSize - 2),

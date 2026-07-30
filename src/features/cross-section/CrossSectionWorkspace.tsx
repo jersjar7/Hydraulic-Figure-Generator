@@ -22,7 +22,6 @@ import { createDefaultFigureSettings } from '../../core/defaults'
 import { formatStation } from '../../core/centerlineStationing'
 import {
   canvasPointToMap,
-  createWseDifferenceRenderDocument,
   mapPointToCanvas,
 } from '../../core/mapRenderer'
 import type {
@@ -34,7 +33,7 @@ import type {
 } from '../../core/types'
 import { shapefileArchivePort } from '../../infrastructure/shapefiles/shapefileArchivePort'
 import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
-import { useHydraulicProjectWorkspace } from '../project-workspace/HydraulicProjectWorkspaceProvider'
+import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { FigurePicker } from '../figures/FigurePicker'
 import { useAssessmentMapLayers } from '../wse-difference/useAssessmentMapLayers'
 import { wseDifferenceFigure } from '../wse-difference/wseDifferenceFigure'
@@ -50,8 +49,9 @@ import {
 import { CrossSectionSettingsPanel } from './CrossSectionSettingsPanel'
 import {
   createDefaultCrossSectionSettings,
-  type CrossSectionFigureSettings,
 } from './crossSectionSettings'
+import { useCrossSectionProjectFiles } from './useCrossSectionProjectFiles'
+import { useCrossSectionRendering } from './useCrossSectionRendering'
 
 const SETTINGS_SECTIONS = [
   { ...CROSS_SECTION_SETTINGS_SECTIONS[0], icon: Ruler },
@@ -242,71 +242,21 @@ export function CrossSectionWorkspace() {
     if (ready && !mapScene) buildSelectionMap()
   }, [buildSelectionMap, mapScene, ready])
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    if (view === 'chart' && chartScene) {
-      renderCrossSectionDocument(canvas, { scene: chartScene, settings })
-      return
-    }
-    if (view !== 'map' || !mapScene) return
-    const selectedAssessment =
-      assessmentState.collection.lines.find(
-        (line) => line.id === selectedAssessmentLineId,
-      ) ?? null
-    const manualLine =
-      selectedLine && !selectedAssessment
-        ? {
-            id: selectedLine.id,
-            source: 'manual-cross-section',
-            level: Number.NaN,
-            points: selectedLine.points,
-            modelPoints: [],
-            lengthFeet: 0,
-          }
-        : null
-    const controller = new AbortController()
-    setBusy(true)
-    void wseDifferenceFigure
-      .render({
-        canvas,
-        document: createWseDifferenceRenderDocument({
-          scene: mapScene,
-          commonBounds: engine.commonBounds(),
-          settings: mapSettings,
-          overlays,
-          assessment: {
-            lines: assessmentState.collection.lines,
-            selectedLine: selectedAssessment ?? manualLine,
-          },
-        }),
-        signal: controller.signal,
-      })
-      .catch((error) =>
-        appendNotices([
-          {
-            level: 'error',
-            text: `Selection map failed: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ]),
-      )
-      .finally(() => {
-        if (!controller.signal.aborted) setBusy(false)
-      })
-    return () => controller.abort()
-  }, [
-    appendNotices,
-    assessmentState.collection.lines,
+  useCrossSectionRendering({
+    canvasRef,
+    view,
     chartScene,
-    engine,
     mapScene,
+    engine,
     mapSettings,
+    settings,
     overlays,
+    assessmentLines: assessmentState.collection,
     selectedAssessmentLineId,
     selectedLine,
-    settings,
-    view,
-  ])
+    setBusy,
+    appendNotices,
+  })
 
   const generateChart = () => {
     if (!selectedLine || !ready) return
@@ -451,10 +401,8 @@ export function CrossSectionWorkspace() {
     }
   }
 
-  const saveProject = () => {
-    const payload = {
-      version: 1,
-      figureId: crossSectionFigure.id,
+  const projectFiles = useCrossSectionProjectFiles({
+    snapshot: {
       settings,
       selectedLine,
       selectedAssessmentLineId,
@@ -468,57 +416,29 @@ export function CrossSectionWorkspace() {
         ),
       },
       project: projectDocument.document,
-    }
-    const link = document.createElement('a')
-    link.download = 'FRA_Cross_Section.hydfig'
-    link.href = URL.createObjectURL(
-      new Blob([JSON.stringify(payload, null, 2)], {
-        type: 'application/json',
-      }),
-    )
-    link.click()
-    URL.revokeObjectURL(link.href)
-  }
+    },
+    appendNotices,
+  })
 
   const loadProject = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0]
     event.currentTarget.value = ''
     if (!file) return
-    try {
-      const payload = JSON.parse(await file.text()) as {
-        figureId?: string
-        settings?: CrossSectionFigureSettings
-        selectedLine?: CrossSectionLine | null
-        selectedAssessmentLineId?: string
-        scenarioSelection?: Parameters<typeof projectSession.loadSelection>[0]
-        project?: Parameters<typeof projectDocument.loadDocument>[0]
-      }
-      if (payload.figureId !== crossSectionFigure.id || !payload.settings) {
-        throw new Error('This is not a Cross-Section Comparison project file.')
-      }
-      setSettings(payload.settings)
-      setSelectedLine(payload.selectedLine ?? null)
-      setSelectedAssessmentLineId(payload.selectedAssessmentLineId ?? '')
-      if (payload.scenarioSelection) {
-        projectSession.loadSelection(payload.scenarioSelection)
-      }
-      if (payload.project) projectDocument.loadDocument(payload.project)
-      setMapScene(null)
-      setChartScene(null)
-      appendNotices([
-        {
-          level: 'success',
-          text: 'Cross-section settings loaded. Re-add the H5 files to regenerate.',
-        },
-      ])
-    } catch (error) {
-      appendNotices([
-        {
-          level: 'error',
-          text: `Project load failed: ${error instanceof Error ? error.message : String(error)}`,
-        },
-      ])
-    }
+    const payload = await projectFiles.loadProjectFile(file)
+    if (!payload) return
+    setSettings(payload.settings)
+    setSelectedLine(payload.selectedLine)
+    setSelectedAssessmentLineId(payload.selectedAssessmentLineId)
+    projectSession.loadSelection(payload.scenarioSelection)
+    projectDocument.loadDocument(payload.project)
+    setMapScene(null)
+    setChartScene(null)
+    appendNotices([
+      {
+        level: 'success',
+        text: 'Cross-section settings loaded. Re-add the H5 files to regenerate.',
+      },
+    ])
   }
 
   const downloadChart = () => {
@@ -566,7 +486,7 @@ export function CrossSectionWorkspace() {
       notices={notices}
       settingsSections={SETTINGS_SECTIONS}
       activeSettingsSection={activeSection}
-      onSave={saveProject}
+      onSave={projectFiles.saveProject}
       onLoad={() => projectInputRef.current?.click()}
       onOpenLeftPanel={() => {
         setLeftCollapsed(false)

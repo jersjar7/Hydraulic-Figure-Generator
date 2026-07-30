@@ -1,8 +1,8 @@
 import { FIGURE_WORKSPACES } from './features/figures/workspaceRegistry'
 import {
   HydraulicProjectWorkspaceProvider,
-  useHydraulicProjectWorkspace,
 } from './features/project-workspace/HydraulicProjectWorkspaceProvider'
+import { useHydraulicProjectWorkspace } from './features/project-workspace/useHydraulicProjectWorkspace'
 
 function ActiveWorkspace() {
   const { activeFigureId } = useHydraulicProjectWorkspace()
