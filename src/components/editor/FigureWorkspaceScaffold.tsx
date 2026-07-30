@@ -24,6 +24,7 @@ type Props<Key extends string> = {
   settingsContent: ReactNode
   settingsFooter?: ReactNode
   loadInput?: ReactNode
+  figurePicker?: ReactNode
   onSave(): void
   onLoad(): void
   onOpenLeftPanel(): void
@@ -52,6 +53,7 @@ export function FigureWorkspaceScaffold<Key extends string>({
   settingsContent,
   settingsFooter,
   loadInput,
+  figurePicker,
   onSave,
   onLoad,
   onOpenLeftPanel,
@@ -81,6 +83,7 @@ export function FigureWorkspaceScaffold<Key extends string>({
       onOpenRightPanel={onOpenRightPanel}
       onCloseMobilePanels={onCloseMobilePanels}
       loadInput={loadInput}
+      figurePicker={figurePicker}
     >
       {projectPanel}
       <FigureMapWorkspace

@@ -107,3 +107,70 @@ test('synthetic SMS files upload and render a nonblank figure', async ({
     )
     .toBeGreaterThan(100)
 })
+
+test('loaded scenarios carry into the cross-section map-to-chart workflow', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto('.')
+
+  await page
+    .getByTestId('h5-file-drop')
+    .locator('input[type="file"]')
+    .setInputFiles([
+      h5Fixture('Existing-Geometry.h5'),
+      h5Fixture('Existing-Datasets.h5'),
+      h5Fixture('Proposed-Geometry.h5'),
+      h5Fixture('Proposed-Datasets.h5'),
+    ])
+
+  await page.getByLabel('Figure type').selectOption(
+    'fra-cross-section-comparison',
+  )
+  await expect(page.getByText('FRA workspace · Cross-Section Comparison')).toBeVisible()
+  await expect(page.getByLabel('EX scenario name')).toBeVisible()
+  await expect(page.getByLabel('PR scenario name')).toBeVisible()
+
+  const selectionMap = page.getByLabel('Cross-section selection map')
+  await expect(selectionMap).toHaveClass(/is-visible/)
+  await page.getByRole('button', { name: 'Draw manual section' }).click()
+  const box = await selectionMap.boundingBox()
+  expect(box).not.toBeNull()
+  await selectionMap.click({
+    position: { x: box!.width * 0.32, y: box!.height * 0.5 },
+  })
+  await selectionMap.click({
+    position: { x: box!.width * 0.68, y: box!.height * 0.5 },
+  })
+
+  const generate = page.getByTestId('generate-cross-section')
+  await expect(generate).toBeEnabled()
+  await generate.click()
+
+  const chart = page.getByLabel(
+    'Generated hydraulic cross-section comparison',
+  )
+  await expect(chart).toHaveClass(/is-visible/)
+  await expect
+    .poll(() =>
+      chart.evaluate((element) => {
+        const canvas = element as HTMLCanvasElement
+        const context = canvas.getContext('2d')
+        if (!context || canvas.width === 0 || canvas.height === 0) return 0
+        const pixels = context.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        ).data
+        let dark = 0
+        for (let index = 0; index < pixels.length; index += 128) {
+          if (pixels[index] + pixels[index + 1] + pixels[index + 2] < 450) {
+            dark += 1
+          }
+        }
+        return dark
+      }),
+    )
+    .toBeGreaterThan(100)
+})

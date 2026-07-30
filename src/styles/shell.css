@@ -73,6 +73,17 @@
   grid-template-columns: 52px minmax(0, 1fr) 360px;
 }
 
+.figure-picker select {
+  max-width: 220px;
+  height: 34px;
+  padding: 0 30px 0 10px;
+  color: #17314d;
+  background: #ffffff;
+  border: 1px solid #bfcbd7;
+  border-radius: 5px;
+  font: 650 12px Arial, sans-serif;
+}
+
 .sidebar {
   min-width: 0;
   min-height: 0;

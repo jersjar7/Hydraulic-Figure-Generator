@@ -159,6 +159,67 @@
   cursor: grabbing;
 }
 
+.map-canvas[data-cross-section-drawing="true"] {
+  cursor: crosshair;
+}
+
+.cross-section-view-tabs {
+  position: absolute;
+  z-index: 3;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #bfcbd7;
+  border-radius: 6px;
+  box-shadow: 0 2px 7px rgba(25, 44, 66, 0.12);
+}
+
+.cross-section-view-tabs button {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  color: #4b6077;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.cross-section-view-tabs button.active {
+  color: #ffffff;
+  background: #155f97;
+}
+
+.cross-section-view-tabs button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cross-settings-stack {
+  display: grid;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.cross-line-style {
+  display: grid;
+  gap: 7px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #e0e6ec;
+}
+
+.cross-line-style > strong {
+  color: #283d54;
+  font-size: 11px;
+}
+
 .map-busy {
   position: absolute;
   top: 16px;

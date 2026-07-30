@@ -19,6 +19,7 @@ type Props = {
   onOpenRightPanel(): void
   onCloseMobilePanels(): void
   loadInput?: ReactNode
+  figurePicker?: ReactNode
   children: ReactNode
 }
 
@@ -34,6 +35,7 @@ export function FigureEditorShell({
   onOpenRightPanel,
   onCloseMobilePanels,
   loadInput,
+  figurePicker,
   children,
 }: Props) {
   return (
@@ -51,6 +53,7 @@ export function FigureEditorShell({
           </div>
         </div>
         <div className="topbar-actions">
+          {figurePicker}
           <button
             className="button secondary compact"
             type="button"

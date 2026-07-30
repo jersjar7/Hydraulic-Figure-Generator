@@ -16,8 +16,8 @@ import {
   createWseDifferenceRenderDocument,
 } from '../../core/mapRenderer'
 import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
-import { useProjectSession } from '../project-session/useProjectSession'
-import { useHydraulicProjectDocument } from '../project-document/useHydraulicProjectDocument'
+import { useHydraulicProjectWorkspace } from '../project-workspace/HydraulicProjectWorkspaceProvider'
+import { FigurePicker } from '../figures/FigurePicker'
 import { downloadWseDifferencePng } from './exportWseDifference'
 import { useAssessmentMapLayers } from './useAssessmentMapLayers'
 import { wseDifferenceFigure } from './wseDifferenceFigure'
@@ -47,8 +47,7 @@ import { useWseProjectInputs } from './useWseProjectInputs'
 const ACTIVE_FIGURE = wseDifferenceFigure
 
 export function WseDifferenceWorkspace() {
-  const projectSession = useProjectSession()
-  const projectDocument = useHydraulicProjectDocument()
+  const { projectSession, projectDocument } = useHydraulicProjectWorkspace()
   const figureDocument = useWseFigureDocument()
   const editorUi = useWseEditorUi()
   const {
@@ -647,6 +646,7 @@ export function WseDifferenceWorkspace() {
           ) : null}
         </div>
       }
+      figurePicker={<FigurePicker />}
     />
   )
 }

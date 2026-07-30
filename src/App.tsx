@@ -1,8 +1,24 @@
-import { DEFAULT_FIGURE_WORKSPACE } from './features/figures/workspaceRegistry'
+import { FIGURE_WORKSPACES } from './features/figures/workspaceRegistry'
+import {
+  HydraulicProjectWorkspaceProvider,
+  useHydraulicProjectWorkspace,
+} from './features/project-workspace/HydraulicProjectWorkspaceProvider'
+
+function ActiveWorkspace() {
+  const { activeFigureId } = useHydraulicProjectWorkspace()
+  const definition =
+    FIGURE_WORKSPACES.find((workspace) => workspace.id === activeFigureId) ??
+    FIGURE_WORKSPACES[0]
+  const Workspace = definition.Workspace
+  return <Workspace />
+}
 
 function App() {
-  const Workspace = DEFAULT_FIGURE_WORKSPACE.Workspace
-  return <Workspace />
+  return (
+    <HydraulicProjectWorkspaceProvider>
+      <ActiveWorkspace />
+    </HydraulicProjectWorkspaceProvider>
+  )
 }
 
 export default App
