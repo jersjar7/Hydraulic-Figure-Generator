@@ -116,22 +116,22 @@ function viewArrow(
     y: midpoint.tangent.x * directionSign,
   }
   const start = {
-    x: midpoint.point.x + normal.x * 8,
-    y: midpoint.point.y + normal.y * 8,
+    x: midpoint.point.x + normal.x * 6,
+    y: midpoint.point.y + normal.y * 6,
   }
   const end = {
-    x: midpoint.point.x + normal.x * 48,
-    y: midpoint.point.y + normal.y * 48,
+    x: midpoint.point.x + normal.x * 60,
+    y: midpoint.point.y + normal.y * 60,
   }
   context.save()
   context.strokeStyle = '#9f1d1d'
   context.fillStyle = '#9f1d1d'
-  context.lineWidth = 2
+  context.lineWidth = 3
   context.beginPath()
   context.moveTo(start.x, start.y)
   context.lineTo(end.x, end.y)
   context.stroke()
-  arrowHead(context, end, normal, 9)
+  arrowHead(context, end, normal, 10)
 
   const label =
     settings.lookingDirection === 'downstream' ? 'LOOK DS' : 'LOOK US'
@@ -189,9 +189,6 @@ export function drawCrossSectionSelectionOverlay(
   context.lineWidth = 2
   context.stroke()
 
-  const lineArrow = pathLocation(screenPoints, 0.62)
-  context.fillStyle = '#0877b9'
-  arrowHead(context, lineArrow.point, lineArrow.tangent, 10)
   endpointMarker(context, screenPoints[0], 'A')
   endpointMarker(context, screenPoints.at(-1)!, 'B')
   viewArrow(
