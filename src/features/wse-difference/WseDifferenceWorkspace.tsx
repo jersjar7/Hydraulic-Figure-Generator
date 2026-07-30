@@ -1,7 +1,6 @@
 import {
   AlertCircle,
   Map,
-  MapPin,
 } from 'lucide-react'
 import {
   useCallback,
@@ -19,14 +18,6 @@ import { ProjectDataPanel } from '../../components/ProjectDataPanel'
 import {
   createWseDifferenceRenderDocument,
 } from '../../core/mapRenderer'
-import { importHydraulicFiles } from '../../application/importHydraulicFiles'
-import { importOverlayArchives } from '../../application/importOverlayArchives'
-import {
-  loadHydraulicProject,
-  saveHydraulicProject,
-} from '../../application/hydraulicProjectFiles'
-import { browserProjectFilePort } from '../../infrastructure/browser/browserProjectFilePort'
-import { shapefileArchivePort } from '../../infrastructure/shapefiles/shapefileArchivePort'
 import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
 import { useProjectSession } from '../project-session/useProjectSession'
 import { useHydraulicProjectDocument } from '../project-document/useHydraulicProjectDocument'
@@ -34,11 +25,8 @@ import { downloadWseDifferencePng } from './exportWseDifference'
 import { useAssessmentMapLayers } from './useAssessmentMapLayers'
 import { wseDifferenceFigure } from './wseDifferenceFigure'
 import type {
-  ConditionKey,
   FigureSettings,
   IngestNotice,
-  MapOverlay,
-  ScenarioRole,
   WseDifferenceScene,
 } from '../../core/types'
 import type { SettingsSectionKey } from './workspaceConfiguration'
@@ -50,14 +38,14 @@ import { useWseFigureDocument } from './useWseFigureDocument'
 import { useWseAnnotationController } from './useWseAnnotationController'
 import { useWseFigureElementController } from './useWseFigureElementController'
 import {
-  createWseProjectSnapshot,
-  hydrateWseProject,
-} from './wseProjectDocument'
-import {
   WSE_SETTINGS_SECTIONS,
   wseSettingsSectionByKey,
   type WseSettingsSectionContext,
 } from './wseSettingsSections'
+import { WseMapCanvas } from './components/WseMapCanvas'
+import { useWseGenerationController } from './useWseGenerationController'
+import { useWseProjectFiles } from './useWseProjectFiles'
+import { useWseProjectInputs } from './useWseProjectInputs'
 
 const ACTIVE_FIGURE = wseDifferenceFigure
 
@@ -264,141 +252,42 @@ export function WseDifferenceWorkspace() {
     tabs?.[nextIndex]?.focus()
   }
 
-  const handleH5Files = async (files: File[]) => {
-    setBusy(true)
-    setScene(null)
-    assessmentWorkflow.invalidate(settings.assessmentLineInterval)
-    try {
-      const incoming = await importHydraulicFiles(files, {
-        ingest: projectSession.ingest,
-      })
-      appendNotices(incoming)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const handleOverlayFiles = async (files: File[]) => {
-    setBusy(true)
-    try {
-      const result = await importOverlayArchives(
-        files,
-        overlays.length,
-        shapefileArchivePort,
-      )
-      setOverlays((current) => [...current, ...result.overlays])
-      appendNotices(result.notices)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const removeHydraulicCondition = (key: ConditionKey) => {
-    projectSession.removeCondition(key)
-    setScene(null)
-    if (key === assessmentScenarioId) {
-      assessmentWorkflow.clear(settings.assessmentLineInterval)
-    }
-  }
-
-  const renameHydraulicCondition = (key: ConditionKey, label: string) => {
-    projectSession.renameCondition(key, label)
-  }
-
-  const changeScenarioRole = (role: ScenarioRole, key: ConditionKey) => {
-    setScene(null)
-    projectSession.changeRole(role, key)
-    if (role === 'assessment') {
-      assessmentWorkflow.clear(settings.assessmentLineInterval)
-    }
-  }
-
-  const changeScenarioRun = (key: ConditionKey, index: number) => {
-    projectSession.changeRun(key, index)
-    setScene(null)
-    if (key === assessmentScenarioId) {
-      assessmentWorkflow.clear(settings.assessmentLineInterval)
-    }
-  }
-
-  const generateAssessmentLines = () => {
-    setBusy(true)
-    try {
-      const collection = engine.buildWseAssessmentLines(
-        assessmentScenarioId,
-        assessmentRun,
-        settings.dryDepth,
-        settings.assessmentLineInterval,
-      )
-      if (collection.lines.length === 0) {
-        throw new Error(
-          `No ${assessmentLabel} WSE assessment lines were found at this interval and dry-depth threshold.`,
-        )
-      }
-      assessmentWorkflow.setCollection(collection)
-      appendNotices([
-        {
-          level: 'success',
-          text: `Generated ${collection.lines.length.toLocaleString()} ${assessmentLabel} WSE assessment lines across ${collection.levelCount.toLocaleString()} elevation levels.`,
-        },
-      ])
-      return collection
-    } catch (error) {
-      appendNotices([
-        {
-          level: 'error',
-          text: error instanceof Error ? error.message : String(error),
-        },
-      ])
-      return null
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const generateMap = () => {
-    setBusy(true)
-    try {
-      const nextScene = ACTIVE_FIGURE.buildScene({
-        engine,
-        baselineId: baselineScenarioId,
-        baselineRun,
-        comparisonId: comparisonScenarioId,
-        comparisonRun,
-        dryDepth: settings.dryDepth,
-      })
-      if (nextScene.validDifferenceNodes === 0) {
-        throw new Error(
-          'The selected runs have no overlapping valid WSE values at this dry-depth threshold.',
-        )
-      }
-      setScene(nextScene)
-      const nextAssessmentLines = engine.buildWseAssessmentLines(
-        assessmentScenarioId,
-        assessmentRun,
-        settings.dryDepth,
-        settings.assessmentLineInterval,
-      )
-      assessmentWorkflow.setCollection(nextAssessmentLines)
-      appendNotices([
-        {
-          level: 'success',
-          text: `WSE difference ready from ${nextScene.validDifferenceNodes.toLocaleString()} comparable ${baselineLabel} nodes with ${nextAssessmentLines.lines.length.toLocaleString()} ${assessmentLabel} WSE assessment lines.`,
-        },
-      ])
+  const projectInputs = useWseProjectInputs({
+    assessmentId: assessmentScenarioId,
+    settings,
+    overlays,
+    ingest: projectSession.ingest,
+    removeCondition: projectSession.removeCondition,
+    renameCondition: projectSession.renameCondition,
+    changeRole: projectSession.changeRole,
+    changeRun: projectSession.changeRun,
+    setOverlays,
+    setScene,
+    invalidateAssessment: assessmentWorkflow.invalidate,
+    clearAssessment: assessmentWorkflow.clear,
+    setBusy,
+    appendNotices,
+  })
+  const generation = useWseGenerationController({
+    engine,
+    baselineId: baselineScenarioId,
+    baselineRun,
+    baselineLabel,
+    comparisonId: comparisonScenarioId,
+    comparisonRun,
+    assessmentId: assessmentScenarioId,
+    assessmentRun,
+    assessmentLabel,
+    settings,
+    setScene,
+    setAssessmentCollection: assessmentWorkflow.setCollection,
+    setBusy,
+    appendNotices,
+    closePanels: () => {
       setLeftOpen(false)
       setRightOpen(false)
-    } catch (error) {
-      appendNotices([
-        {
-          level: 'error',
-          text: error instanceof Error ? error.message : String(error),
-        },
-      ])
-    } finally {
-      setBusy(false)
-    }
-  }
+    },
+  })
 
   const elementBoundsRef = useWseMapRendering({
     canvasRef,
@@ -422,14 +311,6 @@ export function WseDifferenceWorkspace() {
     setBusy,
     appendNotices,
   })
-
-  const updateOverlay = (id: string, patch: Partial<MapOverlay>) => {
-    setOverlays((current) =>
-      current.map((overlay) =>
-        overlay.id === id ? { ...overlay, ...patch } : overlay,
-      ),
-    )
-  }
 
   const mapInteractions = useWseMapInteractions({
     scene,
@@ -523,8 +404,8 @@ export function WseDifferenceWorkspace() {
     }
   }
 
-  const saveProject = () => {
-    const snapshot = createWseProjectSnapshot({
+  const projectFiles = useWseProjectFiles({
+    snapshot: {
       settings,
       overlays,
       annotations,
@@ -544,53 +425,39 @@ export function WseDifferenceWorkspace() {
         startStation: assessmentState.startStation,
         overrides: assessmentState.overrides,
       },
-    })
-    saveHydraulicProject(snapshot, browserProjectFilePort)
-  }
+    },
+    currentFigure: figureDocument.document,
+    currentProject: projectDocument.document,
+    appendNotices,
+  })
 
   const loadProject = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0]
     event.currentTarget.value = ''
     if (!file) return
-    try {
-      const project = await loadHydraulicProject(
-        file,
-        browserProjectFilePort,
-      )
-      const loaded = hydrateWseProject(
-        project,
-        figureDocument.document,
-        projectDocument.document,
-      )
-      loadDocument(loaded.document)
-      loadProjectDocument(loaded.project)
-      setSelectedAnnotationId(null)
-      setSelectedStationLabelId(null)
-      setAnnotationStart(null)
-      setAnnotationPanelView('create')
-      setAnnotationPlacedView('list')
-      setAnnotationEditorView('content')
-      setLeftCollapsed(false)
-      projectSession.loadSelection(loaded.scenarioSelection)
-      setScene(null)
-      assessmentWorkflow.load(
-        loaded.assessment,
-        loaded.document.settings.assessmentLineInterval,
-      )
-      appendNotices([
-        {
-          level: 'success',
-          text: 'Project settings loaded. Re-add the H5 files to regenerate the map.',
-        },
-      ])
-    } catch (error) {
-      appendNotices([
-        {
-          level: 'error',
-          text: `Project could not be loaded: ${error instanceof Error ? error.message : String(error)}`,
-        },
-      ])
-    }
+    const loaded = await projectFiles.loadProjectFile(file)
+    if (!loaded) return
+    loadDocument(loaded.document)
+    loadProjectDocument(loaded.project)
+    setSelectedAnnotationId(null)
+    setSelectedStationLabelId(null)
+    setAnnotationStart(null)
+    setAnnotationPanelView('create')
+    setAnnotationPlacedView('list')
+    setAnnotationEditorView('content')
+    setLeftCollapsed(false)
+    projectSession.loadSelection(loaded.scenarioSelection)
+    setScene(null)
+    assessmentWorkflow.load(
+      loaded.assessment,
+      loaded.document.settings.assessmentLineInterval,
+    )
+    appendNotices([
+      {
+        level: 'success',
+        text: 'Project settings loaded. Re-add the H5 files to regenerate the map.',
+      },
+    ])
   }
 
   const settingsSectionContext: WseSettingsSectionContext = {
@@ -653,7 +520,7 @@ export function WseDifferenceWorkspace() {
       inputsCollapsed={leftCollapsed}
       leftPanelOpen={leftOpen}
       rightPanelOpen={rightOpen}
-      onSave={saveProject}
+      onSave={projectFiles.saveProject}
       onLoad={() => projectInputRef.current?.click()}
       onOpenLeftPanel={() => {
         setLeftCollapsed(false)
@@ -723,25 +590,25 @@ export function WseDifferenceWorkspace() {
           onCollapse={() => setLeftCollapsed(true)}
           onExpand={() => setLeftCollapsed(false)}
           onMobileClose={() => setLeftOpen(false)}
-          onH5Files={handleH5Files}
-          onOverlayFiles={handleOverlayFiles}
-          onRemoveCondition={removeHydraulicCondition}
-          onRenameCondition={renameHydraulicCondition}
-          onRoleChange={changeScenarioRole}
-          onRunChange={changeScenarioRun}
+          onH5Files={projectInputs.handleH5Files}
+          onOverlayFiles={projectInputs.handleOverlayFiles}
+          onRemoveCondition={projectInputs.removeHydraulicCondition}
+          onRenameCondition={projectInputs.renameHydraulicCondition}
+          onRoleChange={projectInputs.changeScenarioRole}
+          onRunChange={projectInputs.changeScenarioRun}
           runsFor={(key) => engine.runOptions(key)}
           onAssessmentIntervalChange={(interval) => {
             updateSettings('assessmentLineInterval', interval)
             assessmentWorkflow.clear(interval)
           }}
-          onGenerateAssessmentLines={generateAssessmentLines}
+          onGenerateAssessmentLines={generation.generateAssessmentLines}
           onClearAssessmentLines={() =>
             assessmentWorkflow.clear(settings.assessmentLineInterval)
           }
           onShowOverlaysChange={(visible) =>
             updateSettings('showOverlays', visible)
           }
-          onUpdateOverlay={updateOverlay}
+          onUpdateOverlay={projectInputs.updateOverlay}
           onRemoveOverlay={(id) =>
             setOverlays((current) =>
               current.filter((overlay) => overlay.id !== id),
@@ -763,61 +630,29 @@ export function WseDifferenceWorkspace() {
           }
           onFitFrame={figureElements.resetView}
         >
-            {!scene ? (
-              <div className="map-empty">
-                <div className="empty-symbol">
-                  <MapPin size={28} />
-                </div>
-                <h2>Build a {ACTIVE_FIGURE.label} figure</h2>
-                <p>
-                  Add at least two scenario geometry and datasets pairs on the
-                  left, assign the Baseline and Comparison roles, then generate
-                  the map.
-                </p>
-                <button
-                  className="button primary"
-                  type="button"
-                  disabled={!ready || busy}
-                  data-testid="generate-empty-map"
-                  onClick={generateMap}
-                >
-                  <Map size={17} aria-hidden="true" />
-                  Generate {ACTIVE_FIGURE.label}
-                </button>
-              </div>
-            ) : null}
-            <div className="map-canvas-frame" ref={canvasFrameRef}>
-              <canvas
-                ref={canvasRef}
-                className={scene ? 'map-canvas is-visible' : 'map-canvas'}
-                aria-label="Generated WSE difference figure"
-                data-annotation-tool={annotationTool}
-                data-annotation-dragging={
-                  annotationDragging ? 'true' : undefined
-                }
-                data-assessment-callout-dragging={
-                  assessmentCalloutDragging ? 'true' : undefined
-                }
-                data-station-label-dragging={
-                  stationLabelDragging ? 'true' : undefined
-                }
-                data-element-hover={hoveredElement ?? undefined}
-                data-element-dragging={
-                  elementDragging ? 'true' : undefined
-                }
-                onPointerDown={mapInteractions.handlePointerDown}
-                onPointerMove={mapInteractions.handlePointerMove}
-                onPointerUp={mapInteractions.handlePointerUp}
-                onPointerCancel={mapInteractions.handlePointerCancel}
-                onPointerLeave={() => {
-                  if (!elementDragging) setHoveredElement(null)
-                }}
-                style={{
-                  width: canvasDisplaySize.width || undefined,
-                  height: canvasDisplaySize.height || undefined,
-                }}
-              />
-            </div>
+          <WseMapCanvas
+            scene={scene}
+            ready={ready}
+            busy={busy}
+            figureLabel={ACTIVE_FIGURE.label}
+            canvasRef={canvasRef}
+            canvasFrameRef={canvasFrameRef}
+            displaySize={canvasDisplaySize}
+            annotationTool={annotationTool}
+            annotationDragging={annotationDragging}
+            assessmentCalloutDragging={assessmentCalloutDragging}
+            stationLabelDragging={stationLabelDragging}
+            hoveredElement={hoveredElement}
+            elementDragging={elementDragging}
+            onGenerate={generation.generateMap}
+            onPointerDown={mapInteractions.handlePointerDown}
+            onPointerMove={mapInteractions.handlePointerMove}
+            onPointerUp={mapInteractions.handlePointerUp}
+            onPointerCancel={mapInteractions.handlePointerCancel}
+            onPointerLeave={() => {
+              if (!elementDragging) setHoveredElement(null)
+            }}
+          />
         </FigureMapWorkspace>
 
         <FigureSettingsSidebar<SettingsSectionKey>
@@ -834,7 +669,7 @@ export function WseDifferenceWorkspace() {
                 type="button"
                 disabled={!ready || busy}
                 data-testid="generate-map"
-                onClick={generateMap}
+                onClick={generation.generateMap}
               >
                 <Map size={18} aria-hidden="true" />
                 {scene ? 'Regenerate map' : 'Generate map'}
