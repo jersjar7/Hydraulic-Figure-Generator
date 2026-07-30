@@ -24,6 +24,7 @@ import type {
   WseDifferenceScene,
 } from '../../core/types'
 import type { AnnotationEditorView } from './workspaceConfiguration'
+import { annotationCapabilities } from '../annotations/annotationCapabilities'
 
 export type AnnotationDrag = {
   id: string
@@ -142,7 +143,7 @@ export function annotationDisplayName(
 }
 
 export function annotationHasContentEditor(annotation: MapAnnotation) {
-  return annotation.kind !== 'line' && annotation.kind !== 'arrow'
+  return annotationCapabilities(annotation).content
 }
 
 export function defaultEditorView(

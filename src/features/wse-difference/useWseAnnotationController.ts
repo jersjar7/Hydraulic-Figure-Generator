@@ -44,6 +44,11 @@ import {
   synchronizeWseExtremaAnnotations,
   upsertWseExtremaCallouts,
 } from './wseExtremaAnnotations'
+import {
+  removeAnnotation,
+  translateAnnotation,
+  updateAnnotation,
+} from '../annotations/annotationCollection'
 
 type StateSetter<Value> = Dispatch<SetStateAction<Value>>
 
@@ -299,11 +304,7 @@ export function useWseAnnotationController({
   const updateAppearance = (patch: Partial<AnnotationDefaults>) => {
     if (selectedId) {
       setAnnotations((current) =>
-        current.map((annotation) =>
-          annotation.id === selectedId
-            ? { ...annotation, ...patch }
-            : annotation,
-        ),
+        updateAnnotation(current, selectedId, patch),
       )
     } else {
       setAnnotationDefaults((current) => ({ ...current, ...patch }))
@@ -339,16 +340,10 @@ export function useWseAnnotationController({
 
   const deleteSelected = () => {
     if (!selectedId) return
-    const index = annotations.findIndex(
-      (annotation) => annotation.id === selectedId,
-    )
-    const nextSelection =
-      annotations[index + 1] ?? annotations[index - 1] ?? null
-    setAnnotations((current) =>
-      current.filter((annotation) => annotation.id !== selectedId),
-    )
-    setSelectedId(nextSelection?.id ?? null)
-    if (!nextSelection) setPlacedView('list')
+    const result = removeAnnotation(annotations, selectedId)
+    setAnnotations(result.annotations)
+    setSelectedId(result.selectedId)
+    if (!result.selectedId) setPlacedView('list')
   }
 
   const duplicateSelected = () => {
@@ -413,17 +408,11 @@ export function useWseAnnotationController({
     setAnnotations((current) =>
       current.map((annotation) =>
         annotation.id === selectedId
-          ? {
-              ...annotation,
-              points: annotation.points.map((point, index) =>
-                annotation.hydraulicExtremum && index === 0
-                  ? point
-                  : {
-                      x: point.x + offset.x - center.x,
-                      y: point.y + offset.y - center.y,
-                    },
-              ),
-            }
+          ? translateAnnotation(
+              annotation,
+              offset.x - center.x,
+              offset.y - center.y,
+            )
           : annotation,
       ),
     )
