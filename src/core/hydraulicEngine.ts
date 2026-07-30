@@ -15,11 +15,14 @@ import { inferScenarioDescriptor } from './hydraulics/scenarioDetection'
 import { buildWseAssessmentLineCollection } from './hydraulics/wseAssessmentBuilder'
 import {
   finalTimestep,
+  finalVectorTimestep,
   isDatasetsFile,
   isGeometryFile,
   readDatasets,
   readGeometry,
 } from './hydraulics/smsH5Reader'
+import { buildHydraulicCrossSectionScene } from './hydraulics/crossSectionBuilder'
+import type { CrossSectionLine } from './types'
 import {
   buildWseDifferenceScene,
   findResultParam,
@@ -348,6 +351,55 @@ export class HydraulicEngine {
     })
   }
 
+  buildCrossSection(
+    baselineKey: ConditionKey,
+    baselineIndex: number,
+    comparisonKey: ConditionKey,
+    comparisonIndex: number,
+    line: CrossSectionLine,
+    dryDepth: number,
+    sampleSpacing = 1,
+  ) {
+    const baseline = this.runOptions(baselineKey)[baselineIndex]
+    const comparison = this.runOptions(comparisonKey)[comparisonIndex]
+    if (!baseline || !comparison) {
+      throw new Error('Select one complete Baseline run and one complete Comparison run.')
+    }
+    if (baselineKey === comparisonKey) {
+      throw new Error('Baseline and Comparison must use different scenarios.')
+    }
+    const results = (selection: RunSelection) => {
+      const wseParam = findResultParam(selection.run, /Water_?Elev|WSE/i)
+      const depthParam = findResultParam(selection.run, /Water_?Depth/i)
+      const velocityParam = findResultParam(
+        selection.run,
+        /^Velocity(?:_ft_p_s)?$|Velocity_ft_p_s/i,
+      )
+      if (!wseParam || !depthParam) {
+        throw new Error(
+          `${selection.condition.label} needs Water_Elev_ft and Water_Depth_ft datasets.`,
+        )
+      }
+      return {
+        ground: selection.condition.projected!.z,
+        wse: this.scalarValues(selection, wseParam),
+        depth: this.scalarValues(selection, depthParam),
+        velocity: velocityParam
+          ? this.vectorValues(selection, velocityParam)
+          : undefined,
+      }
+    }
+    return buildHydraulicCrossSectionScene({
+      baseline,
+      comparison,
+      line,
+      baselineResults: results(baseline),
+      comparisonResults: results(comparison),
+      dryDepth,
+      sampleSpacing,
+    })
+  }
+
   private scalarValues(selection: RunSelection, paramName: string) {
     const cacheKey = `${selection.key}:${selection.index}:${paramName}`
     const cached = this.valueCache.get(cacheKey)
@@ -355,6 +407,17 @@ export class HydraulicEngine {
     const file = selection.condition.datasetFile as H5File | undefined
     if (!file) throw new Error('The selected datasets file is unavailable.')
     const values = finalTimestep(file, selection.run.name, paramName)
+    this.valueCache.set(cacheKey, values)
+    return values
+  }
+
+  private vectorValues(selection: RunSelection, paramName: string) {
+    const cacheKey = `${selection.key}:${selection.index}:${paramName}:vector`
+    const cached = this.valueCache.get(cacheKey)
+    if (cached && !(cached instanceof Float32Array)) return cached
+    const file = selection.condition.datasetFile as H5File | undefined
+    if (!file) throw new Error('The selected datasets file is unavailable.')
+    const values = finalVectorTimestep(file, selection.run.name, paramName)
     this.valueCache.set(cacheKey, values)
     return values
   }

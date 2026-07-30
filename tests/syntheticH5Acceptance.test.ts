@@ -38,6 +38,33 @@ describe('synthetic SMS H5 contract', () => {
       Array.from(scene.diff).map((value) => Number(value.toFixed(2))),
       [0.5, -0.1, 0.6, -0.3],
     )
+    const crossSection = engine.buildCrossSection(
+      'EX',
+      0,
+      'PR',
+      0,
+      {
+        id: 'synthetic-section',
+        label: 'Synthetic section',
+        points: [
+          {
+            x: scene.projected.mx[0],
+            y: (scene.projected.my[0] + scene.projected.my[2]) / 2,
+          },
+          {
+            x: scene.projected.mx[1],
+            y: (scene.projected.my[1] + scene.projected.my[3]) / 2,
+          },
+        ],
+        direction: 'a-to-b',
+      },
+      0,
+      1,
+    )
+    assert.ok(crossSection.samples.length >= 25)
+    assert.ok(crossSection.baselineAverage.value != null)
+    assert.ok(crossSection.comparisonAverage.value != null)
+    assert.equal(crossSection.warnings.length, 0)
     engine.reset()
   })
 })

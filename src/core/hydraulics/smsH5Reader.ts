@@ -132,3 +132,28 @@ export function finalTimestep(
     timeSteps * nodeCount,
   ) as Float32Array
 }
+
+export function finalVectorTimestep(
+  file: H5File,
+  runName: string,
+  paramName: string,
+) {
+  const dataset = file.get(`Datasets/${runName}/${paramName}/Values`)
+  const [timeSteps, nodeCount, componentCount] = dataset.shape ?? []
+  if (
+    !Number.isFinite(timeSteps) ||
+    !Number.isFinite(nodeCount) ||
+    componentCount < 2
+  ) {
+    throw new Error(`${paramName} is not a node-based vector dataset.`)
+  }
+  const allValues = dataset.value as ArrayLike<number>
+  const offset = (timeSteps - 1) * nodeCount * componentCount
+  const vx = new Float32Array(nodeCount)
+  const vy = new Float32Array(nodeCount)
+  for (let index = 0; index < nodeCount; index += 1) {
+    vx[index] = allValues[offset + index * componentCount]
+    vy[index] = allValues[offset + index * componentCount + 1]
+  }
+  return { vx, vy }
+}

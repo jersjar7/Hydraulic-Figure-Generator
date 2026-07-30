@@ -1,5 +1,7 @@
 import type {
   ConditionKey,
+  CrossSectionLine,
+  HydraulicCrossSectionScene,
   WseAssessmentLineCollection,
   WseDifferenceScene,
 } from '../../core/types'
@@ -22,4 +24,13 @@ export type HydraulicAnalysisPort = {
     dryDepth: number,
     interval: number,
   ): WseAssessmentLineCollection
+  buildCrossSection(
+    baselineKey: ConditionKey,
+    baselineIndex: number,
+    comparisonKey: ConditionKey,
+    comparisonIndex: number,
+    line: CrossSectionLine,
+    dryDepth: number,
+    sampleSpacing?: number,
+  ): HydraulicCrossSectionScene
 }

@@ -58,6 +58,7 @@ function createDatasets(
   const run = file.get(`Datasets/${runName}`)
   run.create_group('Water_Elev_ft')
   run.create_group('Water_Depth_ft')
+  run.create_group('Velocity_ft_p_s')
   file.get(`Datasets/${runName}/Water_Elev_ft`).create_dataset({
     name: 'Values',
     data: new Float32Array(wse),
@@ -68,6 +69,17 @@ function createDatasets(
     name: 'Values',
     data: new Float32Array([1, 1, 1, 1]),
     shape: [1, 4],
+    dtype: '<f4',
+  })
+  file.get(`Datasets/${runName}/Velocity_ft_p_s`).create_dataset({
+    name: 'Values',
+    data: new Float32Array([
+      0, 2,
+      0, 2,
+      0, 2,
+      0, 2,
+    ]),
+    shape: [1, 4, 2],
     dtype: '<f4',
   })
   file.close()
