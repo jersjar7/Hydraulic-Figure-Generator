@@ -12,10 +12,13 @@ Create `src/features/<figure-name>/` with:
 - A React workspace component.
 - Figure-specific defaults and settings types when they are not shared.
 - Rendering and export adapters.
+- A registered settings-section list; add editor tools through the shared tool
+  contract instead of hard-coding toolbar branches.
 
 The module must define its stable ID, readiness rule, scene construction,
-render entry point, and export filename. It should call `HydraulicEngine`
-methods rather than parse H5 directly.
+render entry point, and export filename. Compose canvas responsibilities as
+ordered render layers and call `HydraulicEngine` methods rather than parsing
+H5 directly.
 
 ## 2. Register It
 

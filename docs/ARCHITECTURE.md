@@ -41,15 +41,22 @@ must not import React. `npm run check:architecture` enforces these rules and a
 - `core/map/` owns reusable view transforms, annotation geometry, hydraulic
   sampling, basemaps, overlays, stationing, assessment layers, hydraulic
   classes, and individual report elements.
-- `mapRenderer.ts` is the stable canvas facade and orchestrates a complete
-  scene and settings snapshot without mutating application state.
+- `mapRenderer.ts` is the stable canvas facade. Ordered modules in
+  `core/map/wseDifferenceRenderLayers.ts` compose the basemap, hydraulic,
+  overlay, annotation, and report-element layers without mutating application
+  state.
 - `projectFile.ts` is the stable persistence facade. Versioned schema,
   migrations, validation, serialization, and deserialization live under
   `core/projectFiles/`.
 - `shapefile.ts` converts imported archives into internal overlays.
 - `features/project-session/` owns the mutable engine revision, scenario
   catalog, role assignments, and per-scenario run selections.
+- `features/project-document/` owns shared persisted state such as overlays.
+  Figure documents own only settings and annotations for that output.
 - `features/figures/registry.ts` registers headless figure modules.
+- `features/figures/settingsSectionModule.ts` defines the typed settings-panel
+  registry; `features/tools/editorToolModule.ts` defines editor-tool metadata
+  and activation contracts.
 - `features/figures/workspaceRegistry.ts` associates those modules with React
   workspaces without pulling CSS or React into Node-based core tests.
 
@@ -94,11 +101,13 @@ contract.
 ## Frontend Growth
 
 `App.tsx` is a figure-workspace host. The current editor is composed by
-`features/wse-difference/WseDifferenceWorkspace.tsx`; calculation, legend,
-frame, annotation, figure-element, canvas-sizing, rendering, and interaction
+`features/wse-difference/WseDifferenceWorkspace.tsx`; input, project-file,
+generation, map-canvas, settings, annotation, rendering, and interaction
 responsibilities live in focused hooks and components around that composition
-root. Controls that become useful to a second figure should be promoted into a
-focused shared component or hook rather than copied.
+root. Settings sections and annotation tools are registered modules rather
+than conditional branches in the workspace. Controls that become useful to a
+second figure should be promoted into a focused shared component or hook
+rather than copied.
 
 Prefer one reducer or feature hook per workflow over adding more independent
 top-level state variables. A new figure type should live under

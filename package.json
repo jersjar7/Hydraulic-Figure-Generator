@@ -17,6 +17,7 @@
     "test:unit": "node --import tsx --test tests/*.test.ts",
     "test:ui": "vitest run",
     "test:e2e": "playwright test",
+    "fixtures:h5": "tsx scripts/generate-synthetic-h5.ts",
     "test:natural": "tsx scripts/test-natural.ts",
     "test:site6": "tsx scripts/test-site6.ts"
   },

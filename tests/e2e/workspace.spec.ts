@@ -1,4 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { join } from 'node:path'
+
+const h5Fixture = (name: string) =>
+  join(process.cwd(), 'tests', 'fixtures', 'h5', name)
 
 test('shared figure workspace exposes scalable project and settings navigation', async ({
   page,
@@ -41,4 +45,65 @@ test('mobile controls keep both sidebars reachable', async ({ page }) => {
   await expect(
     page.getByRole('heading', { name: 'Figure settings' }),
   ).toBeVisible()
+})
+
+test('synthetic SMS files upload and render a nonblank figure', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto('.')
+
+  await page
+    .getByTestId('h5-file-drop')
+    .locator('input[type="file"]')
+    .setInputFiles([
+      h5Fixture('Existing-Geometry.h5'),
+      h5Fixture('Existing-Datasets.h5'),
+      h5Fixture('Proposed-Geometry.h5'),
+      h5Fixture('Proposed-Datasets.h5'),
+    ])
+
+  await expect(page.getByLabel('EX scenario name')).toBeVisible()
+  await expect(page.getByLabel('PR scenario name')).toBeVisible()
+  await expect(page.getByTestId('generate-map')).toBeEnabled()
+
+  await page.getByRole('tab', { name: 'View', exact: true }).click()
+  await page
+    .locator('label.range-field')
+    .filter({ hasText: 'Aerial opacity' })
+    .locator('input')
+    .fill('0')
+  await page.getByTestId('generate-map').click()
+
+  const canvas = page.getByLabel('Generated WSE difference figure')
+  await expect(canvas).toHaveClass(/is-visible/)
+  await expect
+    .poll(() =>
+      canvas.evaluate((element) => {
+        const map = element as HTMLCanvasElement
+        const context = map.getContext('2d')
+        if (!context || map.width === 0 || map.height === 0) return 0
+        const pixels = context.getImageData(
+          0,
+          0,
+          map.width,
+          map.height,
+        ).data
+        let colored = 0
+        for (let index = 0; index < pixels.length; index += 128) {
+          const red = pixels[index]
+          const green = pixels[index + 1]
+          const blue = pixels[index + 2]
+          if (
+            Math.max(red, green, blue) -
+              Math.min(red, green, blue) >
+            20
+          ) {
+            colored += 1
+          }
+        }
+        return colored
+      }),
+    )
+    .toBeGreaterThan(100)
 })

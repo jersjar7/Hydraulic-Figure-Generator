@@ -50,11 +50,14 @@ src/
     shapefile.ts       Zipped shapefile ingestion
     types.ts           Compatibility facade for partitioned contracts
   features/
+    annotations/       Reusable annotation capabilities and collection commands
     assessment-lines/  Stationing controls, bounded review state, and interface
-    figures/           Figure contracts plus calculation and workspace registries
+    figures/           Figure, tool, settings-section, and workspace contracts
+    project-document/  Shared project state independent of figure documents
     project-session/   H5 scenario catalog, role, run, and resource ownership
     stationing/        Centerline station figure-element controls
-    wse-difference/    Complete WSE Difference workspace, renderer, and export
+    tools/             Reusable editor-tool module contract
+    wse-difference/    WSE workspace composition, controllers, panels, and export
   infrastructure/      Browser downloads and shapefile gateway adapters
   App.tsx              Figure workspace host
 ```

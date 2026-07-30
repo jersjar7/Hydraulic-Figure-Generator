@@ -32,6 +32,9 @@ project data. They cover:
 - Known and arbitrary scenario-name detection plus version 11 role migration.
 - WSE figure registration, accepted engineering defaults, class boundaries,
   and synthetic landscape/portrait raster output.
+- Editor-tool, settings-section, and ordered render-layer registry contracts.
+- Reusable annotation capability and collection behavior.
+- Public-safe synthetic SMS H5 ingestion with hand-calculated WSE differences.
 - Version 14 shared/figure project separation and version 13 migration.
 - Application file filtering, project download/read ports, and WSE project
   hydration.
@@ -47,7 +50,8 @@ Component tests under `tests/ui/` use Vitest, jsdom, and Testing Library. They
 cover keyboard/pointer navigation and persistent diagnostics behavior.
 
 Browser tests under `tests/e2e/` use Playwright Chromium. They verify the shared
-desktop workflow, settings navigation, and mobile access to both sidebars.
+desktop workflow, settings navigation, mobile access to both sidebars, and a
+four-file synthetic SMS upload through nonblank canvas rendering.
 GitHub Actions installs its own Chromium build; local Windows runs use installed
 Google Chrome.
 
@@ -83,12 +87,14 @@ npm run test:natural
 
 ## Remaining Coverage Opportunities
 
-Before adding another figure type, add checked-in synthetic coverage for:
+The public-safe H5 fixtures live under `tests/fixtures/h5/` and can be
+regenerated with `npm run fixtures:h5`. Before adding another figure type,
+continue expanding checked-in synthetic coverage for:
 
 - Missing and malformed H5 groups.
 - Dataset/geometry node-count mismatches.
 - Nonoverlapping and differently spaced meshes.
 - CRS failures and projected shapefile fixtures.
 - Basemap failure and cache behavior.
-- A public-safe synthetic H5 browser fixture for upload-to-export automation.
+- PNG export completion from the synthetic browser fixture.
 - Figure-specific browser tests as each new output module is introduced.
