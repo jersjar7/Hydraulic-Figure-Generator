@@ -8,12 +8,9 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type KeyboardEvent,
 } from 'react'
 import '../../App.css'
-import { FigureEditorShell } from '../../components/editor/FigureEditorShell'
-import { FigureMapWorkspace } from '../../components/editor/FigureMapWorkspace'
-import { FigureSettingsSidebar } from '../../components/editor/FigureSettingsSidebar'
+import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspaceScaffold'
 import { ProjectDataPanel } from '../../components/ProjectDataPanel'
 import {
   createWseDifferenceRenderDocument,
@@ -221,35 +218,6 @@ export function WseDifferenceWorkspace() {
     value: FigureSettings[Key],
   ) => {
     setSettings((current) => ({ ...current, [key]: value }))
-  }
-
-  const handleSettingsTabKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ) => {
-    let nextIndex = index
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-      nextIndex = (index + 1) % WSE_SETTINGS_SECTIONS.length
-    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-      nextIndex =
-        (index - 1 + WSE_SETTINGS_SECTIONS.length) %
-        WSE_SETTINGS_SECTIONS.length
-    } else if (event.key === 'Home') {
-      nextIndex = 0
-    } else if (event.key === 'End') {
-      nextIndex = WSE_SETTINGS_SECTIONS.length - 1
-    } else {
-      return
-    }
-
-    event.preventDefault()
-    const nextSection = WSE_SETTINGS_SECTIONS[nextIndex]
-    setActiveSettingsSection(nextSection.key)
-    const tabs =
-      event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
-        '[role="tab"]',
-      )
-    tabs?.[nextIndex]?.focus()
   }
 
   const projectInputs = useWseProjectInputs({
@@ -514,12 +482,17 @@ export function WseDifferenceWorkspace() {
     wseSettingsSectionByKey(activeSettingsSection).component
 
   return (
-    <FigureEditorShell
+    <FigureWorkspaceScaffold<SettingsSectionKey>
       workspaceLabel={ACTIVE_FIGURE.workspaceLabel}
       figureLabel={ACTIVE_FIGURE.label}
+      comparisonDescription={`${comparisonLabel} minus ${baselineLabel}`}
       inputsCollapsed={leftCollapsed}
       leftPanelOpen={leftOpen}
       rightPanelOpen={rightOpen}
+      busy={busy}
+      notices={notices}
+      settingsSections={WSE_SETTINGS_SECTIONS}
+      activeSettingsSection={activeSettingsSection}
       onSave={projectFiles.saveProject}
       onLoad={() => projectInputRef.current?.click()}
       onOpenLeftPanel={() => {
@@ -531,16 +504,25 @@ export function WseDifferenceWorkspace() {
         setLeftOpen(false)
         setRightOpen(false)
       }}
-      loadInput={
-          <input
-            ref={projectInputRef}
-            className="visually-hidden"
-            type="file"
-            accept=".hydfig,.json"
-            onChange={loadProject}
-          />
+      onCloseSettingsPanel={() => setRightOpen(false)}
+      onSettingsSectionChange={setActiveSettingsSection}
+      onZoomOut={() =>
+        updateSettings('zoom', Math.max(0.35, settings.zoom - 0.1))
       }
-    >
+      onZoomIn={() =>
+        updateSettings('zoom', Math.min(4, settings.zoom + 0.1))
+      }
+      onFitFrame={figureElements.resetView}
+      loadInput={
+        <input
+          ref={projectInputRef}
+          className="visually-hidden"
+          type="file"
+          accept=".hydfig,.json"
+          onChange={loadProject}
+        />
+      }
+      projectPanel={
         <ProjectDataPanel
           mobileOpen={leftOpen}
           collapsed={leftCollapsed}
@@ -616,20 +598,8 @@ export function WseDifferenceWorkspace() {
           }
           onReset={resetProject}
         />
-
-        <FigureMapWorkspace
-          figureLabel={ACTIVE_FIGURE.label}
-          comparisonDescription={`${comparisonLabel} minus ${baselineLabel}`}
-          busy={busy}
-          notices={notices}
-          onZoomOut={() =>
-            updateSettings('zoom', Math.max(0.35, settings.zoom - 0.1))
-          }
-          onZoomIn={() =>
-            updateSettings('zoom', Math.min(4, settings.zoom + 0.1))
-          }
-          onFitFrame={figureElements.resetView}
-        >
+      }
+      mapContent={
           <WseMapCanvas
             scene={scene}
             ready={ready}
@@ -653,38 +623,30 @@ export function WseDifferenceWorkspace() {
               if (!elementDragging) setHoveredElement(null)
             }}
           />
-        </FigureMapWorkspace>
-
-        <FigureSettingsSidebar<SettingsSectionKey>
-          mobileOpen={rightOpen}
-          sections={WSE_SETTINGS_SECTIONS}
-          activeSection={activeSettingsSection}
-          onSectionChange={setActiveSettingsSection}
-          onSectionKeyDown={handleSettingsTabKeyDown}
-          onMobileClose={() => setRightOpen(false)}
-          footer={
-            <div className="generate-bar">
-              <button
-                className="button primary full"
-                type="button"
-                disabled={!ready || busy}
-                data-testid="generate-map"
-                onClick={generation.generateMap}
-              >
-                <Map size={18} aria-hidden="true" />
-                {scene ? 'Regenerate map' : 'Generate map'}
-              </button>
-              {!ready ? (
-                <span className="generate-hint">
-                  <AlertCircle size={14} aria-hidden="true" />
-                  Add Baseline and Comparison scenarios first
-                </span>
-              ) : null}
-            </div>
-          }
-        >
-          <ActiveSettingsSection context={settingsSectionContext} />
-        </FigureSettingsSidebar>
-    </FigureEditorShell>
+      }
+      settingsContent={
+        <ActiveSettingsSection context={settingsSectionContext} />
+      }
+      settingsFooter={
+        <div className="generate-bar">
+          <button
+            className="button primary full"
+            type="button"
+            disabled={!ready || busy}
+            data-testid="generate-map"
+            onClick={generation.generateMap}
+          >
+            <Map size={18} aria-hidden="true" />
+            {scene ? 'Regenerate map' : 'Generate map'}
+          </button>
+          {!ready ? (
+            <span className="generate-hint">
+              <AlertCircle size={14} aria-hidden="true" />
+              Add Baseline and Comparison scenarios first
+            </span>
+          ) : null}
+        </div>
+      }
+    />
   )
 }
