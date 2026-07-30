@@ -3,13 +3,11 @@ import type {
   AnnotationDefaults,
   FigureSettings,
   MapAnnotation,
-  MapOverlay,
 } from '../../core/types'
 import { wseDifferenceFigure } from './wseDifferenceFigure'
 
 export type WseFigureDocument = {
   settings: FigureSettings
-  overlays: MapOverlay[]
   annotations: MapAnnotation[]
   annotationDefaults: AnnotationDefaults
 }
@@ -18,7 +16,6 @@ export type DocumentValue<T> = T | ((current: T) => T)
 
 export type WseFigureDocumentAction =
   | { type: 'settings/set'; value: DocumentValue<FigureSettings> }
-  | { type: 'overlays/set'; value: DocumentValue<MapOverlay[]> }
   | { type: 'annotations/set'; value: DocumentValue<MapAnnotation[]> }
   | {
       type: 'annotation-defaults/set'
@@ -36,7 +33,6 @@ function resolveValue<T>(current: T, value: DocumentValue<T>) {
 export function createWseFigureDocument(): WseFigureDocument {
   return {
     settings: wseDifferenceFigure.createDefaultSettings(),
-    overlays: [],
     annotations: [],
     annotationDefaults: createDefaultAnnotationSettings(),
   }
@@ -51,11 +47,6 @@ export function wseFigureDocumentReducer(
       return {
         ...state,
         settings: resolveValue(state.settings, action.value),
-      }
-    case 'overlays/set':
-      return {
-        ...state,
-        overlays: resolveValue(state.overlays, action.value),
       }
     case 'annotations/set':
       return {

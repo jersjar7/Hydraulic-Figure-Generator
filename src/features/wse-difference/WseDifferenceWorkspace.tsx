@@ -29,6 +29,7 @@ import { browserProjectFilePort } from '../../infrastructure/browser/browserProj
 import { shapefileArchivePort } from '../../infrastructure/shapefiles/shapefileArchivePort'
 import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
 import { useProjectSession } from '../project-session/useProjectSession'
+import { useHydraulicProjectDocument } from '../project-document/useHydraulicProjectDocument'
 import { downloadWseDifferencePng } from './exportWseDifference'
 import { useAssessmentMapLayers } from './useAssessmentMapLayers'
 import { wseDifferenceFigure } from './wseDifferenceFigure'
@@ -62,6 +63,7 @@ const ACTIVE_FIGURE = wseDifferenceFigure
 
 export function WseDifferenceWorkspace() {
   const projectSession = useProjectSession()
+  const projectDocument = useHydraulicProjectDocument()
   const figureDocument = useWseFigureDocument()
   const editorUi = useWseEditorUi()
   const {
@@ -74,16 +76,20 @@ export function WseDifferenceWorkspace() {
   } = projectSession
   const {
     settings,
-    overlays,
     annotations,
     annotationDefaults,
     setSettings,
-    setOverlays,
     setAnnotations,
     setAnnotationDefaults,
     loadDocument,
     resetDocument,
   } = figureDocument
+  const {
+    overlays,
+    setOverlays,
+    loadDocument: loadProjectDocument,
+    resetDocument: resetProjectDocument,
+  } = projectDocument
   const assessmentWorkflow = useAssessmentWorkflow(1)
   const assessmentState = assessmentWorkflow.state
   const assessmentLines = assessmentState.collection
@@ -474,6 +480,7 @@ export function WseDifferenceWorkspace() {
   const resetProject = () => {
     mapInteractions.resetInteractions()
     projectSession.reset()
+    resetProjectDocument()
     resetDocument()
     setSelectedAnnotationId(null)
     setAnnotationStart(null)
@@ -550,8 +557,13 @@ export function WseDifferenceWorkspace() {
         file,
         browserProjectFilePort,
       )
-      const loaded = hydrateWseProject(project, figureDocument.document)
+      const loaded = hydrateWseProject(
+        project,
+        figureDocument.document,
+        projectDocument.document,
+      )
       loadDocument(loaded.document)
+      loadProjectDocument(loaded.project)
       setSelectedAnnotationId(null)
       setSelectedStationLabelId(null)
       setAnnotationStart(null)

@@ -7,7 +7,6 @@ import type {
   AnnotationDefaults,
   FigureSettings,
   MapAnnotation,
-  MapOverlay,
 } from '../../core/types'
 import {
   createWseFigureDocument,
@@ -25,11 +24,6 @@ export function useWseFigureDocument() {
   const setSettings = useCallback(
     (value: SetStateAction<FigureSettings>) =>
       dispatch({ type: 'settings/set', value }),
-    [dispatch],
-  )
-  const setOverlays = useCallback(
-    (value: SetStateAction<MapOverlay[]>) =>
-      dispatch({ type: 'overlays/set', value }),
     [dispatch],
   )
   const setAnnotations = useCallback(
@@ -55,11 +49,9 @@ export function useWseFigureDocument() {
   return {
     document,
     settings: document.settings,
-    overlays: document.overlays,
     annotations: document.annotations,
     annotationDefaults: document.annotationDefaults,
     setSettings,
-    setOverlays,
     setAnnotations,
     setAnnotationDefaults,
     loadDocument,

@@ -11,6 +11,7 @@ import type {
   TextDownload,
 } from '../src/application/ports/fileGateways'
 import { createWseFigureDocument } from '../src/features/wse-difference/wseFigureDocument'
+import { createHydraulicProjectDocument } from '../src/features/project-document/hydraulicProjectDocument'
 import {
   createWseProjectSnapshot,
   hydrateWseProject,
@@ -59,8 +60,10 @@ describe('application file workflows', () => {
       },
     }
     const document = createWseFigureDocument()
+    const project = createHydraulicProjectDocument()
     const snapshot = createWseProjectSnapshot({
       ...document,
+      ...project,
       settings: { ...document.settings, dryDepth: 0.1 },
       scenarioSelection: {
         baselineId: 'EX',
@@ -86,6 +89,7 @@ describe('application file workflows', () => {
 
   it('hydrates legacy aliases without mutating the current document', () => {
     const current = createWseFigureDocument()
+    const currentProject = createHydraulicProjectDocument()
     const loaded = hydrateWseProject(
       {
         version: 14,
@@ -99,6 +103,7 @@ describe('application file workflows', () => {
         selectedRuns: { existingRun: 2, proposedRun: 3 },
       },
       current,
+      currentProject,
     )
 
     assert.equal(loaded.document.settings.differenceOutlineColor, '#123456')
@@ -110,6 +115,7 @@ describe('application file workflows', () => {
       PR: 3,
     })
     assert.notEqual(loaded.document, current)
+    assert.notEqual(loaded.project, currentProject)
     assert.equal(current.settings.differenceOutlineColor, '#111111')
   })
 })

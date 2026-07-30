@@ -7,9 +7,11 @@ import type {
   ScenarioSelectionProject,
 } from '../../core/projectFile'
 import type { WseFigureDocument } from './wseFigureDocument'
+import type { HydraulicProjectDocument } from '../project-document/hydraulicProjectDocument'
 
 export type WseProjectState = {
   document: WseFigureDocument
+  project: HydraulicProjectDocument
   scenarioSelection: Required<
     Pick<
       ScenarioSelectionProject,
@@ -21,7 +23,8 @@ export type WseProjectState = {
   assessment: AssessmentWorkflowProject
 }
 
-export type CreateWseProjectSnapshotOptions = WseFigureDocument & {
+export type CreateWseProjectSnapshotOptions = WseFigureDocument &
+  HydraulicProjectDocument & {
   scenarioSelection: ScenarioSelectionProject
   assessment: AssessmentWorkflowProject
 }
@@ -46,7 +49,8 @@ export function createWseProjectSnapshot({
 
 export function hydrateWseProject(
   project: HydraulicFigureProject,
-  current: WseFigureDocument,
+  currentFigure: WseFigureDocument,
+  currentProject: HydraulicProjectDocument,
 ): WseProjectState {
   const projectSettings = project.settings
   const settings = projectSettings
@@ -57,7 +61,7 @@ export function hydrateWseProject(
           ...settingsWithoutLegacyAliases
         } = projectSettings
         const elementStyles = mergeElementStyles(
-          current.settings.elementStyles,
+          currentFigure.settings.elementStyles,
           projectSettings.elementStyles,
         )
         if (
@@ -76,21 +80,21 @@ export function hydrateWseProject(
           )
         }
         return {
-          ...current.settings,
+          ...currentFigure.settings,
           ...settingsWithoutLegacyAliases,
           differenceOutlineColor:
             settingsWithoutLegacyAliases.differenceOutlineColor ??
             legacyContourColor ??
-            current.settings.differenceOutlineColor,
+            currentFigure.settings.differenceOutlineColor,
           showDifferenceOutlines:
             settingsWithoutLegacyAliases.showDifferenceOutlines ??
             legacyShowContours ??
-            current.settings.showDifferenceOutlines,
+            currentFigure.settings.showDifferenceOutlines,
           showWetDryKey:
             settingsWithoutLegacyAliases.showWetDryKey ??
-            current.settings.showWetDryKey,
+            currentFigure.settings.showWetDryKey,
           centerlineStationing: {
-            ...current.settings.centerlineStationing,
+            ...currentFigure.settings.centerlineStationing,
             ...(settingsWithoutLegacyAliases.centerlineStationing ?? {}),
             overrides: {
               ...(settingsWithoutLegacyAliases.centerlineStationing
@@ -98,25 +102,27 @@ export function hydrateWseProject(
             },
           },
           elementPositions: {
-            ...current.settings.elementPositions,
+            ...currentFigure.settings.elementPositions,
             ...(settingsWithoutLegacyAliases.elementPositions ?? {}),
           },
           elementStyles,
         }
       })()
-    : current.settings
+    : currentFigure.settings
   const scenarioSelection = project.scenarioSelection
 
   return {
     document: {
       settings,
-      overlays: project.overlays ?? current.overlays,
-      annotations: project.annotations ?? current.annotations,
+      annotations: project.annotations ?? currentFigure.annotations,
       annotationDefaults: {
         ...createDefaultAnnotationSettings(),
-        ...current.annotationDefaults,
+        ...currentFigure.annotationDefaults,
         ...(project.annotationDefaults ?? {}),
       },
+    },
+    project: {
+      overlays: project.overlays ?? currentProject.overlays,
     },
     scenarioSelection: {
       baselineId: scenarioSelection?.baselineId ?? 'EX',

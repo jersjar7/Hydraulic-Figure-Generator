@@ -15,7 +15,6 @@ describe('WSE figure document', () => {
 
     assert.equal(initial.settings.dryDepth, 0)
     assert.equal(updated.settings.dryDepth, 0.25)
-    assert.equal(updated.overlays, initial.overlays)
     assert.equal(updated.annotations, initial.annotations)
   })
 
@@ -52,6 +51,5 @@ describe('WSE figure document', () => {
     assert.equal(replaced, loaded)
     assert.equal(reset.settings.zoom, 1)
     assert.deepEqual(reset.annotations, [])
-    assert.deepEqual(reset.overlays, [])
   })
 })
