@@ -13,6 +13,17 @@
   border-radius: 5px;
 }
 
+.annotation-history-actions {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.annotation-history-actions .icon-button {
+  width: 28px;
+  height: 28px;
+}
+
 .annotation-view-tab {
   min-width: 0;
   min-height: 30px;

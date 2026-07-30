@@ -1,4 +1,9 @@
-import { List, Plus } from 'lucide-react'
+import {
+  List,
+  Plus,
+  Redo2,
+  Undo2,
+} from 'lucide-react'
 import { ControlSection } from '../../../components/ControlSection'
 import type {
   AnnotationPanelActions,
@@ -59,6 +64,44 @@ export function AnnotationSettingsPanel({
               {model.annotations.length}
             </span>
           </button>
+          <span className="annotation-history-actions">
+            <button
+              className="icon-button"
+              type="button"
+              title={
+                model.undoLabel
+                  ? `Undo ${model.undoLabel}`
+                  : 'Nothing to undo'
+              }
+              aria-label={
+                model.undoLabel
+                  ? `Undo ${model.undoLabel}`
+                  : 'Nothing to undo'
+              }
+              disabled={!model.canUndo}
+              onClick={actions.undo}
+            >
+              <Undo2 size={15} aria-hidden="true" />
+            </button>
+            <button
+              className="icon-button"
+              type="button"
+              title={
+                model.redoLabel
+                  ? `Redo ${model.redoLabel}`
+                  : 'Nothing to redo'
+              }
+              aria-label={
+                model.redoLabel
+                  ? `Redo ${model.redoLabel}`
+                  : 'Nothing to redo'
+              }
+              disabled={!model.canRedo}
+              onClick={actions.redo}
+            >
+              <Redo2 size={15} aria-hidden="true" />
+            </button>
+          </span>
         </div>
 
         {model.panelView === 'create' ? (

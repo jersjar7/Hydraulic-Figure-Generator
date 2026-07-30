@@ -49,6 +49,7 @@ import {
   translateAnnotation,
   updateAnnotation,
 } from '../annotations/annotationCollection'
+import { useEditorCommandHistory } from '../editor-history/useEditorCommandHistory'
 
 type StateSetter<Value> = Dispatch<SetStateAction<Value>>
 
@@ -141,6 +142,18 @@ export function useWseAnnotationController({
     setAnnotationStart,
     setSelectedId,
   })
+  const {
+    execute: executeAnnotationCommand,
+    undo: undoAnnotationCommand,
+    redo: redoAnnotationCommand,
+    canUndo,
+    canRedo,
+    undoLabel,
+    redoLabel,
+  } = useEditorCommandHistory({
+    value: annotations,
+    onChange: setAnnotations,
+  })
 
   useEffect(() => {
     if (panelView === 'placed' && placedView === 'detail' && !selected) {
@@ -200,20 +213,33 @@ export function useWseAnnotationController({
         (event.key === 'Delete' || event.key === 'Backspace') &&
         selectedId
       ) {
-        setAnnotations((current) =>
-          current.filter((annotation) => annotation.id !== selectedId),
-        )
+        executeAnnotationCommand({
+          label: 'delete annotation',
+          apply: (current) =>
+            current.filter((annotation) => annotation.id !== selectedId),
+        })
         setSelectedId(null)
+      }
+      const modifier = event.ctrlKey || event.metaKey
+      if (modifier && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        if (event.shiftKey) redoAnnotationCommand()
+        else undoAnnotationCommand()
+      } else if (modifier && event.key.toLowerCase() === 'y') {
+        event.preventDefault()
+        redoAnnotationCommand()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [
+    executeAnnotationCommand,
+    redoAnnotationCommand,
     selectedId,
-    setAnnotations,
     setAnnotationStart,
     setSelectedId,
     setTool,
+    undoAnnotationCommand,
   ])
 
   const createAnnotation = (
@@ -240,7 +266,10 @@ export function useWseAnnotationController({
           : kind === 'leader' || kind === 'result',
       resultField,
     }
-    setAnnotations((current) => [...current, annotation])
+    executeAnnotationCommand({
+      label: `add ${kind} annotation`,
+      apply: (current) => [...current, annotation],
+    })
     setSelectedId(id)
     setTool('select')
     setPanelView('placed')
@@ -269,7 +298,10 @@ export function useWseAnnotationController({
       ])
       return
     }
-    setAnnotations(updated.annotations)
+    executeAnnotationCommand({
+      label: 'add result extrema',
+      apply: () => updated.annotations,
+    })
 
     setSelectedId(ids.get(available[0].kind) ?? null)
     setTool('select')
@@ -303,9 +335,12 @@ export function useWseAnnotationController({
 
   const updateAppearance = (patch: Partial<AnnotationDefaults>) => {
     if (selectedId) {
-      setAnnotations((current) =>
-        updateAnnotation(current, selectedId, patch),
-      )
+      executeAnnotationCommand({
+        label: 'edit annotation style',
+        mergeKey: `appearance:${selectedId}`,
+        apply: (current) =>
+          updateAnnotation(current, selectedId, patch),
+      })
     } else {
       setAnnotationDefaults((current) => ({ ...current, ...patch }))
     }
@@ -323,25 +358,30 @@ export function useWseAnnotationController({
       settings,
       selected.points[0],
     )
-    setAnnotations((current) =>
-      current.map((annotation) =>
-        annotation.id === selected.id
-          ? {
-              ...annotation,
-              resultField: field,
-              text: sample
-                ? formatHydraulicResultLabel(field, sample)
-                : annotation.text,
-            }
-          : annotation,
-      ),
-    )
+    executeAnnotationCommand({
+      label: 'change result label',
+      apply: (current) =>
+        current.map((annotation) =>
+          annotation.id === selected.id
+            ? {
+                ...annotation,
+                resultField: field,
+                text: sample
+                  ? formatHydraulicResultLabel(field, sample)
+                  : annotation.text,
+              }
+            : annotation,
+        ),
+    })
   }
 
   const deleteSelected = () => {
     if (!selectedId) return
     const result = removeAnnotation(annotations, selectedId)
-    setAnnotations(result.annotations)
+    executeAnnotationCommand({
+      label: 'delete annotation',
+      apply: () => result.annotations,
+    })
     setSelectedId(result.selectedId)
     if (!result.selectedId) setPlacedView('list')
   }
@@ -380,7 +420,10 @@ export function useWseAnnotationController({
         copy.text = formatHydraulicResultLabel(copy.resultField, sample)
       }
     }
-    setAnnotations((current) => [...current, copy])
+    executeAnnotationCommand({
+      label: 'duplicate annotation',
+      apply: (current) => [...current, copy],
+    })
     setSelectedId(id)
     setTool('select')
     setPanelView('placed')
@@ -405,21 +448,26 @@ export function useWseAnnotationController({
       bounds,
       settings,
     )
-    setAnnotations((current) =>
-      current.map((annotation) =>
-        annotation.id === selectedId
-          ? translateAnnotation(
-              annotation,
-              offset.x - center.x,
-              offset.y - center.y,
-            )
-          : annotation,
-      ),
-    )
+    executeAnnotationCommand({
+      label: 'nudge annotation',
+      apply: (current) =>
+        current.map((annotation) =>
+          annotation.id === selectedId
+            ? translateAnnotation(
+                annotation,
+                offset.x - center.x,
+                offset.y - center.y,
+              )
+            : annotation,
+        ),
+    })
   }
 
   const clearAnnotations = () => {
-    setAnnotations([])
+    executeAnnotationCommand({
+      label: 'clear annotations',
+      apply: () => [],
+    })
     setSelectedId(null)
     setAnnotationStart(null)
   }
@@ -443,6 +491,10 @@ export function useWseAnnotationController({
     selected,
     selectedIndex,
     listItemRefs,
+    canUndo,
+    canRedo,
+    undoLabel,
+    redoLabel,
   }
   const actions: AnnotationPanelActions = {
     choosePanelView: navigation.choosePanelView,
@@ -462,6 +514,26 @@ export function useWseAnnotationController({
     nudgeSelected,
     duplicateSelected,
     deleteSelected,
+    undo: () => {
+      const restored = undoAnnotationCommand()
+      if (
+        restored &&
+        selectedId &&
+        !restored.some((annotation) => annotation.id === selectedId)
+      ) {
+        setSelectedId(null)
+      }
+    },
+    redo: () => {
+      const restored = redoAnnotationCommand()
+      if (
+        restored &&
+        selectedId &&
+        !restored.some((annotation) => annotation.id === selectedId)
+      ) {
+        setSelectedId(null)
+      }
+    },
   }
 
   return {

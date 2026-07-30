@@ -52,6 +52,10 @@ export type AnnotationPanelModel = {
   selected: MapAnnotation | null
   selectedIndex: number
   listItemRefs: RefObject<Map<string, HTMLButtonElement>>
+  canUndo: boolean
+  canRedo: boolean
+  undoLabel: string | null
+  redoLabel: string | null
 }
 
 export type AnnotationPanelActions = {
@@ -81,4 +85,6 @@ export type AnnotationPanelActions = {
   nudgeSelected: (dx: number, dy: number) => void
   duplicateSelected: () => void
   deleteSelected: () => void
+  undo: () => void
+  redo: () => void
 }
