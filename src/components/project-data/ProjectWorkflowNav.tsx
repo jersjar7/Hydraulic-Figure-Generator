@@ -1,75 +1,47 @@
 import {
   ChevronRight,
-  Database,
-  Layers3,
-  ListChecks,
-  Spline,
+  type LucideIcon,
 } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
+import type {
+  ProjectWorkflowSection,
+  ProjectWorkflowStatus,
+} from './projectWorkflowModule'
 
-export type ProjectWorkflowSection =
-  | 'models'
-  | 'layers'
-  | 'assessment'
-  | 'review'
-
-export type ProjectWorkflowStatus = {
-  badge?: number | string
-  tone?: 'neutral' | 'ready' | 'warning'
+type ProjectWorkflowNavigationItem = {
+  key: ProjectWorkflowSection
+  label: string
+  title: string
+  icon: LucideIcon
 }
 
 type ProjectWorkflowNavProps = {
   active: ProjectWorkflowSection
   collapsed: boolean
+  sections: readonly ProjectWorkflowNavigationItem[]
   statuses: Record<ProjectWorkflowSection, ProjectWorkflowStatus>
   onExpand(): void
   onSelect(section: ProjectWorkflowSection): void
 }
 
-const SECTIONS = [
-  {
-    key: 'models',
-    label: 'Models',
-    title: 'Model inputs and run pairing',
-    icon: Database,
-  },
-  {
-    key: 'layers',
-    label: 'Layers',
-    title: 'Shapefile overlays',
-    icon: Layers3,
-  },
-  {
-    key: 'assessment',
-    label: 'Assess',
-    title: 'Assessment-line generation and stationing',
-    icon: Spline,
-  },
-  {
-    key: 'review',
-    label: 'Review',
-    title: 'Assessment-line review',
-    icon: ListChecks,
-  },
-] as const
-
 function handleTabKeyDown(
   event: KeyboardEvent<HTMLButtonElement>,
   index: number,
+  sections: readonly ProjectWorkflowNavigationItem[],
   onSelect: (section: ProjectWorkflowSection) => void,
 ) {
   if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
   event.preventDefault()
-  const last = SECTIONS.length - 1
+  const last = sections.length - 1
   const next =
     event.key === 'Home'
       ? 0
       : event.key === 'End'
         ? last
         : event.key === 'ArrowLeft'
-          ? (index - 1 + SECTIONS.length) % SECTIONS.length
-          : (index + 1) % SECTIONS.length
-  const section = SECTIONS[next]
+          ? (index - 1 + sections.length) % sections.length
+          : (index + 1) % sections.length
+  const section = sections[next]
   onSelect(section.key)
   event.currentTarget
     .closest('[role="tablist"]')
@@ -80,6 +52,7 @@ function handleTabKeyDown(
 export function ProjectWorkflowNav({
   active,
   collapsed,
+  sections,
   statuses,
   onExpand,
   onSelect,
@@ -96,7 +69,7 @@ export function ProjectWorkflowNav({
         >
           <ChevronRight size={18} aria-hidden="true" />
         </button>
-        {SECTIONS.map((section) => {
+        {sections.map((section) => {
           const Icon = section.icon
           const status = statuses[section.key]
           return (
@@ -133,7 +106,7 @@ export function ProjectWorkflowNav({
       aria-label="Project workflow sections"
       role="tablist"
     >
-      {SECTIONS.map((section, index) => {
+      {sections.map((section, index) => {
         const Icon = section.icon
         const selected = active === section.key
         const status = statuses[section.key]
@@ -150,7 +123,7 @@ export function ProjectWorkflowNav({
             key={section.key}
             onClick={() => onSelect(section.key)}
             onKeyDown={(event) =>
-              handleTabKeyDown(event, index, onSelect)
+              handleTabKeyDown(event, index, sections, onSelect)
             }
           >
             <Icon size={17} aria-hidden="true" />

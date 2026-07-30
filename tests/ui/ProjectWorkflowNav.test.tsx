@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ProjectWorkflowNav } from '../../src/components/project-data/ProjectWorkflowNav'
+import { PROJECT_WORKFLOW_MODULES } from '../../src/components/project-data/projectWorkflowRegistry'
 
 const statuses = {
   models: { badge: 2, tone: 'ready' as const },
@@ -18,6 +19,7 @@ describe('ProjectWorkflowNav', () => {
       <ProjectWorkflowNav
         active="models"
         collapsed={false}
+        sections={PROJECT_WORKFLOW_MODULES}
         statuses={statuses}
         onExpand={vi.fn()}
         onSelect={onSelect}
@@ -36,6 +38,7 @@ describe('ProjectWorkflowNav', () => {
       <ProjectWorkflowNav
         active="models"
         collapsed={false}
+        sections={PROJECT_WORKFLOW_MODULES}
         statuses={statuses}
         onExpand={vi.fn()}
         onSelect={onSelect}
@@ -58,6 +61,7 @@ describe('ProjectWorkflowNav', () => {
       <ProjectWorkflowNav
         active="models"
         collapsed
+        sections={PROJECT_WORKFLOW_MODULES}
         statuses={statuses}
         onExpand={onExpand}
         onSelect={onSelect}
