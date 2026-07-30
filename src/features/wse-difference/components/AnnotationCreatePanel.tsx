@@ -7,8 +7,9 @@ import {
 } from 'lucide-react'
 import type { ResultLabelField } from '../../../core/types'
 import {
-  ANNOTATION_TOOLS,
-} from '../workspaceConfiguration'
+  WSE_ANNOTATION_TOOLS,
+  wseAnnotationToolById,
+} from '../annotationTools'
 import type {
   AnnotationPanelActions,
   AnnotationPanelModel,
@@ -29,6 +30,8 @@ export function AnnotationCreatePanel({
   model,
   actions,
 }: AnnotationCreatePanelProps) {
+  const activeTool = wseAnnotationToolById(model.tool)
+
   return (
     <div
       className="annotation-view-panel"
@@ -41,18 +44,18 @@ export function AnnotationCreatePanel({
         role="toolbar"
         aria-label="Annotation tools"
       >
-        {ANNOTATION_TOOLS.map((tool) => {
+        {WSE_ANNOTATION_TOOLS.map((tool) => {
           const ToolIcon = tool.icon
           return (
             <button
-              className={`annotation-tool${model.tool === tool.key ? ' active' : ''}`}
+              className={`annotation-tool${model.tool === tool.id ? ' active' : ''}`}
               type="button"
               title={tool.label}
               aria-label={tool.label}
-              aria-pressed={model.tool === tool.key}
-              disabled={!model.sceneReady}
-              key={tool.key}
-              onClick={() => actions.chooseTool(tool.key)}
+              aria-pressed={model.tool === tool.id}
+              disabled={tool.requiresScene && !model.sceneReady}
+              key={tool.id}
+              onClick={() => actions.chooseTool(tool.id)}
             >
               <ToolIcon size={16} aria-hidden="true" />
               <span>{tool.label}</span>
@@ -116,7 +119,7 @@ export function AnnotationCreatePanel({
         </div>
       ) : null}
 
-      {model.tool === 'text' || model.tool === 'leader' ? (
+      {activeTool.editor.text ? (
         <label className="field">
           <span>New annotation text</span>
           <textarea
@@ -130,7 +133,7 @@ export function AnnotationCreatePanel({
         </label>
       ) : null}
 
-      {model.tool === 'result' ? (
+      {activeTool.editor.resultField ? (
         <label className="field">
           <span>Automatic result label</span>
           <select
@@ -150,7 +153,7 @@ export function AnnotationCreatePanel({
         </label>
       ) : null}
 
-      {model.tool !== 'select' ? (
+      {activeTool.editor.style ? (
         <>
           <div className="annotation-style-heading">
             <span>New item style</span>
@@ -215,7 +218,7 @@ export function AnnotationCreatePanel({
               />
             </label>
           </div>
-          {model.tool !== 'line' && model.tool !== 'arrow' ? (
+          {activeTool.editor.rotation ? (
             <label className="field">
               <span>
                 Text rotation <small>degrees</small>
@@ -263,7 +266,7 @@ export function AnnotationCreatePanel({
               actions.updateAppearance({ dashed: checked })
             }
           />
-          {model.tool !== 'line' && model.tool !== 'arrow' ? (
+          {activeTool.editor.rotation ? (
             <Toggle
               label="Text background"
               checked={model.editor.background}

@@ -19,6 +19,7 @@ import type {
   WseDifferenceScene,
 } from '../../../core/types'
 import type { MapInteractionTool } from '../../map-interactions/mapInteraction'
+import { wseAnnotationToolById } from '../annotationTools'
 import {
   draggedAnnotationPoints,
   updateDraggedResultAnnotation,
@@ -65,12 +66,14 @@ export function createAnnotationMapTool({
   createAnnotation,
   appendNotices,
 }: AnnotationMapToolOptions): MapInteractionTool {
+  const toolModule = wseAnnotationToolById(tool)
+
   return {
     id: 'annotation',
     begin: ({ screenPoint, mapPoint }) => {
-      if (tool === 'extrema') return { handled: true }
+      if (toolModule.activation === 'instant') return { handled: true }
 
-      if (tool === 'select') {
+      if (toolModule.activation === 'select') {
         const hit = hitTestAnnotation(
           annotations,
           bounds,
@@ -156,12 +159,18 @@ export function createAnnotationMapTool({
         }
       }
 
-      if (tool === 'text') {
-        createAnnotation('text', [mapPoint])
+      if (
+        toolModule.activation === 'point' &&
+        toolModule.annotationKind === 'text'
+      ) {
+        createAnnotation(toolModule.annotationKind, [mapPoint])
         return { handled: true }
       }
 
-      if (tool === 'result') {
+      if (
+        toolModule.activation === 'point' &&
+        toolModule.annotationKind === 'result'
+      ) {
         const sample = sampleHydraulicResult(
           scene,
           bounds,
@@ -197,12 +206,22 @@ export function createAnnotationMapTool({
         return { handled: true }
       }
 
+      if (
+        toolModule.activation !== 'segment' ||
+        !toolModule.annotationKind
+      ) {
+        return null
+      }
+
       if (!annotationStart) {
         setAnnotationStart(mapPoint)
         return { handled: true }
       }
 
-      createAnnotation(tool, [annotationStart, mapPoint])
+      createAnnotation(
+        toolModule.annotationKind,
+        [annotationStart, mapPoint],
+      )
       setAnnotationStart(null)
       return { handled: true }
     },

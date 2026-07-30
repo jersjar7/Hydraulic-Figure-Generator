@@ -1,18 +1,11 @@
 import {
-  ArrowUpDown,
-  ArrowUpRight,
-  Crosshair,
   ImageDown,
   MapPin,
   MessageSquareText,
-  Minus,
-  MousePointer2,
   Palette,
   Settings2,
   SlidersHorizontal,
-  Type,
 } from 'lucide-react'
-import type { AnnotationTool } from '../../core/types'
 import {
   WSE_DIFFERENCE_SETTINGS_SECTIONS,
   type WseDifferenceSettingsSectionKey,
@@ -43,17 +36,3 @@ export type SettingsSectionKey = WseDifferenceSettingsSectionKey
 export type AnnotationPanelView = 'create' | 'placed'
 export type AnnotationPlacedView = 'list' | 'detail'
 export type AnnotationEditorView = 'content' | 'style' | 'position'
-
-export const ANNOTATION_TOOLS = [
-  { key: 'select', label: 'Select', icon: MousePointer2 },
-  { key: 'text', label: 'Text', icon: Type },
-  { key: 'leader', label: 'Leader callout', icon: MessageSquareText },
-  { key: 'arrow', label: 'Arrow', icon: ArrowUpRight },
-  { key: 'line', label: 'Line', icon: Minus },
-  { key: 'result', label: 'Automatic result label', icon: Crosshair },
-  { key: 'extrema', label: 'Max / min WSE', icon: ArrowUpDown },
-] as const satisfies ReadonlyArray<{
-  key: AnnotationTool
-  label: string
-  icon: typeof MousePointer2
-}>
