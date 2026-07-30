@@ -14,6 +14,16 @@ npm run test:e2e
 
 GitHub Pages runs these commands and deploys only after all five gates pass.
 
+Extension registries also have a focused local gate:
+
+```bash
+npm run test:contracts
+```
+
+The shared contract kit validates figure modules, editor tools, settings
+sections, project workflows, and render-layer registries before their
+feature-specific tests run.
+
 ## Checked-In Regression Tests
 
 Tests directly under `tests/` use the Node.js test runner and require no

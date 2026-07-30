@@ -44,7 +44,8 @@ must not import React. `npm run check:architecture` enforces these rules and a
 - `mapRenderer.ts` is the stable canvas facade. Ordered modules in
   `core/map/wseDifferenceRenderLayers.ts` compose the basemap, hydraulic,
   overlay, annotation, and report-element layers without mutating application
-  state.
+  state. Each implementation under `core/map/wse-difference-layers/` owns
+  exactly one render layer.
 - `projectFile.ts` is the stable persistence facade. Versioned schema,
   migrations, validation, serialization, and deserialization live under
   `core/projectFiles/`.
@@ -59,9 +60,26 @@ must not import React. `npm run check:architecture` enforces these rules and a
   and activation contracts.
 - `features/figures/workspaceRegistry.ts` associates those modules with React
   workspaces without pulling CSS or React into Node-based core tests.
+- `components/editor/FigureWorkspaceScaffold.tsx` composes the reusable
+  project/sidebar, map, and settings regions. Figure workspaces provide
+  feature content and callbacks rather than rebuilding the editor frame.
+- `application/hydraulics/` owns focused comparison, assessment, stationing,
+  and extrema use cases behind `HydraulicAnalysisPort`. `HydraulicEngine`
+  remains the H5-backed resource and value-cache adapter.
+- `features/map-interactions/MapInteractionRuntime` owns pointer-session
+  lifecycle. Feature tools own hit testing and the behavior of one action.
+- `features/editor-history/` owns immutable editor commands and bounded
+  undo/redo history independently of any annotation UI.
+- `components/project-data/projectWorkflowRegistry.ts` registers Models,
+  Layers, Assess, and Review as independent workflow modules with their own
+  status and view adapters.
 
 New figure modules should consume these contracts rather than read H5 files or
 draw shared map elements independently.
+
+`tests/support/extensionContracts.ts` is the executable extension contract.
+Every registered figure, tool set, settings registry, project workflow, and
+render pipeline must pass it.
 
 ## Refactoring Rules
 

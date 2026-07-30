@@ -16,9 +16,12 @@ Create `src/features/<figure-name>/` with:
   contract instead of hard-coding toolbar branches.
 
 The module must define its stable ID, readiness rule, scene construction,
-render entry point, and export filename. Compose canvas responsibilities as
-ordered render layers and call `HydraulicEngine` methods rather than parsing
-H5 directly.
+render entry point, and export filename. Compose the UI with
+`FigureWorkspaceScaffold`, compose canvas responsibilities as ordered render
+layers, and call application use cases rather than parsing H5 directly.
+
+Add one file per render layer. Register the files in a short ordered facade;
+do not place new layer implementations directly in the registry.
 
 ## 2. Register It
 
@@ -26,6 +29,11 @@ Register the headless definition in `features/figures/registry.ts`. Register its
 React workspace in `features/figures/workspaceRegistry.ts`. Keeping these
 registries separate allows Node regression tests to import figure calculations
 without loading React or CSS.
+
+Reusable project inputs belong in a project-workflow module. Figure-only
+controls belong in a settings-section module. Canvas behavior belongs in an
+editor tool consumed by `MapInteractionRuntime`; user edits that need
+undo/redo should execute an editor command.
 
 ## 3. Persist It
 
@@ -50,6 +58,7 @@ Before registration, add:
 - A Playwright path covering workspace selection and the primary workflow.
 - A local real-file acceptance script when proprietary H5 data cannot be
   committed.
+- Registration in `tests/extensionContracts.test.ts`.
 
 Every commit must pass `npm run lint`, `npm test`, `npm run build`, and
 `npm run test:e2e`.

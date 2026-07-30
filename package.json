@@ -15,6 +15,7 @@
     "preview": "vite preview",
     "test": "npm run test:unit && npm run test:ui",
     "test:unit": "node --import tsx --test tests/*.test.ts",
+    "test:contracts": "node --import tsx --test tests/extensionContracts.test.ts",
     "test:ui": "vitest run",
     "test:e2e": "playwright test",
     "fixtures:h5": "tsx scripts/generate-synthetic-h5.ts",
