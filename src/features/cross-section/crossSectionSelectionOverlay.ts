@@ -103,18 +103,61 @@ function endpointMarker(
   context.fillText(label, point.x, point.y + 0.5)
 }
 
-function viewArrow(
-  context: CanvasRenderingContext2D,
-  midpoint: ReturnType<typeof pathLocation>,
+function viewDirection(
+  location: ReturnType<typeof pathLocation>,
   settings: CrossSectionFigureSettings,
 ) {
   const sideSign = settings.downstreamSide === 'right' ? 1 : -1
   const directionSign =
     settings.lookingDirection === 'downstream' ? sideSign : -sideSign
-  const normal = {
-    x: -midpoint.tangent.y * directionSign,
-    y: midpoint.tangent.x * directionSign,
+  return {
+    x: -location.tangent.y * directionSign,
+    y: location.tangent.x * directionSign,
   }
+}
+
+function endpointChevron(
+  context: CanvasRenderingContext2D,
+  location: ReturnType<typeof pathLocation>,
+  settings: CrossSectionFigureSettings,
+) {
+  const direction = viewDirection(location, settings)
+  const cross = { x: -direction.y, y: direction.x }
+  const tip = {
+    x: location.point.x + direction.x * 25,
+    y: location.point.y + direction.y * 25,
+  }
+  const back = {
+    x: location.point.x + direction.x * 15,
+    y: location.point.y + direction.y * 15,
+  }
+
+  const draw = () => {
+    context.beginPath()
+    context.moveTo(back.x + cross.x * 5, back.y + cross.y * 5)
+    context.lineTo(tip.x, tip.y)
+    context.lineTo(back.x - cross.x * 5, back.y - cross.y * 5)
+    context.stroke()
+  }
+
+  context.save()
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
+  context.strokeStyle = 'rgba(255, 255, 255, 0.95)'
+  context.lineWidth = 5
+  draw()
+  context.strokeStyle = '#9f1d1d'
+  context.lineWidth = 2.5
+  draw()
+  context.restore()
+}
+
+function viewArrow(
+  context: CanvasRenderingContext2D,
+  midpoint: ReturnType<typeof pathLocation>,
+  settings: CrossSectionFigureSettings,
+) {
+  const normal = viewDirection(midpoint, settings)
   const start = {
     x: midpoint.point.x + normal.x * 6,
     y: midpoint.point.y + normal.y * 6,
@@ -191,6 +234,16 @@ export function drawCrossSectionSelectionOverlay(
 
   endpointMarker(context, screenPoints[0], 'A')
   endpointMarker(context, screenPoints.at(-1)!, 'B')
+  endpointChevron(
+    context,
+    pathLocation(screenPoints, 0),
+    crossSectionSettings,
+  )
+  endpointChevron(
+    context,
+    pathLocation(screenPoints, 1),
+    crossSectionSettings,
+  )
   viewArrow(
     context,
     pathLocation(screenPoints, 0.5),

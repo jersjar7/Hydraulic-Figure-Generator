@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createCanvas } from '@napi-rs/canvas'
 import { describe, it } from 'node:test'
 import { createDefaultFigureSettings } from '../src/core/defaults'
-import { FRAMES } from '../src/core/mapRenderer'
+import { FRAMES, makeMapView } from '../src/core/map/view'
 import { drawCrossSectionSelectionOverlay } from '../src/features/cross-section/crossSectionSelectionOverlay'
 import { createDefaultCrossSectionSettings } from '../src/features/cross-section/crossSectionSettings'
 
@@ -58,6 +58,31 @@ function countRedPixels(
   return red
 }
 
+function countRedPixelsNear(
+  canvas: ReturnType<typeof createCanvas>,
+  center: { x: number; y: number },
+  side: 'top' | 'bottom',
+) {
+  const context = canvas.getContext('2d')
+  const x = Math.max(0, Math.round(center.x - 34))
+  const y = Math.max(
+    0,
+    Math.round(side === 'top' ? center.y - 34 : center.y),
+  )
+  const pixels = context.getImageData(x, y, 68, 34).data
+  let red = 0
+  for (let index = 0; index < pixels.length; index += 4) {
+    if (
+      pixels[index] > 110 &&
+      pixels[index] > pixels[index + 1] * 1.35 &&
+      pixels[index] > pixels[index + 2] * 1.35
+    ) {
+      red += 1
+    }
+  }
+  return red
+}
+
 describe('cross-section selection overlay', () => {
   it('draws the downstream view arrow on the configured side of A to B', () => {
     const right = renderSelection('right')
@@ -71,5 +96,26 @@ describe('cross-section selection overlay', () => {
       countRedPixels(left, 'top') > countRedPixels(left, 'bottom'),
       'left-side downstream arrow should render above a left-to-right section',
     )
+  })
+
+  it('places matching view-direction chevrons beside both endpoints', () => {
+    const right = renderSelection('right')
+    const view = makeMapView(
+      { x0: 0, x1: 100, y0: 0, y1: 100 },
+      FRAMES.landscape,
+      createDefaultFigureSettings(),
+    )
+
+    for (const x of [20, 80]) {
+      const [screenX, screenY] = view.toScreen(x, 50)
+      assert.ok(
+        countRedPixelsNear(
+          right,
+          { x: screenX, y: screenY },
+          'bottom',
+        ) > 0,
+        `endpoint at x=${x} should have a downstream chevron`,
+      )
+    }
   })
 })
