@@ -1,16 +1,11 @@
-import { useEffect, useState } from 'react'
-import { ChevronLeft, RotateCcw, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  ProjectWorkflowNav,
-} from './project-data/ProjectWorkflowNav'
-import {
-  PROJECT_WORKFLOW_MODULES,
-  projectWorkflowByKey,
+  projectWorkflowsForInputs,
 } from './project-data/projectWorkflowRegistry'
 import type {
   ProjectWorkflowSection,
-  ProjectWorkflowStatus,
 } from './project-data/projectWorkflowModule'
+import { ProjectWorkflowPanel } from './project-data/ProjectWorkflowPanel'
 import type {
   ProjectDataPanelProps,
   ProjectWorkflowContext,
@@ -46,14 +41,34 @@ export function ProjectDataPanel({
   onUpdateOverlay,
   onRemoveOverlay,
   onReset,
+  inputCapabilities,
 }: ProjectDataPanelProps) {
+  const modules = useMemo(
+    () => projectWorkflowsForInputs(inputCapabilities),
+    [inputCapabilities],
+  )
+  const firstSection = modules[0]?.key ?? 'models'
   const [activeSection, setActiveSection] =
-    useState<ProjectWorkflowSection>('models')
+    useState<ProjectWorkflowSection>(firstSection)
   const stationed = assessmentReview.stationed
 
   useEffect(() => {
-    if (assessmentReview.view === 'review') setActiveSection('review')
-  }, [assessmentReview.view])
+    if (
+      assessmentReview.view === 'review' &&
+      modules.some((module) => module.key === 'review')
+    ) {
+      setActiveSection('review')
+      return
+    }
+    if (!modules.some((module) => module.key === activeSection)) {
+      setActiveSection(firstSection)
+    }
+  }, [
+    activeSection,
+    assessmentReview.view,
+    firstSection,
+    modules,
+  ])
 
   const selectSection = (section: ProjectWorkflowSection) => {
     setActiveSection(section)
@@ -62,16 +77,18 @@ export function ProjectDataPanel({
   }
 
   const openReview = () => {
+    if (!modules.some((module) => module.key === 'review')) return
     setActiveSection('review')
     assessmentReview.onOpen()
   }
 
   const resetProject = () => {
-    setActiveSection('models')
+    setActiveSection(firstSection)
     assessmentReview.onBack()
     onReset()
   }
   const context: ProjectWorkflowContext = {
+    inputCapabilities,
     mobileOpen,
     collapsed,
     busy,
@@ -108,87 +125,19 @@ export function ProjectDataPanel({
     hasSourceRuns: runsFor(assessmentId).length > 0,
     openReview,
   }
-  const statuses = PROJECT_WORKFLOW_MODULES.reduce(
-    (result, module) => {
-      result[module.key] = module.status(context)
-      return result
-    },
-    {} as Record<ProjectWorkflowSection, ProjectWorkflowStatus>,
-  )
-  const activeModule = projectWorkflowByKey(activeSection)
-
   return (
-    <aside
-      className={`sidebar left-sidebar${mobileOpen ? ' is-mobile-open' : ''}${collapsed ? ' is-collapsed' : ''}`}
-    >
-      {collapsed ? (
-        <ProjectWorkflowNav
-          active={activeSection}
-          collapsed
-          sections={PROJECT_WORKFLOW_MODULES}
-          statuses={statuses}
-          onExpand={onExpand}
-          onSelect={selectSection}
-        />
-      ) : (
-        <>
-          <div className="sidebar-heading project-sidebar-heading">
-            <div>
-              <span className="eyebrow">Inputs</span>
-              <h2>Project workflow</h2>
-            </div>
-            <div className="sidebar-heading-actions">
-              <button
-                className="icon-button desktop-collapse"
-                type="button"
-                title="Collapse project workflow"
-                aria-label="Collapse project workflow"
-                onClick={onCollapse}
-              >
-                <ChevronLeft size={18} aria-hidden="true" />
-              </button>
-              <button
-                className="icon-button mobile-close"
-                type="button"
-                title="Close project workflow"
-                aria-label="Close project workflow"
-                onClick={onMobileClose}
-              >
-                <X size={18} aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-
-          <ProjectWorkflowNav
-            active={activeSection}
-            collapsed={false}
-            sections={PROJECT_WORKFLOW_MODULES}
-            statuses={statuses}
-            onExpand={onExpand}
-            onSelect={selectSection}
-          />
-
-          <div
-            className={`project-workflow-content${activeSection === 'review' ? ' is-review' : ''}`}
-            id={`project-workflow-panel-${activeSection}`}
-            role="tabpanel"
-            aria-labelledby={`project-workflow-tab-${activeSection}`}
-          >
-            {activeModule.render(context)}
-          </div>
-
-          <div className="project-workflow-footer">
-            <button
-              className="text-button reset-project"
-              type="button"
-              onClick={resetProject}
-            >
-              <RotateCcw size={15} aria-hidden="true" />
-              Reset project
-            </button>
-          </div>
-        </>
-      )}
-    </aside>
+    <ProjectWorkflowPanel
+      active={activeSection}
+      modules={modules}
+      context={context}
+      mobileOpen={mobileOpen}
+      collapsed={collapsed}
+      contentClassName={activeSection === 'review' ? 'is-review' : ''}
+      onSelect={selectSection}
+      onCollapse={onCollapse}
+      onExpand={onExpand}
+      onMobileClose={onMobileClose}
+      onReset={resetProject}
+    />
   )
 }

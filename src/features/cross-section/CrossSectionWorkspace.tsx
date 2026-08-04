@@ -11,30 +11,21 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type PointerEvent,
 } from 'react'
 import '../../App.css'
-import { importHydraulicFiles } from '../../application/importHydraulicFiles'
-import { importOverlayArchives } from '../../application/importOverlayArchives'
-import { ProjectDataPanel } from '../../components/ProjectDataPanel'
+import { HydraulicProjectPanel } from '../../components/project-data/HydraulicProjectPanel'
 import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspaceScaffold'
 import { createDefaultFigureSettings } from '../../core/defaults'
 import { formatStation } from '../../core/centerlineStationing'
-import {
-  canvasPointToMap,
-  mapPointToCanvas,
-} from '../../core/mapRenderer'
 import type {
-  CrossSectionLine,
   HydraulicCrossSectionScene,
   IngestNotice,
-  MapCoordinate,
   WseAssessmentLine,
   WseDifferenceScene,
 } from '../../core/types'
-import { shapefileArchivePort } from '../../infrastructure/shapefiles/shapefileArchivePort'
 import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
+import { createHydraulicProjectInputActions } from '../project-workspace/hydraulicProjectInputActions'
 import { FigurePicker } from '../figures/FigurePicker'
 import { useAssessmentMapLayers } from '../wse-difference/useAssessmentMapLayers'
 import { wseDifferenceFigure } from '../wse-difference/wseDifferenceFigure'
@@ -53,6 +44,7 @@ import {
 } from './crossSectionSettings'
 import { useCrossSectionProjectFiles } from './useCrossSectionProjectFiles'
 import { useCrossSectionRendering } from './useCrossSectionRendering'
+import { useCrossSectionSelection } from './useCrossSectionSelection'
 
 const SETTINGS_SECTIONS = [
   { ...CROSS_SECTION_SETTINGS_SECTIONS[0], icon: Ruler },
@@ -61,49 +53,11 @@ const SETTINGS_SECTIONS = [
   { ...CROSS_SECTION_SETTINGS_SECTIONS[3], icon: ImageDown },
 ] as const
 
-function lineDistanceToPoint(
-  point: { x: number; y: number },
-  start: { x: number; y: number },
-  end: { x: number; y: number },
-) {
-  const dx = end.x - start.x
-  const dy = end.y - start.y
-  const length2 = dx * dx + dy * dy
-  const fraction =
-    length2 > 0
-      ? Math.max(
-          0,
-          Math.min(
-            1,
-            ((point.x - start.x) * dx + (point.y - start.y) * dy) / length2,
-          ),
-        )
-      : 0
-  return Math.hypot(
-    point.x - (start.x + dx * fraction),
-    point.y - (start.y + dy * fraction),
-  )
-}
-
 function downloadCanvas(canvas: HTMLCanvasElement, fileName: string) {
   const link = document.createElement('a')
   link.download = fileName
   link.href = canvas.toDataURL('image/png')
   link.click()
-}
-
-function mapPolylineLengthFeet(
-  points: MapCoordinate[],
-  feetPerMapUnit: number,
-) {
-  let length = 0
-  for (let index = 1; index < points.length; index += 1) {
-    length += Math.hypot(
-      points[index].x - points[index - 1].x,
-      points[index].y - points[index - 1].y,
-    )
-  }
-  return length * feetPerMapUnit
 }
 
 export function CrossSectionWorkspace() {
@@ -133,11 +87,6 @@ export function CrossSectionWorkspace() {
   const [mapScene, setMapScene] = useState<WseDifferenceScene | null>(null)
   const [chartScene, setChartScene] =
     useState<HydraulicCrossSectionScene | null>(null)
-  const [selectedLine, setSelectedLine] = useState<CrossSectionLine | null>(null)
-  const [selectedAssessmentLineId, setSelectedAssessmentLineId] = useState('')
-  const [drawingStart, setDrawingStart] = useState<{ x: number; y: number } | null>(null)
-  const [drawing, setDrawing] = useState(false)
-  const [view, setView] = useState<'map' | 'chart'>('map')
   const [notices, setNotices] = useState<IngestNotice[]>([])
   const [busy, setBusy] = useState(false)
   const [leftOpen, setLeftOpen] = useState(false)
@@ -160,6 +109,30 @@ export function CrossSectionWorkspace() {
       setNotices((current) => [...current, ...incoming].slice(-40))
     }
   }, [])
+  const invalidateChart = useCallback(() => setChartScene(null), [])
+  const invalidateFigures = useCallback(() => {
+    setMapScene(null)
+    setChartScene(null)
+  }, [])
+  const projectInputs = createHydraulicProjectInputActions({
+    assessmentId,
+    overlays,
+    ingest: projectSession.ingest,
+    removeCondition: projectSession.removeCondition,
+    renameCondition: projectSession.renameCondition,
+    changeRole: projectSession.changeRole,
+    changeRun: projectSession.changeRun,
+    setOverlays,
+    onFilesChanged: () => {
+      invalidateFigures()
+      assessmentWorkflow.invalidate(assessmentInterval)
+    },
+    onSelectionChanged: invalidateFigures,
+    onAssessmentSourceChanged: () =>
+      assessmentWorkflow.clear(assessmentInterval),
+    setBusy,
+    appendNotices,
+  })
 
   const assessmentLayers = useAssessmentMapLayers({
     modelWkt: assessmentCondition?.geometry?.wkt,
@@ -196,67 +169,24 @@ export function CrossSectionWorkspace() {
     },
     [assessmentLayers.stationedAssessmentLines],
   )
-
-  const chooseAssessmentLine = useCallback(
-    (id: string) => {
-      setSelectedAssessmentLineId(id)
-      const line = assessmentOptions.find((candidate) => candidate.id === id)
-      if (!line) {
-        setSelectedLine(null)
-        return
-      }
-      const label = labelForAssessmentLine(line)
-      setSelectedLine({
-        id: line.id,
-        label,
-        stationLabel: label.startsWith('Section ') ? label.slice(8) : undefined,
-        points: line.points,
-        direction: 'a-to-b',
-        source: 'assessment',
-        lengthFeet: line.lengthFeet,
-      })
-      setSettings((current) => ({ ...current, sectionName: label }))
-      setDrawing(false)
-      setDrawingStart(null)
-      setChartScene(null)
-    },
-    [assessmentOptions, labelForAssessmentLine],
-  )
-
-  const cancelDrawing = useCallback(() => {
-    setDrawing(false)
-    setDrawingStart(null)
-  }, [])
-
-  const clearSelectedLine = useCallback(() => {
-    cancelDrawing()
-    setSelectedLine(null)
-    setSelectedAssessmentLineId('')
-    setChartScene(null)
-    setView('map')
-  }, [cancelDrawing])
-
-  const startDrawing = useCallback(() => {
-    if (drawing) {
-      cancelDrawing()
-      return
-    }
-    setView('map')
-    setDrawing(true)
-    setDrawingStart(null)
-    setSelectedLine(null)
-    setSelectedAssessmentLineId('')
-    setChartScene(null)
-  }, [cancelDrawing, drawing])
-
-  useEffect(() => {
-    if (!drawing) return
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') cancelDrawing()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [cancelDrawing, drawing])
+  const selection = useCrossSectionSelection({
+    engine,
+    baselineId,
+    mapReady: Boolean(mapScene),
+    mapSettings,
+    assessmentLines: assessmentOptions,
+    labelForAssessmentLine,
+    onSectionNameChange: (sectionName) =>
+      setSettings((current) => ({ ...current, sectionName })),
+    onSelectionChanged: invalidateChart,
+  })
+  const {
+    selectedLine,
+    selectedAssessmentLineId,
+    drawingStart,
+    drawing,
+    view,
+  } = selection
 
   const buildSelectionMap = useCallback(() => {
     if (!ready) return
@@ -327,7 +257,7 @@ export function CrossSectionWorkspace() {
       appendNotices(
         scene.warnings.map((text) => ({ level: 'warning' as const, text })),
       )
-      setView('chart')
+      selection.setView('chart')
     } catch (error) {
       appendNotices([
         {
@@ -335,95 +265,6 @@ export function CrossSectionWorkspace() {
           text: `Cross section failed: ${error instanceof Error ? error.message : String(error)}`,
         },
       ])
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const handleCanvasPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
-    if (!mapScene) return
-    const canvas = event.currentTarget
-    const bounds = canvas.getBoundingClientRect()
-    const canvasPoint = {
-      x: ((event.clientX - bounds.left) * canvas.width) / bounds.width,
-      y: ((event.clientY - bounds.top) * canvas.height) / bounds.height,
-    }
-    if (drawing) {
-      const mapPoint = canvasPointToMap(
-        canvasPoint.x,
-        canvasPoint.y,
-        engine.commonBounds(),
-        mapSettings,
-      )
-      if (!drawingStart) {
-        setDrawingStart(mapPoint)
-        return
-      }
-      const label = `Manual Section ${Date.now().toString().slice(-4)}`
-      const manualPoints = [drawingStart, mapPoint]
-      const feetPerMapUnit =
-        engine.condition(baselineId)?.projected?.ftPerMerc ?? 1
-      setSelectedLine({
-        id: `manual-${Date.now()}`,
-        label,
-        points: manualPoints,
-        direction: 'a-to-b',
-        source: 'manual',
-        lengthFeet: mapPolylineLengthFeet(manualPoints, feetPerMapUnit),
-      })
-      setSettings((current) => ({ ...current, sectionName: label }))
-      setSelectedAssessmentLineId('')
-      setDrawing(false)
-      setDrawingStart(null)
-      setChartScene(null)
-      return
-    }
-
-    let closest: { id: string; distance: number } | null = null
-    for (const line of assessmentOptions) {
-      for (let index = 1; index < line.points.length; index += 1) {
-        const start = mapPointToCanvas(
-          line.points[index - 1],
-          engine.commonBounds(),
-          mapSettings,
-        )
-        const end = mapPointToCanvas(
-          line.points[index],
-          engine.commonBounds(),
-          mapSettings,
-        )
-        const distance = lineDistanceToPoint(canvasPoint, start, end)
-        if (!closest || distance < closest.distance) {
-          closest = { id: line.id, distance }
-        }
-      }
-    }
-    if (closest && closest.distance <= 14) chooseAssessmentLine(closest.id)
-  }
-
-  const handleH5Files = async (files: File[]) => {
-    setBusy(true)
-    setMapScene(null)
-    setChartScene(null)
-    try {
-      appendNotices(
-        await importHydraulicFiles(files, { ingest: projectSession.ingest }),
-      )
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const handleOverlayFiles = async (files: File[]) => {
-    setBusy(true)
-    try {
-      const result = await importOverlayArchives(
-        files,
-        overlays.length,
-        shapefileArchivePort,
-      )
-      setOverlays((current) => [...current, ...result.overlays])
-      appendNotices(result.notices)
     } finally {
       setBusy(false)
     }
@@ -483,8 +324,10 @@ export function CrossSectionWorkspace() {
     const payload = await projectFiles.loadProjectFile(file)
     if (!payload) return
     setSettings(payload.settings)
-    setSelectedLine(payload.selectedLine)
-    setSelectedAssessmentLineId(payload.selectedAssessmentLineId)
+    selection.loadSelection(
+      payload.selectedLine,
+      payload.selectedAssessmentLineId,
+    )
     projectSession.loadSelection(payload.scenarioSelection)
     projectDocument.loadDocument(payload.project)
     setMapScene(null)
@@ -521,13 +364,9 @@ export function CrossSectionWorkspace() {
     setAssessmentInterval(1)
     setMapScene(null)
     setChartScene(null)
-    setSelectedLine(null)
-    setSelectedAssessmentLineId('')
-    setDrawing(false)
-    setDrawingStart(null)
+    selection.loadSelection(null, '')
     setLeftCollapsed(false)
     setNotices([])
-    setView('map')
   }
 
   return (
@@ -586,79 +425,29 @@ export function CrossSectionWorkspace() {
         />
       }
       projectPanel={
-        <ProjectDataPanel
+        <HydraulicProjectPanel
+          inputCapabilities={crossSectionFigure.editor.inputs}
           mobileOpen={leftOpen}
           collapsed={leftCollapsed}
           busy={busy}
-          scenarios={scenarios}
-          baselineId={baselineId}
-          comparisonId={comparisonId}
-          assessmentId={assessmentId}
-          runByScenario={runByScenario}
-          assessmentLines={assessmentState.collection}
-          assessmentReview={{
-            view: assessmentState.panelView,
-            candidates: assessmentLayers.centerlineCandidates,
-            centerlineId: assessmentState.centerlineId,
-            direction: assessmentState.direction,
-            startStation: assessmentState.startStation,
-            reviewTab: assessmentState.reviewTab,
-            selectedLineId: assessmentState.selectedLineId,
-            overrides: assessmentState.overrides,
-            stationed: assessmentLayers.stationedAssessmentLines,
-            onOpen: assessmentWorkflow.openReview,
-            onBack: assessmentWorkflow.closeReview,
-            onCenterlineChange: assessmentWorkflow.setCenterline,
-            onDirectionChange: assessmentWorkflow.setDirection,
-            onStartStationChange: assessmentWorkflow.setStartStation,
-            onReviewTabChange: assessmentWorkflow.setReviewTab,
-            onSelectLine: assessmentWorkflow.selectLine,
-            onSetOverride: assessmentWorkflow.setOverride,
-          }}
+          projectSession={projectSession}
+          assessmentWorkflow={assessmentWorkflow}
+          assessmentInterval={assessmentInterval}
+          centerlineCandidates={assessmentLayers.centerlineCandidates}
+          stationedAssessmentLines={assessmentLayers.stationedAssessmentLines}
           overlays={overlays}
           showOverlays={mapSettings.showOverlays}
+          projectInputs={projectInputs}
           onCollapse={() => setLeftCollapsed(true)}
           onExpand={() => setLeftCollapsed(false)}
           onMobileClose={() => setLeftOpen(false)}
-          onH5Files={handleH5Files}
-          onOverlayFiles={handleOverlayFiles}
-          onRemoveCondition={(key) => {
-            projectSession.removeCondition(key)
-            setMapScene(null)
-            setChartScene(null)
-          }}
-          onRenameCondition={projectSession.renameCondition}
-          onRoleChange={(role, key) => {
-            projectSession.changeRole(role, key)
-            setMapScene(null)
-            setChartScene(null)
-          }}
-          onRunChange={(key, index) => {
-            projectSession.changeRun(key, index)
-            setMapScene(null)
-            setChartScene(null)
-          }}
-          runsFor={(key) => engine.runOptions(key)}
           onAssessmentIntervalChange={(interval) => {
             setAssessmentInterval(interval)
             assessmentWorkflow.clear(interval)
           }}
           onGenerateAssessmentLines={generateAssessmentLines}
-          onClearAssessmentLines={() => assessmentWorkflow.clear(assessmentInterval)}
           onShowOverlaysChange={(showOverlays) =>
             setMapSettings((current) => ({ ...current, showOverlays }))
-          }
-          onUpdateOverlay={(id, patch) =>
-            setOverlays((current) =>
-              current.map((overlay) =>
-                overlay.id === id ? { ...overlay, ...patch } : overlay,
-              ),
-            )
-          }
-          onRemoveOverlay={(id) =>
-            setOverlays((current) =>
-              current.filter((overlay) => overlay.id !== id),
-            )
           }
           onReset={resetProject}
         />
@@ -673,9 +462,9 @@ export function CrossSectionWorkspace() {
           drawingStartSet={Boolean(drawingStart)}
           orientation={settings.orientation}
           canvasRef={canvasRef}
-          onViewChange={setView}
+          onViewChange={selection.setView}
           onGenerateMap={buildSelectionMap}
-          onPointerDown={handleCanvasPointerDown}
+          onPointerDown={selection.handleCanvasPointerDown}
         />
       }
       settingsContent={
@@ -689,20 +478,9 @@ export function CrossSectionWorkspace() {
           canGenerate={ready && Boolean(selectedLine)}
           canDownload={Boolean(chartScene)}
           onSettingsChange={setSettings}
-          onAssessmentLineChange={chooseAssessmentLine}
-          onStartDrawing={startDrawing}
-          onReverseLine={() => {
-            setSelectedLine((current) =>
-              current
-                ? {
-                    ...current,
-                    direction:
-                      current.direction === 'a-to-b' ? 'b-to-a' : 'a-to-b',
-                  }
-                : null,
-            )
-            setChartScene(null)
-          }}
+          onAssessmentLineChange={selection.chooseAssessmentLine}
+          onStartDrawing={selection.startDrawing}
+          onReverseLine={selection.reverseLine}
           onFlipViewSide={() => {
             setSettings((current) => ({
               ...current,
@@ -711,8 +489,8 @@ export function CrossSectionWorkspace() {
             }))
             setChartScene(null)
           }}
-          onClearLine={clearSelectedLine}
-          onShowMap={() => setView('map')}
+          onClearLine={selection.clearSelectedLine}
+          onShowMap={() => selection.setView('map')}
           onGenerate={generateChart}
           onDownload={downloadChart}
         />

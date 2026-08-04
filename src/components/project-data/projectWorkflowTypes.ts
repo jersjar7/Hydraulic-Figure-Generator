@@ -1,3 +1,4 @@
+import type { WorkspaceInputCapability } from '../../core/contracts/workspace'
 import type {
   ConditionData,
   ConditionKey,
@@ -25,6 +26,7 @@ export type AssessmentReviewProps = AssessmentLinesReviewPanelProps &
   }
 
 export type ProjectDataPanelProps = {
+  inputCapabilities: readonly WorkspaceInputCapability[]
   mobileOpen: boolean
   collapsed: boolean
   busy: boolean

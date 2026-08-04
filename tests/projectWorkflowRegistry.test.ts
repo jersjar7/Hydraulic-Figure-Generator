@@ -7,6 +7,7 @@ import {
   type ProjectWorkflowModule,
 } from '../src/components/project-data/projectWorkflowModule'
 import { PROJECT_WORKFLOW_MODULES } from '../src/components/project-data/projectWorkflowRegistry'
+import { projectWorkflowsForInputs } from '../src/components/project-data/projectWorkflowRegistry'
 
 describe('project workflow registry', () => {
   it('registers the complete project workflow in navigation order', () => {
@@ -33,6 +34,20 @@ describe('project workflow registry', () => {
     assert.throws(
       () => defineProjectWorkflowModules([module, module]),
       /Duplicate project workflow key/,
+    )
+  })
+
+  it('selects only workflows declared by a workspace input manifest', () => {
+    assert.deepEqual(
+      projectWorkflowsForInputs(['map-overlays']).map((module) => module.key),
+      ['layers'],
+    )
+    assert.deepEqual(
+      projectWorkflowsForInputs([
+        'hydraulic-models',
+        'assessment-lines',
+      ]).map((module) => module.key),
+      ['models', 'assessment', 'review'],
     )
   })
 })

@@ -44,6 +44,7 @@ export function assertFigureModuleContract<
     'Figure settings section',
     figure.editor.settingsSections.map((section) => section.key),
   )
+  assertUnique('Figure input capability', figure.editor.inputs)
   assertUnique(
     'Required scenario role',
     figure.editor.requiredScenarioRoles,

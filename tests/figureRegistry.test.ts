@@ -40,6 +40,11 @@ describe('figure module registry', () => {
       wseDifferenceFigure.editor.requiredScenarioRoles,
       ['baseline', 'comparison'],
     )
+    assert.deepEqual(wseDifferenceFigure.editor.inputs, [
+      'hydraulic-models',
+      'map-overlays',
+      'assessment-lines',
+    ])
     assert.equal(wseDifferenceFigure.editor.shapefileOverlays, true)
     assert.equal(wseDifferenceFigure.editor.assessmentLines, true)
     assert.equal(wseDifferenceFigure.editor.centerlineStationing, true)

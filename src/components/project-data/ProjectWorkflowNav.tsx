@@ -3,32 +3,29 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
-import type {
-  ProjectWorkflowSection,
-  ProjectWorkflowStatus,
-} from './projectWorkflowModule'
+import type { ProjectWorkflowStatus } from './projectWorkflowModule'
 
-type ProjectWorkflowNavigationItem = {
-  key: ProjectWorkflowSection
+type ProjectWorkflowNavigationItem<Key extends string> = {
+  key: Key
   label: string
   title: string
   icon: LucideIcon
 }
 
-type ProjectWorkflowNavProps = {
-  active: ProjectWorkflowSection
+type ProjectWorkflowNavProps<Key extends string> = {
+  active: Key
   collapsed: boolean
-  sections: readonly ProjectWorkflowNavigationItem[]
-  statuses: Record<ProjectWorkflowSection, ProjectWorkflowStatus>
+  sections: readonly ProjectWorkflowNavigationItem<Key>[]
+  statuses: Record<Key, ProjectWorkflowStatus>
   onExpand(): void
-  onSelect(section: ProjectWorkflowSection): void
+  onSelect(section: Key): void
 }
 
-function handleTabKeyDown(
+function handleTabKeyDown<Key extends string>(
   event: KeyboardEvent<HTMLButtonElement>,
   index: number,
-  sections: readonly ProjectWorkflowNavigationItem[],
-  onSelect: (section: ProjectWorkflowSection) => void,
+  sections: readonly ProjectWorkflowNavigationItem<Key>[],
+  onSelect: (section: Key) => void,
 ) {
   if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
   event.preventDefault()
@@ -49,14 +46,14 @@ function handleTabKeyDown(
     [next]?.focus()
 }
 
-export function ProjectWorkflowNav({
+export function ProjectWorkflowNav<Key extends string>({
   active,
   collapsed,
   sections,
   statuses,
   onExpand,
   onSelect,
-}: ProjectWorkflowNavProps) {
+}: ProjectWorkflowNavProps<Key>) {
   if (collapsed) {
     return (
       <nav className="project-workflow-rail" aria-label="Project workflow">

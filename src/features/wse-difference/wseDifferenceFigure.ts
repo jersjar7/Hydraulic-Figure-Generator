@@ -46,6 +46,11 @@ export const wseDifferenceFigure = {
   workspaceLabel: 'FRA workspace',
   description: 'Comparison minus baseline water-surface elevation',
   editor: {
+    inputs: [
+      'hydraulic-models',
+      'map-overlays',
+      'assessment-lines',
+    ],
     requiredScenarioRoles: ['baseline', 'comparison'],
     optionalScenarioRoles: ['assessment'],
     shapefileOverlays: true,

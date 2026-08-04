@@ -2,6 +2,7 @@ import type {
   MapElementBounds,
   ScenarioRole,
 } from '../../core/types'
+import type { WorkspaceInputCapability } from '../../core/contracts/workspace'
 
 export type FigureEditorSection<Key extends string = string> = {
   key: Key
@@ -12,6 +13,7 @@ export type FigureEditorSection<Key extends string = string> = {
 export type FigureEditorCapabilities<
   SectionKey extends string = string,
 > = {
+  inputs: readonly WorkspaceInputCapability[]
   requiredScenarioRoles: readonly ScenarioRole[]
   optionalScenarioRoles: readonly ScenarioRole[]
   shapefileOverlays: boolean

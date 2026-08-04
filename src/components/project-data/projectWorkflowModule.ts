@@ -14,8 +14,11 @@ export type ProjectWorkflowStatus = {
   tone?: 'neutral' | 'ready' | 'warning'
 }
 
-export type ProjectWorkflowModule<Context> = {
-  key: ProjectWorkflowSection
+export type ProjectWorkflowModule<
+  Context,
+  Key extends string = ProjectWorkflowSection,
+> = {
+  key: Key
   label: string
   title: string
   icon: LucideIcon
@@ -23,10 +26,13 @@ export type ProjectWorkflowModule<Context> = {
   render(context: Context): ReactNode
 }
 
-export function defineProjectWorkflowModules<Context>(
-  modules: readonly ProjectWorkflowModule<Context>[],
+export function defineProjectWorkflowModules<
+  Context,
+  Key extends string = ProjectWorkflowSection,
+>(
+  modules: readonly ProjectWorkflowModule<Context, Key>[],
 ) {
-  const keys = new Set<ProjectWorkflowSection>()
+  const keys = new Set<Key>()
   for (const module of modules) {
     if (keys.has(module.key)) {
       throw new Error(`Duplicate project workflow key: ${module.key}`)
@@ -36,9 +42,12 @@ export function defineProjectWorkflowModules<Context>(
   return modules
 }
 
-export function findProjectWorkflowModule<Context>(
-  modules: readonly ProjectWorkflowModule<Context>[],
-  key: ProjectWorkflowSection,
+export function findProjectWorkflowModule<
+  Context,
+  Key extends string = ProjectWorkflowSection,
+>(
+  modules: readonly ProjectWorkflowModule<Context, Key>[],
+  key: Key,
 ) {
   const module = modules.find((candidate) => candidate.key === key)
   if (!module) throw new Error(`Unknown project workflow: ${key}`)

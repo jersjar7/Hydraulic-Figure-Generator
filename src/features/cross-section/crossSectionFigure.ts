@@ -45,6 +45,11 @@ export const crossSectionFigure = {
   workspaceLabel: 'FRA workspace',
   description: 'Ground and discharge-weighted WSE comparison at a selected section',
   editor: {
+    inputs: [
+      'hydraulic-models',
+      'map-overlays',
+      'assessment-lines',
+    ],
     requiredScenarioRoles: ['baseline', 'comparison'],
     optionalScenarioRoles: ['assessment'],
     shapefileOverlays: true,

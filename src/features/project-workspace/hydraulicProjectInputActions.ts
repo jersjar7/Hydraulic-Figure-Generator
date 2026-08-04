@@ -6,17 +6,14 @@ import { importHydraulicFiles } from '../../application/importHydraulicFiles'
 import { importOverlayArchives } from '../../application/importOverlayArchives'
 import type {
   ConditionKey,
-  FigureSettings,
   IngestNotice,
   MapOverlay,
   ScenarioRole,
-  WseDifferenceScene,
 } from '../../core/types'
 import { shapefileArchivePort } from '../../infrastructure/shapefiles/shapefileArchivePort'
 
-type WseProjectInputsOptions = {
+type Options = {
   assessmentId: ConditionKey
-  settings: FigureSettings
   overlays: MapOverlay[]
   ingest: (files: File[]) => Promise<IngestNotice[]>
   removeCondition: (key: ConditionKey) => void
@@ -24,16 +21,15 @@ type WseProjectInputsOptions = {
   changeRole: (role: ScenarioRole, key: ConditionKey) => void
   changeRun: (key: ConditionKey, index: number) => void
   setOverlays: Dispatch<SetStateAction<MapOverlay[]>>
-  setScene: Dispatch<SetStateAction<WseDifferenceScene | null>>
-  invalidateAssessment: (interval: number) => void
-  clearAssessment: (interval: number) => void
-  setBusy: (busy: boolean) => void
-  appendNotices: (notices: IngestNotice[]) => void
+  onFilesChanged(): void
+  onSelectionChanged(): void
+  onAssessmentSourceChanged(): void
+  setBusy(busy: boolean): void
+  appendNotices(notices: IngestNotice[]): void
 }
 
-export function useWseProjectInputs({
+export function createHydraulicProjectInputActions({
   assessmentId,
-  settings,
   overlays,
   ingest,
   removeCondition,
@@ -41,16 +37,15 @@ export function useWseProjectInputs({
   changeRole,
   changeRun,
   setOverlays,
-  setScene,
-  invalidateAssessment,
-  clearAssessment,
+  onFilesChanged,
+  onSelectionChanged,
+  onAssessmentSourceChanged,
   setBusy,
   appendNotices,
-}: WseProjectInputsOptions) {
+}: Options) {
   const handleH5Files = async (files: File[]) => {
     setBusy(true)
-    setScene(null)
-    invalidateAssessment(settings.assessmentLineInterval)
+    onFilesChanged()
     try {
       appendNotices(await importHydraulicFiles(files, { ingest }))
     } finally {
@@ -75,26 +70,20 @@ export function useWseProjectInputs({
 
   const removeHydraulicCondition = (key: ConditionKey) => {
     removeCondition(key)
-    setScene(null)
-    if (key === assessmentId) {
-      clearAssessment(settings.assessmentLineInterval)
-    }
+    onSelectionChanged()
+    if (key === assessmentId) onAssessmentSourceChanged()
   }
 
   const changeScenarioRole = (role: ScenarioRole, key: ConditionKey) => {
-    setScene(null)
     changeRole(role, key)
-    if (role === 'assessment') {
-      clearAssessment(settings.assessmentLineInterval)
-    }
+    onSelectionChanged()
+    if (role === 'assessment') onAssessmentSourceChanged()
   }
 
   const changeScenarioRun = (key: ConditionKey, index: number) => {
     changeRun(key, index)
-    setScene(null)
-    if (key === assessmentId) {
-      clearAssessment(settings.assessmentLineInterval)
-    }
+    onSelectionChanged()
+    if (key === assessmentId) onAssessmentSourceChanged()
   }
 
   const updateOverlay = (id: string, patch: Partial<MapOverlay>) => {
@@ -102,6 +91,12 @@ export function useWseProjectInputs({
       current.map((overlay) =>
         overlay.id === id ? { ...overlay, ...patch } : overlay,
       ),
+    )
+  }
+
+  const removeOverlay = (id: string) => {
+    setOverlays((current) =>
+      current.filter((overlay) => overlay.id !== id),
     )
   }
 
@@ -113,5 +108,6 @@ export function useWseProjectInputs({
     changeScenarioRole,
     changeScenarioRun,
     updateOverlay,
+    removeOverlay,
   }
 }

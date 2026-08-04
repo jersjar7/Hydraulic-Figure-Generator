@@ -11,12 +11,13 @@ import {
 } from 'react'
 import '../../App.css'
 import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspaceScaffold'
-import { ProjectDataPanel } from '../../components/ProjectDataPanel'
+import { HydraulicProjectPanel } from '../../components/project-data/HydraulicProjectPanel'
 import {
   createWseDifferenceRenderDocument,
 } from '../../core/mapRenderer'
 import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
+import { createHydraulicProjectInputActions } from '../project-workspace/hydraulicProjectInputActions'
 import { FigurePicker } from '../figures/FigurePicker'
 import { downloadWseDifferencePng } from './exportWseDifference'
 import { useAssessmentMapLayers } from './useAssessmentMapLayers'
@@ -42,7 +43,6 @@ import {
 import { WseMapCanvas } from './components/WseMapCanvas'
 import { useWseGenerationController } from './useWseGenerationController'
 import { useWseProjectFiles } from './useWseProjectFiles'
-import { useWseProjectInputs } from './useWseProjectInputs'
 
 const ACTIVE_FIGURE = wseDifferenceFigure
 
@@ -76,7 +76,6 @@ export function WseDifferenceWorkspace() {
   } = projectDocument
   const assessmentWorkflow = useAssessmentWorkflow(1)
   const assessmentState = assessmentWorkflow.state
-  const assessmentLines = assessmentState.collection
   const {
     annotationTool,
     annotationPanelView,
@@ -219,9 +218,8 @@ export function WseDifferenceWorkspace() {
     setSettings((current) => ({ ...current, [key]: value }))
   }
 
-  const projectInputs = useWseProjectInputs({
+  const projectInputs = createHydraulicProjectInputActions({
     assessmentId: assessmentScenarioId,
-    settings,
     overlays,
     ingest: projectSession.ingest,
     removeCondition: projectSession.removeCondition,
@@ -229,9 +227,13 @@ export function WseDifferenceWorkspace() {
     changeRole: projectSession.changeRole,
     changeRun: projectSession.changeRun,
     setOverlays,
-    setScene,
-    invalidateAssessment: assessmentWorkflow.invalidate,
-    clearAssessment: assessmentWorkflow.clear,
+    onFilesChanged: () => {
+      setScene(null)
+      assessmentWorkflow.invalidate(settings.assessmentLineInterval)
+    },
+    onSelectionChanged: () => setScene(null),
+    onAssessmentSourceChanged: () =>
+      assessmentWorkflow.clear(settings.assessmentLineInterval),
     setBusy,
     appendNotices,
   })
@@ -522,79 +524,35 @@ export function WseDifferenceWorkspace() {
         />
       }
       projectPanel={
-        <ProjectDataPanel
+        <HydraulicProjectPanel
+          inputCapabilities={wseDifferenceFigure.editor.inputs}
           mobileOpen={leftOpen}
           collapsed={leftCollapsed}
           busy={busy}
-          scenarios={scenarios}
-          baselineId={baselineScenarioId}
-          comparisonId={comparisonScenarioId}
-          assessmentId={assessmentScenarioId}
-          runByScenario={runByScenario}
-          assessmentLines={assessmentLines}
-          assessmentReview={{
-            view: assessmentState.panelView,
-            candidates: centerlineCandidates,
-            centerlineId: assessmentState.centerlineId,
-            direction: assessmentState.direction,
-            startStation: assessmentState.startStation,
-            reviewTab: assessmentState.reviewTab,
-            selectedLineId: assessmentState.selectedLineId,
-            overrides: assessmentState.overrides,
-            stationed: stationedAssessmentLines,
-            onOpen: assessmentWorkflow.openReview,
-            onBack: assessmentWorkflow.closeReview,
-            onCenterlineChange: (id) => {
-              assessmentWorkflow.setCenterline(id)
-              figureElements.updateCenterlineStationing({ overrides: {} })
-              setSelectedStationLabelId(null)
-            },
-            onDirectionChange: (direction) => {
-              assessmentWorkflow.setDirection(direction)
-              figureElements.updateCenterlineStationing({ overrides: {} })
-              setSelectedStationLabelId(null)
-            },
-            onStartStationChange: (station) => {
-              assessmentWorkflow.setStartStation(station)
-              figureElements.updateCenterlineStationing({ overrides: {} })
-              setSelectedStationLabelId(null)
-            },
-            onReviewTabChange: assessmentWorkflow.setReviewTab,
-            onSelectLine: (id) =>
-              assessmentWorkflow.selectLine(
-                assessmentState.selectedLineId === id ? null : id,
-              ),
-            onSetOverride: assessmentWorkflow.setOverride,
-          }}
+          projectSession={projectSession}
+          assessmentWorkflow={assessmentWorkflow}
+          assessmentInterval={settings.assessmentLineInterval}
+          centerlineCandidates={centerlineCandidates}
+          stationedAssessmentLines={stationedAssessmentLines}
           overlays={overlays}
           showOverlays={settings.showOverlays}
+          projectInputs={projectInputs}
+          toggleReviewSelection
           onCollapse={() => setLeftCollapsed(true)}
           onExpand={() => setLeftCollapsed(false)}
           onMobileClose={() => setLeftOpen(false)}
-          onH5Files={projectInputs.handleH5Files}
-          onOverlayFiles={projectInputs.handleOverlayFiles}
-          onRemoveCondition={projectInputs.removeHydraulicCondition}
-          onRenameCondition={projectInputs.renameHydraulicCondition}
-          onRoleChange={projectInputs.changeScenarioRole}
-          onRunChange={projectInputs.changeScenarioRun}
-          runsFor={(key) => engine.runOptions(key)}
           onAssessmentIntervalChange={(interval) => {
             updateSettings('assessmentLineInterval', interval)
             assessmentWorkflow.clear(interval)
           }}
           onGenerateAssessmentLines={generation.generateAssessmentLines}
-          onClearAssessmentLines={() =>
-            assessmentWorkflow.clear(settings.assessmentLineInterval)
-          }
           onShowOverlaysChange={(visible) =>
             updateSettings('showOverlays', visible)
           }
-          onUpdateOverlay={projectInputs.updateOverlay}
-          onRemoveOverlay={(id) =>
-            setOverlays((current) =>
-              current.filter((overlay) => overlay.id !== id),
-            )
-          }
+          onStationingChanged={() => {
+            figureElements.updateCenterlineStationing({ overrides: {} })
+            setSelectedStationLabelId(null)
+          }}
           onReset={resetProject}
         />
       }
