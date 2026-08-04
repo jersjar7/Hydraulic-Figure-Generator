@@ -13,19 +13,19 @@ import {
   type WseProjectState,
 } from './wseProjectDocument'
 
-type WseProjectFilesOptions = {
+type Options = {
   snapshot: CreateWseProjectSnapshotOptions
   currentFigure: WseFigureDocument
   currentProject: HydraulicProjectDocument
   appendNotices: (notices: IngestNotice[]) => void
 }
 
-export function useWseProjectFiles({
+export function createWseProjectFileActions({
   snapshot,
   currentFigure,
   currentProject,
   appendNotices,
-}: WseProjectFilesOptions) {
+}: Options) {
   const saveProject = () => {
     saveHydraulicProject(
       createWseProjectSnapshot(snapshot),
