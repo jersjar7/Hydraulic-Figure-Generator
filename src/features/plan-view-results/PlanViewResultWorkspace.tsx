@@ -48,6 +48,7 @@ import { usePlanViewFigureSet } from './usePlanViewFigureSet'
 import { usePlanViewFigureDocument } from './usePlanViewFigureDocument'
 import { PlanViewWorkspaceFooter } from './PlanViewWorkspaceFooter'
 import { PlanViewWorkspaceMap } from './PlanViewWorkspaceMap'
+import { usePlanViewStationing } from './usePlanViewStationing'
 
 const SCENARIO_ROLES: readonly ScenarioRoleOption[] = [
   { role: 'baseline', label: 'Scenario', required: true },
@@ -103,18 +104,28 @@ export function PlanViewResultWorkspace() {
     }
   }, [])
   const elements = useMapElementController(settings, setSettings)
+  const stationing = usePlanViewStationing({
+    engine,
+    scenarioId: baselineId,
+    overlays,
+    settings,
+    setSettings,
+    workflow: assessmentWorkflow,
+  })
   const figureSet = usePlanViewFigureSet({
     engine,
     scenarios,
     baselineId,
     runByScenario,
     overlays,
+    stationingSource: stationing.source,
     baseSettings: settings,
     appendNotices,
   })
   const figureDocument = usePlanViewFigureDocument({
     engine,
     overlays,
+    stationingSource: stationing.source,
     figureSet,
     appendNotices,
   })
@@ -200,6 +211,7 @@ export function PlanViewResultWorkspace() {
     engine,
     settings,
     overlays,
+    centerlineStationing: stationing.layer,
     setBusy,
     appendNotices,
   })
@@ -252,6 +264,11 @@ export function PlanViewResultWorkspace() {
     project: projectDocument.document,
     figureSet: figureSet.figureSet,
     figureDocument: figureDocument.settings,
+    stationingSource: {
+      centerlineId: assessmentWorkflow.state.centerlineId,
+      direction: assessmentWorkflow.state.direction,
+      startStation: assessmentWorkflow.state.startStation,
+    },
   }
   const projectFiles = usePlanViewResultProjectFiles({ snapshot, appendNotices })
   const loadProject = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -265,6 +282,8 @@ export function PlanViewResultWorkspace() {
     projectSession.loadSelection(loaded.scenarioSelection)
     figureSet.load(loaded.figureSet ?? figureSet.figureSet)
     figureDocument.load(loaded.figureDocument)
+    assessmentWorkflow.load(loaded.stationingSource ?? {}, 1)
+    stationing.clearSelection()
     setScene(null)
     appendNotices([{
       level: 'success',
@@ -276,6 +295,7 @@ export function PlanViewResultWorkspace() {
     projectSession.reset()
     resetDocument()
     assessmentWorkflow.reset(1)
+    stationing.clearSelection()
     setSettings(createDefaultPlanViewResultSettings())
     figureSet.reset()
     figureDocument.reset()
@@ -313,6 +333,7 @@ export function PlanViewResultWorkspace() {
       engine,
       settings,
       overlays,
+      centerlineStationing: stationing.layer,
       appendNotices,
     })
   }
@@ -386,7 +407,7 @@ export function PlanViewResultWorkspace() {
           projectSession={projectSession}
           assessmentWorkflow={assessmentWorkflow}
           assessmentInterval={1}
-          centerlineCandidates={[]}
+          centerlineCandidates={stationing.candidates}
           stationedAssessmentLines={null}
           overlays={overlays}
           showOverlays={settings.showOverlays}
@@ -423,6 +444,7 @@ export function PlanViewResultWorkspace() {
             resultOptions={resultOptions}
             activeElement={activeElement}
             elements={elements}
+            stationing={stationing.panelProps}
             canDownload={Boolean(scene)}
             onSettingsChange={updateSettings}
             onResultParameterChange={changeResult}

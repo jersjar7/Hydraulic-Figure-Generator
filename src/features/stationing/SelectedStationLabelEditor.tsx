@@ -136,7 +136,7 @@ export function SelectedStationLabelEditor({
         </div>
       ) : (
         <p className="empty-note">
-          Click a station label on the canvas to edit or drag it.
+          Choose a station label above to edit, hide, or move it.
         </p>
       )}
     </>

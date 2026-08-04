@@ -1,6 +1,7 @@
 import type { HydraulicEngine } from '../../core/hydraulicEngine'
 import type {
   IngestNotice,
+  CenterlineStationLayer,
   MapOverlay,
   PlanViewResultScene,
   PlanViewResultSettings,
@@ -12,6 +13,7 @@ type Options = {
   engine: HydraulicEngine
   settings: PlanViewResultSettings
   overlays: MapOverlay[]
+  centerlineStationing?: CenterlineStationLayer
   appendNotices(notices: IngestNotice[]): void
 }
 
@@ -20,6 +22,7 @@ export async function exportPlanViewResult({
   engine,
   settings,
   overlays,
+  centerlineStationing,
   appendNotices,
 }: Options) {
   try {
@@ -32,7 +35,12 @@ export async function exportPlanViewResult({
           bounds: engine.commonBounds([scene.condition.key]),
           settings,
         },
-        layers: { overlays },
+        layers: {
+          overlays,
+          centerlineStationing: centerlineStationing
+            ? { ...centerlineStationing, selectedLabelId: null }
+            : undefined,
+        },
         selection: {},
       },
     })

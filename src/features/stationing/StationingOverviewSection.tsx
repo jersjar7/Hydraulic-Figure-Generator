@@ -72,8 +72,7 @@ export function StationingOverviewSection({
 
       {!hasCenterline ? (
         <p className="empty-note">
-          Select a hydraulic centerline in Project data, then return here to
-          style its station ticks.
+          Choose a centerline feature above to enable and style station ticks.
         </p>
       ) : null}
 

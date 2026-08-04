@@ -15,10 +15,12 @@ import {
 } from './planViewFigureDocument'
 import { renderPlanViewFigureSetCanvas } from './planViewFigureSetRecipe'
 import type { usePlanViewFigureSet } from './usePlanViewFigureSet'
+import type { CenterlineStationingSource } from '../stationing/centerlineStationingSource'
 
 type Options = {
   engine: HydraulicEngine
   overlays: MapOverlay[]
+  stationingSource?: CenterlineStationingSource
   figureSet: ReturnType<typeof usePlanViewFigureSet>
   appendNotices(notices: IngestNotice[]): void
 }
@@ -42,6 +44,7 @@ function canvasPng(canvas: HTMLCanvasElement): Promise<WordDocumentImage> {
 export function usePlanViewFigureDocument({
   engine,
   overlays,
+  stationingSource,
   figureSet,
   appendNotices,
 }: Options) {
@@ -87,7 +90,7 @@ export function usePlanViewFigureDocument({
         signal: controller.signal,
         render: async (item, signal) => {
           const { canvas } = await renderPlanViewFigureSetCanvas(
-            { engine, overlays },
+            { engine, overlays, stationingSource },
             item,
             signal,
           )
@@ -113,7 +116,15 @@ export function usePlanViewFigureDocument({
       setExporting(false)
       abortRef.current = null
     }
-  }, [appendNotices, engine, exporting, figureSet.figureSet, overlays, settings])
+  }, [
+    appendNotices,
+    engine,
+    exporting,
+    figureSet.figureSet,
+    overlays,
+    settings,
+    stationingSource,
+  ])
 
   const load = useCallback((next?: FigureDocumentSettings) => {
     setSettings(next ?? createDefaultFigureDocumentSettings())

@@ -1,4 +1,5 @@
 import { Download, FileJson } from 'lucide-react'
+import type { ComponentProps } from 'react'
 import { ControlSection } from '../../components/ControlSection'
 import { FigureElementsPanel } from '../../components/FigureElementsPanel'
 import {
@@ -12,6 +13,7 @@ import type {
   ScalarRampKey,
 } from '../../core/types'
 import type { useMapElementController } from '../figures/useMapElementController'
+import { CenterlineStationingToolPanel } from '../stationing/CenterlineStationingToolPanel'
 import { FrameSettingsPanel } from '../wse-difference/components/FrameSettingsPanel'
 import { Toggle } from '../wse-difference/components/Toggle'
 import type { FigureSettingsChange } from '../wse-difference/settingsPanelTypes'
@@ -23,6 +25,7 @@ type Props = {
   resultOptions: PlanViewOutputOption[]
   activeElement: FigureElementPanelKey
   elements: ReturnType<typeof useMapElementController<PlanViewResultSettings>>
+  stationing: ComponentProps<typeof CenterlineStationingToolPanel>
   canDownload: boolean
   onSettingsChange<Key extends keyof PlanViewResultSettings>(
     key: Key,
@@ -220,6 +223,7 @@ export function PlanViewResultSettingsPanel(props: Props) {
     resultOptions,
     activeElement,
     elements,
+    stationing,
     canDownload,
     onSettingsChange,
     onResultParameterChange,
@@ -312,6 +316,9 @@ export function PlanViewResultSettingsPanel(props: Props) {
         />
       </ControlSection>
     )
+  }
+  if (section === 'stationing') {
+    return <CenterlineStationingToolPanel {...stationing} />
   }
   return (
     <ControlSection>

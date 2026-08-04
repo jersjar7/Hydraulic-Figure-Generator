@@ -44,6 +44,13 @@ describe('figure module registry', () => {
       figureModuleById(HYDRAULIC_PROFILES_FIGURE_ID),
       hydraulicProfileFigure,
     )
+    assert.equal(planViewResultFigure.editor.centerlineStationing, true)
+    assert.deepEqual(
+      planViewResultFigure.editor.settingsSections.map(
+        (section) => section.key,
+      ),
+      ['result', 'legend', 'frame', 'elements', 'stationing', 'export'],
+    )
     assert.equal(figureModuleById('not-registered'), null)
   })
 

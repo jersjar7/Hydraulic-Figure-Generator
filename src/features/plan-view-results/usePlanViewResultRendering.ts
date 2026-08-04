@@ -2,6 +2,7 @@ import { useEffect, useRef, type RefObject } from 'react'
 import type { HydraulicEngine } from '../../core/hydraulicEngine'
 import type {
   IngestNotice,
+  CenterlineStationLayer,
   MapOverlay,
   PlanViewResultScene,
   PlanViewResultSettings,
@@ -14,6 +15,7 @@ type Options = {
   engine: HydraulicEngine
   settings: PlanViewResultSettings
   overlays: MapOverlay[]
+  centerlineStationing?: CenterlineStationLayer
   setBusy(busy: boolean): void
   appendNotices(notices: IngestNotice[]): void
 }
@@ -24,6 +26,7 @@ export function usePlanViewResultRendering({
   engine,
   settings,
   overlays,
+  centerlineStationing,
   setBusy,
   appendNotices,
 }: Options) {
@@ -44,7 +47,7 @@ export function usePlanViewResultRendering({
             bounds: engine.commonBounds([scene.condition.key]),
             settings,
           },
-          layers: { overlays },
+          layers: { overlays, centerlineStationing },
           selection: {},
         },
         signal: controller.signal,
@@ -69,5 +72,14 @@ export function usePlanViewResultRendering({
         if (renderSequence.current === sequence) setBusy(false)
       })
     return () => controller.abort()
-  }, [appendNotices, canvasRef, engine, overlays, scene, setBusy, settings])
+  }, [
+    appendNotices,
+    canvasRef,
+    centerlineStationing,
+    engine,
+    overlays,
+    scene,
+    setBusy,
+    settings,
+  ])
 }

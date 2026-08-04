@@ -44,7 +44,7 @@ export const planViewResultFigure = {
     optionalScenarioRoles: [],
     shapefileOverlays: true,
     assessmentLines: false,
-    centerlineStationing: false,
+    centerlineStationing: true,
     annotations: false,
     projectFileExtension: '.hydfig',
     settingsSections: PLAN_VIEW_RESULT_SETTINGS_SECTIONS,

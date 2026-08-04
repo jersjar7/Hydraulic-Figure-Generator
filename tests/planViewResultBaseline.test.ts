@@ -4,6 +4,7 @@ import { describe, it } from 'node:test'
 import { FRAMES } from '../src/core/mapRenderer'
 import { renderPlanViewResultDocument } from '../src/core/map/planViewResultRenderer'
 import type { PlanViewResultScene } from '../src/core/types'
+import { generateCenterlineStationTicks } from '../src/core/centerlineStationing'
 import { createDefaultPlanViewResultSettings } from '../src/features/plan-view-results/planViewResultSettings'
 import {
   syntheticGeometry,
@@ -106,5 +107,68 @@ describe('Plan-View Hydraulic Results production baseline', () => {
       assert.ok(colored > 2_000)
       assert.ok(dark > 100)
     }
+  })
+
+  it('renders configured centerline station ticks above the hydraulic result', async () => {
+    const settings = createDefaultPlanViewResultSettings()
+    settings.basemapOpacity = 0
+    settings.showTitle = false
+    settings.showLegend = false
+    settings.showNorth = false
+    settings.showScale = false
+    settings.centerlineStationing.visible = true
+    settings.centerlineStationing.showLabels = false
+    settings.centerlineStationing.tickColor = '#ff00ff'
+    settings.centerlineStationing.minorInterval = 20
+    settings.centerlineStationing.majorInterval = 40
+    const centerline = {
+      id: 'centerline',
+      overlayId: 'overlay',
+      overlayName: 'Centerline',
+      featureIndex: 0,
+      partIndex: 0,
+      mapPoints: [{ x: 10, y: 50 }, { x: 90, y: 50 }],
+      modelPoints: [{ x: 10, y: 50 }, { x: 90, y: 50 }],
+      lengthFeet: 80,
+    }
+    const canvas = createCanvas(1650, 1275)
+    await renderPlanViewResultDocument(
+      canvas as unknown as HTMLCanvasElement,
+      {
+        scene: scene(),
+        view: {
+          bounds: { x0: -8, x1: 108, y0: -8, y1: 108 },
+          settings,
+        },
+        layers: {
+          overlays: [],
+          centerlineStationing: {
+            centerline,
+            direction: 'a-to-b',
+            ticks: generateCenterlineStationTicks(
+              centerline,
+              'a-to-b',
+              0,
+              settings.centerlineStationing,
+            ),
+          },
+        },
+        selection: {},
+      },
+    )
+    const pixels = canvas
+      .getContext('2d')
+      .getImageData(0, 0, canvas.width, canvas.height).data
+    let magenta = 0
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (
+        pixels[index] > 220 &&
+        pixels[index + 1] < 45 &&
+        pixels[index + 2] > 220
+      ) {
+        magenta += 1
+      }
+    }
+    assert.ok(magenta > 20)
   })
 })

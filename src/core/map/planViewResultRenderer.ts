@@ -1,6 +1,7 @@
 import { runDisplayName } from '../hydraulicEngine'
 import type {
   Bounds,
+  CenterlineStationLayer,
   FigureRenderDocument,
   MapElementBounds,
   MapOverlay,
@@ -17,6 +18,7 @@ import {
 import { drawNorthArrow } from './northArrowElement'
 import { drawOverlays } from './overlayLayer'
 import { drawScaleBar } from './scaleBarElement'
+import { drawCenterlineStationing } from './stationingLayer'
 import { scalarColor } from './scalarResultRamp'
 import { drawScalarResultLegend } from './scalarResultLegendElement'
 import {
@@ -30,7 +32,10 @@ export type PlanViewResultRenderDocument = FigureRenderDocument<
   PlanViewResultScene,
   PlanViewResultSettings,
   Bounds,
-  { overlays: MapOverlay[] },
+  {
+    overlays: MapOverlay[]
+    centerlineStationing?: CenterlineStationLayer
+  },
   Record<string, never>
 >
 
@@ -134,6 +139,14 @@ export async function renderPlanViewResultDocument(
     drawOverlays(context, document.layers.overlays, view)
   }
   context.restore()
+
+  drawCenterlineStationing(
+    context,
+    document.layers.centerlineStationing,
+    view,
+    settings,
+    frame,
+  )
 
   if (settings.showTitle) {
     elementBounds.push(

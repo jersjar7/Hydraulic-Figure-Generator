@@ -30,6 +30,11 @@ describe('plan-view result project files', () => {
         ...createDefaultFigureDocumentSettings(),
         startingFigureNumber: 12,
       },
+      stationingSource: {
+        centerlineId: 'overlay:centerline:0:0',
+        direction: 'b-to-a' as const,
+        startStation: 1200,
+      },
     }
     assert.deepEqual(
       parsePlanViewResultProject(serializePlanViewResultProject(state)),
@@ -57,6 +62,10 @@ describe('plan-view result project files', () => {
     assert.deepEqual(
       parsePlanViewResultProject(legacy).figureDocument,
       createDefaultFigureDocumentSettings(),
+    )
+    assert.equal(
+      parsePlanViewResultProject(legacy).stationingSource,
+      undefined,
     )
   })
 

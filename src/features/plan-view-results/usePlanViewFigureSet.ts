@@ -18,6 +18,7 @@ import {
 import { planViewFigureSetRecipe } from './planViewFigureSetRecipe'
 import { movePlanViewFigureSetItem } from './planViewFigureDocument'
 import { planViewGeometryOutputOptions } from '../../core/hydraulics/planViewGeometryResults'
+import type { CenterlineStationingSource } from '../stationing/centerlineStationingSource'
 
 type Options = {
   engine: HydraulicEngine
@@ -25,6 +26,7 @@ type Options = {
   baselineId: string
   runByScenario: Record<string, number>
   overlays: MapOverlay[]
+  stationingSource?: CenterlineStationingSource
   baseSettings: PlanViewResultSettings
   appendNotices(notices: IngestNotice[]): void
 }
@@ -66,6 +68,7 @@ export function usePlanViewFigureSet({
   baselineId,
   runByScenario,
   overlays,
+  stationingSource,
   baseSettings,
   appendNotices,
 }: Options) {
@@ -263,7 +266,7 @@ export function usePlanViewFigureSet({
       signal: controller.signal,
       itemId: (item) => item.id,
       worker: (item, signal) => planViewFigureSetRecipe.generate(
-        { engine, overlays },
+        { engine, overlays, stationingSource },
         item,
         signal,
       ),
@@ -300,6 +303,7 @@ export function usePlanViewFigureSet({
     engine,
     generating,
     overlays,
+    stationingSource,
     updateRuntime,
   ])
 

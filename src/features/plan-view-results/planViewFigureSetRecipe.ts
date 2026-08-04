@@ -10,10 +10,15 @@ import {
   type PlanViewFigureSetSelection,
 } from './planViewFigureSet'
 import type { PlanViewResultSettings } from '../../core/types'
+import {
+  buildCenterlineStationingLayer,
+  type CenterlineStationingSource,
+} from '../stationing/centerlineStationingSource'
 
 export type PlanViewFigureSetContext = {
   engine: HydraulicEngine
   overlays: MapOverlay[]
+  stationingSource?: CenterlineStationingSource
 }
 
 function thumbnail(canvas: HTMLCanvasElement) {
@@ -27,7 +32,7 @@ function thumbnail(canvas: HTMLCanvasElement) {
 }
 
 export async function renderPlanViewFigureSetCanvas(
-  { engine, overlays }: PlanViewFigureSetContext,
+  { engine, overlays, stationingSource }: PlanViewFigureSetContext,
   item: PlanViewFigureSetItem,
   signal?: AbortSignal,
 ) {
@@ -44,7 +49,13 @@ export async function renderPlanViewFigureSetCanvas(
         bounds: engine.commonBounds([item.selection.scenarioId]),
         settings: item.settings,
       },
-      layers: { overlays },
+      layers: {
+        overlays,
+        centerlineStationing: buildCenterlineStationingLayer(
+          stationingSource,
+          item.settings.centerlineStationing,
+        ),
+      },
       selection: {},
     },
     signal,
