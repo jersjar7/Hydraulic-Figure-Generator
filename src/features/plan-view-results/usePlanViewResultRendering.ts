@@ -8,6 +8,7 @@ import type {
   PlanViewResultSettings,
 } from '../../core/types'
 import { planViewResultFigure } from './planViewResultFigure'
+import { createPlanViewResultRenderDocument } from './planViewResultRenderDocument'
 
 type Options = {
   canvasRef: RefObject<HTMLCanvasElement | null>
@@ -41,15 +42,13 @@ export function usePlanViewResultRendering({
     void planViewResultFigure
       .render({
         canvas: output,
-        document: {
+        document: createPlanViewResultRenderDocument({
+          engine,
           scene,
-          view: {
-            bounds: engine.commonBounds([scene.condition.key]),
-            settings,
-          },
-          layers: { overlays, centerlineStationing },
-          selection: {},
-        },
+          settings,
+          overlays,
+          centerlineStationing,
+        }),
         signal: controller.signal,
       })
       .then(() => {

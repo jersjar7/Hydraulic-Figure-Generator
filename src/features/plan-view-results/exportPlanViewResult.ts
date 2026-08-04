@@ -7,6 +7,7 @@ import type {
   PlanViewResultSettings,
 } from '../../core/types'
 import { planViewResultFigure } from './planViewResultFigure'
+import { createPlanViewResultRenderDocument } from './planViewResultRenderDocument'
 
 type Options = {
   scene: PlanViewResultScene
@@ -29,20 +30,14 @@ export async function exportPlanViewResult({
     const canvas = document.createElement('canvas')
     await planViewResultFigure.render({
       canvas,
-      document: {
+      document: createPlanViewResultRenderDocument({
+        engine,
         scene,
-        view: {
-          bounds: engine.commonBounds([scene.condition.key]),
-          settings,
-        },
-        layers: {
-          overlays,
-          centerlineStationing: centerlineStationing
-            ? { ...centerlineStationing, selectedLabelId: null }
-            : undefined,
-        },
-        selection: {},
-      },
+        settings,
+        overlays,
+        centerlineStationing,
+        mode: 'published',
+      }),
     })
     const anchor = document.createElement('a')
     anchor.href = canvas.toDataURL('image/png')

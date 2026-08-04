@@ -6,6 +6,8 @@ import { renderPlanViewResultDocument } from '../src/core/map/planViewResultRend
 import type { PlanViewResultScene } from '../src/core/types'
 import { generateCenterlineStationTicks } from '../src/core/centerlineStationing'
 import { createDefaultPlanViewResultSettings } from '../src/features/plan-view-results/planViewResultSettings'
+import { createPlanViewResultRenderDocument } from '../src/features/plan-view-results/planViewResultRenderDocument'
+import type { HydraulicEngine } from '../src/core/hydraulicEngine'
 import {
   syntheticGeometry,
   syntheticRunSelection,
@@ -45,6 +47,50 @@ function scene(): PlanViewResultScene {
 }
 
 describe('Plan-View Hydraulic Results production baseline', () => {
+  it('uses one render document policy for editor and published outputs', () => {
+    const bounds = { x0: -8, x1: 108, y0: -8, y1: 108 }
+    const engine = {
+      commonBounds: () => bounds,
+    } as unknown as HydraulicEngine
+    const centerlineStationing = {
+      centerline: {
+        id: 'centerline',
+        overlayId: 'overlay',
+        overlayName: 'Centerline',
+        featureIndex: 0,
+        partIndex: 0,
+        mapPoints: [{ x: 10, y: 50 }, { x: 90, y: 50 }],
+        modelPoints: [{ x: 10, y: 50 }, { x: 90, y: 50 }],
+        lengthFeet: 80,
+      },
+      direction: 'a-to-b' as const,
+      ticks: [],
+      selectedLabelId: 'station-40',
+    }
+    const editor = createPlanViewResultRenderDocument({
+      engine,
+      scene: scene(),
+      settings: createDefaultPlanViewResultSettings(),
+      overlays: [],
+      centerlineStationing,
+    })
+    const published = createPlanViewResultRenderDocument({
+      engine,
+      scene: scene(),
+      settings: createDefaultPlanViewResultSettings(),
+      overlays: [],
+      centerlineStationing,
+      mode: 'published',
+    })
+
+    assert.equal(editor.view.bounds, bounds)
+    assert.equal(
+      editor.layers.centerlineStationing?.selectedLabelId,
+      'station-40',
+    )
+    assert.equal(published.layers.centerlineStationing?.selectedLabelId, null)
+  })
+
   it('keeps scalar result and contour defaults explicit', () => {
     const settings = createDefaultPlanViewResultSettings()
     assert.equal(settings.resultParameter, 'Water_Depth_ft')

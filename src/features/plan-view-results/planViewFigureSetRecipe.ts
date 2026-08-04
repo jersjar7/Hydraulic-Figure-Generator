@@ -14,6 +14,7 @@ import {
   buildCenterlineStationingLayer,
   type CenterlineStationingSource,
 } from '../stationing/centerlineStationingSource'
+import { createPlanViewResultRenderDocument } from './planViewResultRenderDocument'
 
 export type PlanViewFigureSetContext = {
   engine: HydraulicEngine
@@ -43,21 +44,17 @@ export async function renderPlanViewFigureSetCanvas(
   const canvas = document.createElement('canvas')
   await planViewResultFigure.render({
     canvas,
-    document: {
+    document: createPlanViewResultRenderDocument({
+      engine,
       scene,
-      view: {
-        bounds: engine.commonBounds([item.selection.scenarioId]),
-        settings: item.settings,
-      },
-      layers: {
-        overlays,
-        centerlineStationing: buildCenterlineStationingLayer(
-          stationingSource,
-          item.settings.centerlineStationing,
-        ),
-      },
-      selection: {},
-    },
+      settings: item.settings,
+      overlays,
+      centerlineStationing: buildCenterlineStationingLayer(
+        stationingSource,
+        item.settings.centerlineStationing,
+      ),
+      mode: 'published',
+    }),
     signal,
   })
   return { scene, canvas }
