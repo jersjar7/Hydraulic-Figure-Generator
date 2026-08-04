@@ -16,7 +16,6 @@ import type {
   PlanViewResultScene,
   PlanViewResultSettings,
 } from '../../core/types'
-import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
 import { FigurePicker } from '../figures/FigurePicker'
 import {
   FigureProductionModeSwitcher,
@@ -49,6 +48,7 @@ import { usePlanViewFigureDocument } from './usePlanViewFigureDocument'
 import { PlanViewWorkspaceFooter } from './PlanViewWorkspaceFooter'
 import { PlanViewWorkspaceMap } from './PlanViewWorkspaceMap'
 import { usePlanViewStationing } from './usePlanViewStationing'
+import { useCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 
 const SCENARIO_ROLES: readonly ScenarioRoleOption[] = [
   { role: 'baseline', label: 'Scenario', required: true },
@@ -82,7 +82,7 @@ export function PlanViewResultWorkspace() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const canvasFrameRef = useRef<HTMLDivElement>(null)
   const projectInputRef = useRef<HTMLInputElement>(null)
-  const assessmentWorkflow = useAssessmentWorkflow(1)
+  const stationingSource = useCenterlineStationingSource()
   const displaySize = useFittedCanvasAspect(
     canvasFrameRef,
     settings.orientation === 'landscape' ? 1650 / 1275 : 1275 / 1650,
@@ -110,7 +110,7 @@ export function PlanViewResultWorkspace() {
     overlays,
     settings,
     setSettings,
-    workflow: assessmentWorkflow,
+    sourceController: stationingSource,
   })
   const figureSet = usePlanViewFigureSet({
     engine,
@@ -265,9 +265,7 @@ export function PlanViewResultWorkspace() {
     figureSet: figureSet.figureSet,
     figureDocument: figureDocument.settings,
     stationingSource: {
-      centerlineId: assessmentWorkflow.state.centerlineId,
-      direction: assessmentWorkflow.state.direction,
-      startStation: assessmentWorkflow.state.startStation,
+      ...stationingSource.state,
     },
   }
   const projectFiles = usePlanViewResultProjectFiles({ snapshot, appendNotices })
@@ -282,7 +280,7 @@ export function PlanViewResultWorkspace() {
     projectSession.loadSelection(loaded.scenarioSelection)
     figureSet.load(loaded.figureSet ?? figureSet.figureSet)
     figureDocument.load(loaded.figureDocument)
-    assessmentWorkflow.load(loaded.stationingSource ?? {}, 1)
+    stationingSource.load(loaded.stationingSource ?? {})
     stationing.clearSelection()
     setScene(null)
     appendNotices([{
@@ -294,7 +292,7 @@ export function PlanViewResultWorkspace() {
   const resetProject = () => {
     projectSession.reset()
     resetDocument()
-    assessmentWorkflow.reset(1)
+    stationingSource.reset()
     stationing.clearSelection()
     setSettings(createDefaultPlanViewResultSettings())
     figureSet.reset()
@@ -405,18 +403,12 @@ export function PlanViewResultWorkspace() {
           collapsed={leftCollapsed}
           busy={busy}
           projectSession={projectSession}
-          assessmentWorkflow={assessmentWorkflow}
-          assessmentInterval={1}
-          centerlineCandidates={stationing.candidates}
-          stationedAssessmentLines={null}
           overlays={overlays}
           showOverlays={settings.showOverlays}
           projectInputs={projectInputs}
           onCollapse={() => setLeftCollapsed(true)}
           onExpand={() => setLeftCollapsed(false)}
           onMobileClose={() => setLeftOpen(false)}
-          onAssessmentIntervalChange={() => undefined}
-          onGenerateAssessmentLines={() => undefined}
           onShowOverlaysChange={(visible) => updateSettings('showOverlays', visible)}
           onReset={resetProject}
         />

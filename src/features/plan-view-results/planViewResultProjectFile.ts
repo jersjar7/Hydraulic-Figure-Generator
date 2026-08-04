@@ -15,7 +15,7 @@ import {
   type PlanViewFigureSetItem,
 } from './planViewFigureSet'
 import { isPlanViewGeometryOutput } from '../../core/hydraulics/planViewGeometryResults'
-import type { PersistedAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
+import type { PersistedCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 
 export const PLAN_VIEW_RESULT_PROJECT_VERSION = 5
 
@@ -25,7 +25,7 @@ export type PlanViewResultProjectState = {
   project: HydraulicProjectDocument
   figureSet?: PlanViewFigureSetDocument
   figureDocument?: FigureDocumentSettings
-  stationingSource?: PersistedAssessmentWorkflow
+  stationingSource?: PersistedCenterlineStationingSource
 }
 
 type Envelope = PlanViewResultProjectState & {
@@ -192,12 +192,12 @@ function hydrateSettings(value: unknown): PlanViewResultSettings {
 
 function hydrateStationingSource(
   value: unknown,
-): PersistedAssessmentWorkflow {
+): PersistedCenterlineStationingSource {
   if (value === undefined) return {}
   if (!value || typeof value !== 'object') {
     throw new Error('The saved centerline stationing source is malformed.')
   }
-  const source = value as PersistedAssessmentWorkflow
+  const source = value as PersistedCenterlineStationingSource
   if (
     source.centerlineId !== undefined &&
     typeof source.centerlineId !== 'string'

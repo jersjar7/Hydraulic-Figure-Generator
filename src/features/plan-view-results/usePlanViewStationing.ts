@@ -4,9 +4,9 @@ import type {
   MapOverlay,
   PlanViewResultSettings,
 } from '../../core/types'
-import type { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
 import { useCenterlineStationingController } from '../stationing/useCenterlineStationingController'
 import { useCenterlineStationingLayer } from '../stationing/useCenterlineStationingLayer'
+import type { useCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 
 type Options = {
   engine: HydraulicEngine
@@ -14,7 +14,7 @@ type Options = {
   overlays: MapOverlay[]
   settings: PlanViewResultSettings
   setSettings: Dispatch<SetStateAction<PlanViewResultSettings>>
-  workflow: ReturnType<typeof useAssessmentWorkflow>
+  sourceController: ReturnType<typeof useCenterlineStationingSource>
 }
 
 export function usePlanViewStationing({
@@ -23,10 +23,10 @@ export function usePlanViewStationing({
   overlays,
   settings,
   setSettings,
-  workflow,
+  sourceController,
 }: Options) {
   const [selectedLabelId, setSelectedLabelId] = useState<string | null>(null)
-  const state = workflow.state
+  const state = sourceController.state
   const stationing = useCenterlineStationingLayer({
     modelWkt: engine.condition(scenarioId)?.geometry?.wkt,
     overlays,
@@ -35,7 +35,7 @@ export function usePlanViewStationing({
     direction: state.direction,
     startStation: state.startStation,
     selectedLabelId,
-    setCenterline: workflow.setCenterline,
+    setCenterline: sourceController.setCenterline,
     setSelectedLabelId,
   })
   const controller = useCenterlineStationingController({
@@ -63,15 +63,15 @@ export function usePlanViewStationing({
         }
       : undefined,
     changeCenterline: (id: string) => {
-      workflow.setCenterline(id)
+      sourceController.setCenterline(id)
       resetLabelOverrides()
     },
     changeDirection: (direction: typeof state.direction) => {
-      workflow.setDirection(direction)
+      sourceController.setDirection(direction)
       resetLabelOverrides()
     },
     changeStartStation: (station: number) => {
-      workflow.setStartStation(station)
+      sourceController.setStartStation(station)
       resetLabelOverrides()
     },
     clearSelection: () => setSelectedLabelId(null),
@@ -85,15 +85,15 @@ export function usePlanViewStationing({
       selectedLabelId,
       hasCenterline: Boolean(stationing.selectedCenterline),
       onCenterlineChange: (id: string) => {
-        workflow.setCenterline(id)
+        sourceController.setCenterline(id)
         resetLabelOverrides()
       },
       onDirectionChange: (direction: typeof state.direction) => {
-        workflow.setDirection(direction)
+        sourceController.setDirection(direction)
         resetLabelOverrides()
       },
       onStartStationChange: (station: number) => {
-        workflow.setStartStation(station)
+        sourceController.setStartStation(station)
         resetLabelOverrides()
       },
       onChange: controller.update,

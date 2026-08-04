@@ -5,6 +5,7 @@ import type {
   StationedAssessmentLineCollection,
 } from '../../core/types'
 import type { useAssessmentWorkflow } from '../../features/assessment-lines/useAssessmentWorkflow'
+import { createAssessmentWorkflowState } from '../../features/assessment-lines/useAssessmentWorkflow'
 import type { createHydraulicProjectInputActions } from '../../features/project-workspace/hydraulicProjectInputActions'
 import type { useProjectSession } from '../../features/project-session/useProjectSession'
 import { ProjectDataPanel } from '../ProjectDataPanel'
@@ -17,10 +18,10 @@ type Props = {
   busy: boolean
   projectSession: ReturnType<typeof useProjectSession>
   scenarioRoles?: readonly ScenarioRoleOption[]
-  assessmentWorkflow: ReturnType<typeof useAssessmentWorkflow>
-  assessmentInterval: number
-  centerlineCandidates: CenterlineCandidate[]
-  stationedAssessmentLines: StationedAssessmentLineCollection | null
+  assessmentWorkflow?: ReturnType<typeof useAssessmentWorkflow>
+  assessmentInterval?: number
+  centerlineCandidates?: CenterlineCandidate[]
+  stationedAssessmentLines?: StationedAssessmentLineCollection | null
   overlays: MapOverlay[]
   showOverlays: boolean
   projectInputs: ReturnType<typeof createHydraulicProjectInputActions>
@@ -28,8 +29,8 @@ type Props = {
   onCollapse(): void
   onExpand(): void
   onMobileClose(): void
-  onAssessmentIntervalChange(interval: number): void
-  onGenerateAssessmentLines(): void
+  onAssessmentIntervalChange?(interval: number): void
+  onGenerateAssessmentLines?(): void
   onShowOverlaysChange(visible: boolean): void
   onStationingChanged?(): void
   onReset(): void
@@ -43,9 +44,9 @@ export function HydraulicProjectPanel({
   projectSession,
   scenarioRoles,
   assessmentWorkflow,
-  assessmentInterval,
-  centerlineCandidates,
-  stationedAssessmentLines,
+  assessmentInterval = 1,
+  centerlineCandidates = [],
+  stationedAssessmentLines = null,
   overlays,
   showOverlays,
   projectInputs,
@@ -59,7 +60,8 @@ export function HydraulicProjectPanel({
   onStationingChanged,
   onReset,
 }: Props) {
-  const state = assessmentWorkflow.state
+  const state = assessmentWorkflow?.state ??
+    createAssessmentWorkflowState(assessmentInterval)
   const stationingChanged = (update: () => void) => {
     update()
     onStationingChanged?.()
@@ -88,20 +90,21 @@ export function HydraulicProjectPanel({
         selectedLineId: state.selectedLineId,
         overrides: state.overrides,
         stationed: stationedAssessmentLines,
-        onOpen: assessmentWorkflow.openReview,
-        onBack: assessmentWorkflow.closeReview,
+        onOpen: () => assessmentWorkflow?.openReview(),
+        onBack: () => assessmentWorkflow?.closeReview(),
         onCenterlineChange: (id) =>
-          stationingChanged(() => assessmentWorkflow.setCenterline(id)),
+          stationingChanged(() => assessmentWorkflow?.setCenterline(id)),
         onDirectionChange: (direction) =>
-          stationingChanged(() => assessmentWorkflow.setDirection(direction)),
+          stationingChanged(() => assessmentWorkflow?.setDirection(direction)),
         onStartStationChange: (station) =>
-          stationingChanged(() => assessmentWorkflow.setStartStation(station)),
-        onReviewTabChange: assessmentWorkflow.setReviewTab,
+          stationingChanged(() => assessmentWorkflow?.setStartStation(station)),
+        onReviewTabChange: (tab) => assessmentWorkflow?.setReviewTab(tab),
         onSelectLine: (id) =>
-          assessmentWorkflow.selectLine(
+          assessmentWorkflow?.selectLine(
             toggleReviewSelection && state.selectedLineId === id ? null : id,
           ),
-        onSetOverride: assessmentWorkflow.setOverride,
+        onSetOverride: (lineId, override) =>
+          assessmentWorkflow?.setOverride(lineId, override),
       }}
       overlays={overlays}
       showOverlays={showOverlays}
@@ -115,10 +118,10 @@ export function HydraulicProjectPanel({
       onRoleChange={projectInputs.changeScenarioRole}
       onRunChange={projectInputs.changeScenarioRun}
       runsFor={(key) => projectSession.engine.runOptions(key)}
-      onAssessmentIntervalChange={onAssessmentIntervalChange}
-      onGenerateAssessmentLines={onGenerateAssessmentLines}
+      onAssessmentIntervalChange={onAssessmentIntervalChange ?? (() => undefined)}
+      onGenerateAssessmentLines={onGenerateAssessmentLines ?? (() => undefined)}
       onClearAssessmentLines={() =>
-        assessmentWorkflow.clear(assessmentInterval)
+        assessmentWorkflow?.clear(assessmentInterval)
       }
       onShowOverlaysChange={onShowOverlaysChange}
       onUpdateOverlay={projectInputs.updateOverlay}
