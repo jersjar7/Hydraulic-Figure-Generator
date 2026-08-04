@@ -27,6 +27,7 @@ import { WetDryKeyEditor } from './figure-elements/WetDryKeyEditor'
 
 type Props = {
   settings: FigureSettings
+  availableElements?: readonly FigureElementPanelKey[]
   activeElement: FigureElementPanelKey
   onActiveElementChange(key: FigureElementPanelKey): void
   onVisibilityChange(key: MapElementKey, visible: boolean): void
@@ -55,6 +56,7 @@ type Props = {
 
 export function FigureElementsPanel({
   settings,
+  availableElements,
   activeElement,
   onActiveElementChange,
   onVisibilityChange,
@@ -72,10 +74,15 @@ export function FigureElementsPanel({
   onNudgeStationLabel,
   onResetStationing,
 }: Props) {
-  const activeIndex = FIGURE_ELEMENTS.findIndex(
+  const elementDefinitions = availableElements
+    ? FIGURE_ELEMENTS.filter((element) =>
+        availableElements.includes(element.key),
+      )
+    : FIGURE_ELEMENTS
+  const activeIndex = elementDefinitions.findIndex(
     (element) => element.key === activeElement,
   )
-  const activeDefinition = FIGURE_ELEMENTS[activeIndex]
+  const activeDefinition = elementDefinitions[Math.max(0, activeIndex)]
   const activeMapElement =
     activeElement === 'stationing' ? null : activeElement
   const position = activeMapElement
@@ -91,19 +98,19 @@ export function FigureElementsPanel({
   ) => {
     let nextIndex = index
     if (event.key === 'ArrowRight') {
-      nextIndex = (index + 1) % FIGURE_ELEMENTS.length
+      nextIndex = (index + 1) % elementDefinitions.length
     } else if (event.key === 'ArrowLeft') {
       nextIndex =
-        (index - 1 + FIGURE_ELEMENTS.length) % FIGURE_ELEMENTS.length
+        (index - 1 + elementDefinitions.length) % elementDefinitions.length
     } else if (event.key === 'Home') {
       nextIndex = 0
     } else if (event.key === 'End') {
-      nextIndex = FIGURE_ELEMENTS.length - 1
+      nextIndex = elementDefinitions.length - 1
     } else {
       return
     }
     event.preventDefault()
-    onActiveElementChange(FIGURE_ELEMENTS[nextIndex].key)
+    onActiveElementChange(elementDefinitions[nextIndex].key)
     event.currentTarget.parentElement
       ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
       [nextIndex]?.focus()
@@ -139,7 +146,7 @@ export function FigureElementsPanel({
         role="tablist"
         aria-label="Figure elements"
       >
-        {FIGURE_ELEMENTS.map((element, index) => {
+        {elementDefinitions.map((element, index) => {
           const Icon = element.icon
           const elementVisible =
             element.key === 'stationing'

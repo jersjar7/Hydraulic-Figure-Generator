@@ -4,7 +4,19 @@ A React workspace for producing report-ready hydraulic figures from SRH-2D and
 SMS H5 exports. Files are processed locally in the browser and are never
 uploaded.
 
-The first figure module is the FRA WSE Difference map:
+The application currently provides three independently registered workspaces:
+
+- **WSE Difference** compares two hydraulic scenarios for FRA mapping.
+- **Cross-Section Comparison** samples Existing and Proposed hydraulics along
+  a drawn or generated assessment line.
+- **Plan-View Hydraulic Results** replaces the first Appendix K workflow slice.
+  It maps any scalar SMS result from one selected scenario and run, including
+  water depth, WSE, velocity magnitude, Froude number, and shear stress. Legend
+  bounds are data-driven and remain editable; color ramps, contour interval,
+  contour color/width, overlays, frame, report elements, project files, and PNG
+  export are supported.
+
+The FRA WSE Difference workspace:
 
 - Detects Natural, Existing, Proposed, and consistently named alternative
   geometry/datasets H5 pairs by contents and filenames.
@@ -37,7 +49,7 @@ src/
     project-data/      Models, Layers, Assess, and Review navigation
   core/
     contracts/         Hydraulic, overlay, annotation, stationing, and figure types
-    hydraulics/        SMS H5 readers, projection, scenario, WSE, and extrema services
+    hydraulics/        SMS H5 readers, projection, scenario, scalar, WSE, and extrema services
     map/               Reusable render layers, elements, transforms, and interactions
     projectFiles/      Versioned schema, migration, validation, and serialization
     stationing/        Centerline extraction, ticks, and assessment stationing
@@ -56,6 +68,7 @@ src/
     project-document/  Shared project state independent of figure documents
     project-session/   H5 scenario catalog, role, run, and resource ownership
     stationing/        Centerline station figure-element controls
+    plan-view-results/ Scalar result workspace, settings, persistence, and export
     tools/             Reusable editor-tool module contract
     wse-difference/    WSE workspace composition, controllers, panels, and export
   infrastructure/      Browser downloads and shapefile gateway adapters
@@ -90,7 +103,8 @@ npm run test:e2e
 ```
 
 The optional Site 6 integration test reads data from a local directory and
-writes a rendered PNG to the temporary directory:
+validates WSE comparison, cross-section, and all supported scalar plan-view
+results. It writes rendered PNGs to the temporary directory:
 
 ```powershell
 $env:HFG_SITE6_DATA = "C:\path\to\Data h5 and shapefiles"

@@ -1,6 +1,7 @@
 import { wseDifferenceFigure } from '../wse-difference/wseDifferenceFigure'
 import { crossSectionFigure } from '../cross-section/crossSectionFigure'
 import { defineFigureWorkspace } from './workspaceModule'
+import { planViewResultFigure } from '../plan-view-results/planViewResultFigure'
 
 export const FIGURE_WORKSPACES = [
   defineFigureWorkspace(
@@ -15,6 +16,13 @@ export const FIGURE_WORKSPACES = [
     () =>
       import('../cross-section/CrossSectionWorkspace').then((module) => ({
         default: module.CrossSectionWorkspace,
+      })),
+  ),
+  defineFigureWorkspace(
+    planViewResultFigure,
+    () =>
+      import('../plan-view-results/PlanViewResultWorkspace').then((module) => ({
+        default: module.PlanViewResultWorkspace,
       })),
   ),
 ] as const

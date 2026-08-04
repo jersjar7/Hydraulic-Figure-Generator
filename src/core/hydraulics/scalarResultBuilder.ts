@@ -70,11 +70,16 @@ export function buildScalarResultScene(
       'Geometry and result datasets have different node counts. Replace the mismatched scenario inputs.',
     )
   }
+  const displayValues = /Water_?Depth/i.test(paramName)
+    ? Float32Array.from(values, (value) =>
+        Number.isFinite(value) && value > 0 ? value : -999,
+      )
+    : values
   return {
     selection,
     projected,
     result: scalarResultMetadata(paramName),
-    values,
-    ...resultRange(values),
+    values: displayValues,
+    ...resultRange(displayValues),
   }
 }

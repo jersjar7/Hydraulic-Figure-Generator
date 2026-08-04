@@ -143,3 +143,10 @@ input[type="range"] {
   align-items: center;
   gap: 3px;
 }
+.ramp-preview {
+  display: block;
+  width: 100%;
+  height: 14px;
+  border: 1px solid #9bacbd;
+  border-radius: 3px;
+}

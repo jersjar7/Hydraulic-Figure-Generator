@@ -32,6 +32,8 @@ infrastructure directly.
 - `HydraulicEngine` owns loaded H5 resources and hydraulic run access. Its
   collaborators under `core/hydraulics/` own H5 reading, projection, scenario
   detection, run labels, WSE calculation, assessment lines, and extrema.
+- Generic scalar-result discovery and final-timestep access also stay behind
+  `HydraulicAnalysisPort`; Plan-View UI code never reads HDF5 paths directly.
 - `meshMatching.ts` owns spatial-index and comparison-point rules.
 - `assessmentLines.ts` turns the selected assessment-source WSE surface into reusable,
   level-aware map polylines. It does not own their UI or cartographic style.
@@ -120,8 +122,8 @@ contract.
 
 ## Frontend Growth
 
-`App.tsx` is a figure-workspace host. WSE Difference and Cross-Section
-Comparison are separate composition roots; input, project-file, generation,
+`App.tsx` is a figure-workspace host. WSE Difference, Cross-Section Comparison,
+and Plan-View Hydraulic Results are separate composition roots; input, project-file, generation,
 map-canvas, settings, rendering, and interaction responsibilities live in
 focused controllers and components around them. Settings sections and tools
 are registered modules rather than conditional branches in a workspace.

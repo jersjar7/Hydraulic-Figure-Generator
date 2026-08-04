@@ -30,6 +30,7 @@ import {
   sampleHydraulicResult,
   stationLabelPosition,
 } from '../src/core/mapRenderer'
+import { renderPlanViewResultDocument } from '../src/core/map/planViewResultRenderer'
 import { readShapefileOverlays } from '../src/core/shapefile'
 import type {
   AssessmentMapLayer,
@@ -38,6 +39,7 @@ import type {
 } from '../src/core/types'
 import { renderCrossSectionDocument } from '../src/features/cross-section/crossSectionRenderer'
 import { createDefaultCrossSectionSettings } from '../src/features/cross-section/crossSectionSettings'
+import { createDefaultPlanViewResultSettings } from '../src/features/plan-view-results/planViewResultSettings'
 
 const dataDirectory = process.env.HFG_SITE6_DATA
 if (!dataDirectory) {
@@ -116,6 +118,67 @@ const proposedIndex = proposedRuns.findIndex((selection) =>
 if (existingIndex < 0 || proposedIndex < 0) {
   throw new Error('A 100-year run was not found in both conditions.')
 }
+
+const scalarOptions = engine.scalarResultOptions('EX', existingIndex)
+const expectedScalarResults = [
+  /B_?Stress/i,
+  /Froude/i,
+  /Vel(?:ocity)?_?Mag/i,
+  /Water_?Depth/i,
+  /Water_?Elev|WSE/i,
+]
+const scalarScenes = expectedScalarResults.map((pattern) => {
+  const option = scalarOptions.find(({ paramName }) => pattern.test(paramName))
+  if (!option) {
+    throw new Error(`Site 6 is missing a scalar result matching ${pattern}.`)
+  }
+  const result = engine.buildPlanViewResult('EX', existingIndex, option.paramName)
+  if (result.validNodes <= 0 || result.autoMax <= result.autoMin) {
+    throw new Error(`${option.label} produced an invalid plan-view result range.`)
+  }
+  return result
+})
+const depthScene = scalarScenes.find((result) =>
+  /Water_?Depth/i.test(result.result.paramName),
+)!
+const planViewCanvas = createCanvas(1650, 1275)
+await renderPlanViewResultDocument(
+  planViewCanvas as unknown as HTMLCanvasElement,
+  {
+    scene: depthScene,
+    view: {
+      bounds: engine.commonBounds(['EX']),
+      settings: {
+        ...createDefaultPlanViewResultSettings(),
+        basemapOpacity: 0,
+        showOverlays: false,
+      },
+    },
+    layers: { overlays: [] },
+    selection: {},
+  },
+)
+const planViewPixels = planViewCanvas
+  .getContext('2d')
+  .getImageData(0, 0, planViewCanvas.width, planViewCanvas.height).data
+let planViewColoredSamples = 0
+for (let index = 0; index < planViewPixels.length; index += 128) {
+  const red = planViewPixels[index]
+  const green = planViewPixels[index + 1]
+  const blue = planViewPixels[index + 2]
+  if (Math.max(red, green, blue) - Math.min(red, green, blue) > 20) {
+    planViewColoredSamples += 1
+  }
+}
+if (planViewColoredSamples < 500) {
+  throw new Error(
+    `Rendered Site 6 plan-view result appears blank (${planViewColoredSamples} colored samples).`,
+  )
+}
+const planViewOutputPath =
+  process.env.HFG_TEST_PLAN_VIEW_OUTPUT ||
+  join(tmpdir(), 'hydraulic-site6-plan-view.png')
+await writeFile(planViewOutputPath, planViewCanvas.toBuffer('image/png'))
 
 const scene = engine.buildWseDifference(
   'EX',
@@ -1168,6 +1231,16 @@ console.log(
         ],
         halfFootAssessmentLines: halfFootAssessmentLines.lines.length,
         halfFootAssessmentLevels: halfFootAssessmentLines.levelCount,
+      },
+      planViewResults: {
+        run: depthScene.selection.run.name,
+        outputPath: planViewOutputPath,
+        parameters: scalarScenes.map((result) => ({
+          name: result.result.paramName,
+          validNodes: result.validNodes,
+          range: [result.autoMin, result.autoMax],
+        })),
+        coloredPixelSamples: planViewColoredSamples,
       },
       overlay: {
         layers: overlayResult.overlays.map((overlay) => overlay.name),

@@ -7,17 +7,23 @@ import {
 } from '../src/features/figures/workspaceRegistry'
 import {
   CROSS_SECTION_FIGURE_ID,
+  PLAN_VIEW_RESULTS_FIGURE_ID,
   WSE_DIFFERENCE_FIGURE_ID,
 } from '../src/core/figureIds'
 import { wseDifferenceFigure } from '../src/features/wse-difference/wseDifferenceFigure'
 import { crossSectionFigure } from '../src/features/cross-section/crossSectionFigure'
+import { planViewResultFigure } from '../src/features/plan-view-results/planViewResultFigure'
 
 describe('figure module registry', () => {
   it('registers WSE Difference as the default figure workflow', () => {
     assert.equal(DEFAULT_FIGURE_MODULE, wseDifferenceFigure)
     assert.deepEqual(
       FIGURE_MODULES.map((figure) => figure.id),
-      [WSE_DIFFERENCE_FIGURE_ID, CROSS_SECTION_FIGURE_ID],
+      [
+        WSE_DIFFERENCE_FIGURE_ID,
+        CROSS_SECTION_FIGURE_ID,
+        PLAN_VIEW_RESULTS_FIGURE_ID,
+      ],
     )
     assert.equal(
       figureModuleById(CROSS_SECTION_FIGURE_ID),
@@ -26,6 +32,10 @@ describe('figure module registry', () => {
     assert.equal(
       figureModuleById(WSE_DIFFERENCE_FIGURE_ID),
       wseDifferenceFigure,
+    )
+    assert.equal(
+      figureModuleById(PLAN_VIEW_RESULTS_FIGURE_ID),
+      planViewResultFigure,
     )
     assert.equal(figureModuleById('not-registered'), null)
   })

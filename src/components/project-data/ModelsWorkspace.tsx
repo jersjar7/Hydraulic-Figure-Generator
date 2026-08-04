@@ -7,10 +7,12 @@ import type {
   ScenarioRole,
 } from '../../core/types'
 import { FileDrop } from '../FileDrop'
+import type { ScenarioRoleOption } from './projectWorkflowTypes'
 
 type ModelsWorkspaceProps = {
   busy: boolean
   scenarios: ConditionData[]
+  scenarioRoles?: readonly ScenarioRoleOption[]
   baselineId: ConditionKey
   comparisonId: ConditionKey
   assessmentId: ConditionKey
@@ -22,6 +24,12 @@ type ModelsWorkspaceProps = {
   onRunChange(key: ConditionKey, index: number): void
   runsFor(key: ConditionKey): RunSelection[]
 }
+
+const DEFAULT_SCENARIO_ROLES: readonly ScenarioRoleOption[] = [
+  { role: 'baseline', label: 'Baseline', required: true },
+  { role: 'comparison', label: 'Comparison', required: true },
+  { role: 'assessment', label: 'Assessment-line source', required: false },
+]
 
 function complete(condition: ConditionData) {
   return Boolean(
@@ -168,6 +176,7 @@ function RunSelect({
 export function ModelsWorkspace({
   busy,
   scenarios,
+  scenarioRoles,
   baselineId,
   comparisonId,
   assessmentId,
@@ -179,13 +188,14 @@ export function ModelsWorkspace({
   onRunChange,
   runsFor,
 }: ModelsWorkspaceProps) {
-  const baseline = scenarios.find((scenario) => scenario.key === baselineId)
-  const comparison = scenarios.find(
-    (scenario) => scenario.key === comparisonId,
-  )
-  const assessment = scenarios.find(
-    (scenario) => scenario.key === assessmentId,
-  )
+  const roles = scenarioRoles ?? DEFAULT_SCENARIO_ROLES
+  const roleKey = (role: ScenarioRole) => {
+    if (role === 'baseline') return baselineId
+    if (role === 'comparison') return comparisonId
+    return assessmentId
+  }
+  const selectedScenarioKeys = [...new Set(roles.map(({ role }) => roleKey(role)))]
+  const visibleRoleSet = new Set(roles.map(({ role }) => role))
 
   return (
     <>
@@ -224,26 +234,22 @@ export function ModelsWorkspace({
           <RefreshCcw size={17} aria-hidden="true" />
           <span>Figure roles</span>
         </div>
-        <ScenarioSelect
-          label="Baseline"
-          value={baselineId}
-          scenarios={scenarios}
-          disabledKey={comparisonId}
-          onChange={(key) => onRoleChange('baseline', key)}
-        />
-        <ScenarioSelect
-          label="Comparison"
-          value={comparisonId}
-          scenarios={scenarios}
-          disabledKey={baselineId}
-          onChange={(key) => onRoleChange('comparison', key)}
-        />
-        <ScenarioSelect
-          label="Assessment-line source"
-          value={assessmentId}
-          scenarios={scenarios}
-          onChange={(key) => onRoleChange('assessment', key)}
-        />
+        {roles.map(({ role, label }) => (
+          <ScenarioSelect
+            key={role}
+            label={label}
+            value={roleKey(role)}
+            scenarios={scenarios}
+            disabledKey={
+              role === 'baseline'
+                ? visibleRoleSet.has('comparison') ? comparisonId : undefined
+                : role === 'comparison'
+                  ? visibleRoleSet.has('baseline') ? baselineId : undefined
+                  : undefined
+            }
+            onChange={(key) => onRoleChange(role, key)}
+          />
+        ))}
       </section>
 
       <section className="workflow-block">
@@ -251,29 +257,19 @@ export function ModelsWorkspace({
           <RefreshCcw size={17} aria-hidden="true" />
           <span>Selected runs</span>
         </div>
-        <RunSelect
-          label={`${baseline?.label ?? 'Baseline'} run`}
-          scenario={baseline}
-          runs={runsFor(baselineId)}
-          value={runByScenario[baselineId] ?? 0}
-          onChange={(index) => onRunChange(baselineId, index)}
-        />
-        <RunSelect
-          label={`${comparison?.label ?? 'Comparison'} run`}
-          scenario={comparison}
-          runs={runsFor(comparisonId)}
-          value={runByScenario[comparisonId] ?? 0}
-          onChange={(index) => onRunChange(comparisonId, index)}
-        />
-        {assessmentId !== baselineId && assessmentId !== comparisonId ? (
-          <RunSelect
-            label={`${assessment?.label ?? 'Assessment'} run`}
-            scenario={assessment}
-            runs={runsFor(assessmentId)}
-            value={runByScenario[assessmentId] ?? 0}
-            onChange={(index) => onRunChange(assessmentId, index)}
-          />
-        ) : null}
+        {selectedScenarioKeys.map((key) => {
+          const scenario = scenarios.find((item) => item.key === key)
+          return (
+            <RunSelect
+              key={key}
+              label={`${scenario?.label ?? 'Scenario'} run`}
+              scenario={scenario}
+              runs={runsFor(key)}
+              value={runByScenario[key] ?? 0}
+              onChange={(index) => onRunChange(key, index)}
+            />
+          )
+        })}
       </section>
     </>
   )

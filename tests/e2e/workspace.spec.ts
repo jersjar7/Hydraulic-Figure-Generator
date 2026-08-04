@@ -244,3 +244,81 @@ test('loaded scenarios carry into the cross-section map-to-chart workflow', asyn
   await expect(page.getByTestId('selected-section-card')).not.toBeVisible()
   await expect(generate).toBeDisabled()
 })
+
+test('one SMS scenario renders a fitted plan-view scalar result map', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto('.')
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'plan-view-hydraulic-results',
+  )
+  await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
+    'plan-view-hydraulic-results',
+  )
+  await page
+    .getByTestId('h5-file-drop')
+    .locator('input[type="file"]')
+    .setInputFiles([
+      h5Fixture('Existing-Geometry.h5'),
+      h5Fixture('Existing-Datasets.h5'),
+    ])
+
+  await expect(page.getByLabel('EX scenario name')).toBeVisible()
+  await expect(page.getByText('Scenario', { exact: true })).toBeVisible()
+  await expect(page.getByText('Comparison', { exact: true })).not.toBeVisible()
+  await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
+    'plan-view-hydraulic-results',
+  )
+  await expect(page.getByTestId('generate-plan-view')).toBeEnabled()
+
+  await page.getByRole('tab', { name: 'Frame', exact: true }).click()
+  await page
+    .locator('label.range-field')
+    .filter({ hasText: 'Aerial opacity' })
+    .locator('input')
+    .fill('0')
+  await page.getByTestId('generate-plan-view').click()
+
+  const canvas = page.getByLabel(
+    'Generated plan-view hydraulic result figure',
+  )
+  await expect(canvas).toHaveClass(/is-visible/)
+  const fit = await canvas.evaluate((element) => {
+    const map = element.getBoundingClientRect()
+    const frame = element.parentElement!.getBoundingClientRect()
+    return {
+      fits: map.width <= frame.width && map.height <= frame.height,
+      ratio: map.width / map.height,
+      centerDeltaX: Math.abs(
+        map.left + map.width / 2 - (frame.left + frame.width / 2),
+      ),
+      centerDeltaY: Math.abs(
+        map.top + map.height / 2 - (frame.top + frame.height / 2),
+      ),
+    }
+  })
+  expect(fit.fits).toBe(true)
+  expect(Math.abs(fit.ratio - 1650 / 1275)).toBeLessThan(0.02)
+  expect(fit.centerDeltaX).toBeLessThan(2)
+  expect(fit.centerDeltaY).toBeLessThan(2)
+  await expect
+    .poll(() =>
+      canvas.evaluate((element) => {
+        const map = element as HTMLCanvasElement
+        const context = map.getContext('2d')
+        if (!context || map.width === 0 || map.height === 0) return 0
+        const pixels = context.getImageData(0, 0, map.width, map.height).data
+        let colored = 0
+        for (let index = 0; index < pixels.length; index += 128) {
+          if (
+            Math.max(pixels[index], pixels[index + 1], pixels[index + 2]) -
+              Math.min(pixels[index], pixels[index + 1], pixels[index + 2]) >
+            20
+          ) colored += 1
+        }
+        return colored
+      }),
+    )
+    .toBeGreaterThan(100)
+})

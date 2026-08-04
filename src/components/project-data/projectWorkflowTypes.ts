@@ -25,12 +25,19 @@ export type AssessmentReviewProps = AssessmentLinesReviewPanelProps &
     onBack(): void
   }
 
+export type ScenarioRoleOption = {
+  role: ScenarioRole
+  label: string
+  required: boolean
+}
+
 export type ProjectDataPanelProps = {
   inputCapabilities: readonly WorkspaceInputCapability[]
   mobileOpen: boolean
   collapsed: boolean
   busy: boolean
   scenarios: ConditionData[]
+  scenarioRoles?: readonly ScenarioRoleOption[]
   baselineId: ConditionKey
   comparisonId: ConditionKey
   assessmentId: ConditionKey

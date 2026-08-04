@@ -8,6 +8,7 @@ import type { useAssessmentWorkflow } from '../../features/assessment-lines/useA
 import type { createHydraulicProjectInputActions } from '../../features/project-workspace/hydraulicProjectInputActions'
 import type { useProjectSession } from '../../features/project-session/useProjectSession'
 import { ProjectDataPanel } from '../ProjectDataPanel'
+import type { ScenarioRoleOption } from './projectWorkflowTypes'
 
 type Props = {
   inputCapabilities: readonly WorkspaceInputCapability[]
@@ -15,6 +16,7 @@ type Props = {
   collapsed: boolean
   busy: boolean
   projectSession: ReturnType<typeof useProjectSession>
+  scenarioRoles?: readonly ScenarioRoleOption[]
   assessmentWorkflow: ReturnType<typeof useAssessmentWorkflow>
   assessmentInterval: number
   centerlineCandidates: CenterlineCandidate[]
@@ -39,6 +41,7 @@ export function HydraulicProjectPanel({
   collapsed,
   busy,
   projectSession,
+  scenarioRoles,
   assessmentWorkflow,
   assessmentInterval,
   centerlineCandidates,
@@ -69,6 +72,7 @@ export function HydraulicProjectPanel({
       collapsed={collapsed}
       busy={busy}
       scenarios={projectSession.scenarios}
+      scenarioRoles={scenarioRoles}
       baselineId={projectSession.baselineId}
       comparisonId={projectSession.comparisonId}
       assessmentId={projectSession.assessmentId}

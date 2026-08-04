@@ -20,17 +20,19 @@ export const modelsWorkflowModule: ProjectWorkflowModule<ProjectWorkflowContext>
     label: 'Models',
     title: 'Model inputs and run pairing',
     icon: Database,
-    status: ({ scenarios }) => {
+    status: ({ scenarios, scenarioRoles }) => {
       const count = scenarios.filter(conditionComplete).length
+      const required = scenarioRoles?.filter((role) => role.required).length ?? 2
       return {
         badge: count || undefined,
-        tone: count >= 2 ? 'ready' : count > 0 ? 'warning' : 'neutral',
+        tone: count >= required ? 'ready' : count > 0 ? 'warning' : 'neutral',
       }
     },
     render: (context) => (
       <ModelsWorkspace
         busy={context.busy}
         scenarios={context.scenarios}
+        scenarioRoles={context.scenarioRoles}
         baselineId={context.baselineId}
         comparisonId={context.comparisonId}
         assessmentId={context.assessmentId}

@@ -84,3 +84,11 @@ export function scalarColor(
 ) {
   return scalarRampColor(key, (value - minimum) / (maximum - minimum || 1))
 }
+
+export function scalarRampGradient(key: ScalarRampKey) {
+  return `linear-gradient(90deg, ${SCALAR_RAMPS[key]
+    .map(([position, color]) =>
+      `rgb(${color.join(',')}) ${Math.round(position * 100)}%`,
+    )
+    .join(', ')})`
+}
