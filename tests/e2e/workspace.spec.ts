@@ -4,6 +4,8 @@ import { join } from 'node:path'
 
 const h5Fixture = (name: string) =>
   join(process.cwd(), 'tests', 'fixtures', 'h5', name)
+const shapefileFixture = (name: string) =>
+  join(process.cwd(), 'tests', 'fixtures', 'shapefiles', name)
 
 const PROFILE_SUMMARY = [
   'Reach\tStation\tMin',
@@ -404,6 +406,64 @@ test('one SMS scenario renders a fitted plan-view scalar result map', async ({
       }),
     )
     .toBeGreaterThan(100)
+})
+
+test('Plan-View loads a zipped centerline and renders station ticks', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto('.')
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'plan-view-hydraulic-results',
+  )
+  await page
+    .getByTestId('h5-file-drop')
+    .locator('input[type="file"]')
+    .setInputFiles([
+      h5Fixture('Existing-Geometry.h5'),
+      h5Fixture('Existing-Datasets.h5'),
+    ])
+
+  await page.getByRole('tab', { name: 'Layers', exact: true }).click()
+  await page
+    .getByTestId('overlay-file-drop')
+    .locator('input[type="file"]')
+    .setInputFiles(
+      shapefileFixture('Synthetic-Centerline.zip'),
+    )
+  await expect(page.getByText('Synthetic-Centerline', { exact: true }))
+    .toBeVisible()
+  await page.getByText('Show shapefile overlays', { exact: true }).click()
+
+  await page.getByRole('tab', { name: 'Stationing', exact: true }).click()
+  await page.getByLabel('Centerline feature').selectOption({
+    label: 'Synthetic-Centerline',
+  })
+  const settingsPanel = page.locator('.right-sidebar')
+  await settingsPanel.getByText('Show on figure', { exact: true }).click()
+  await settingsPanel.locator('input[type="color"]').first().fill('#ff00ff')
+  await settingsPanel.getByRole('button', { name: '25 / 100' }).click()
+  await page.getByTestId('generate-plan-view').click()
+
+  const canvas = page.getByLabel(
+    'Generated plan-view hydraulic result figure',
+  )
+  await expect(canvas).toHaveClass(/is-visible/)
+  await expect.poll(() => canvas.evaluate((element) => {
+    const map = element as HTMLCanvasElement
+    const context = map.getContext('2d')
+    if (!context) return 0
+    const pixels = context.getImageData(0, 0, map.width, map.height).data
+    let magenta = 0
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (
+        pixels[index] > 220 &&
+        pixels[index + 1] < 45 &&
+        pixels[index + 2] > 220
+      ) magenta += 1
+    }
+    return magenta
+  })).toBeGreaterThan(20)
 })
 
 test('Plan-View renders topography, mesh, and combined geometry outputs', async ({

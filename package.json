@@ -19,6 +19,7 @@
     "test:ui": "vitest run",
     "test:e2e": "playwright test",
     "fixtures:h5": "tsx scripts/generate-synthetic-h5.ts",
+    "fixtures:shapefiles": "tsx scripts/generate-synthetic-shapefile.ts",
     "test:natural": "tsx scripts/test-natural.ts",
     "test:site6": "tsx scripts/test-site6.ts"
   },
@@ -42,6 +43,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "jsdom": "^29.1.1",
+    "jszip": "^3.10.1",
     "oxlint": "^1.71.0",
     "tsx": "^4.23.1",
     "typescript": "~6.0.2",
