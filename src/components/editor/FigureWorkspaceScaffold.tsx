@@ -9,7 +9,6 @@ import {
 import { useSectionTabNavigation } from './useSectionTabNavigation'
 
 type Props<Key extends string> = {
-  workspaceLabel: string
   figureLabel: string
   comparisonDescription: string
   inputsCollapsed: boolean
@@ -38,7 +37,6 @@ type Props<Key extends string> = {
 }
 
 export function FigureWorkspaceScaffold<Key extends string>({
-  workspaceLabel,
   figureLabel,
   comparisonDescription,
   inputsCollapsed,
@@ -72,8 +70,6 @@ export function FigureWorkspaceScaffold<Key extends string>({
 
   return (
     <FigureEditorShell
-      workspaceLabel={workspaceLabel}
-      figureLabel={figureLabel}
       inputsCollapsed={inputsCollapsed}
       leftPanelOpen={leftPanelOpen}
       rightPanelOpen={rightPanelOpen}

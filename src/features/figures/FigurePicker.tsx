@@ -9,9 +9,9 @@ export function FigurePicker() {
     useHydraulicProjectWorkspace()
   return (
     <label className="figure-picker">
-      <span className="visually-hidden">Figure type</span>
+      <span className="visually-hidden">Workspace</span>
       <select
-        aria-label="Figure type"
+        aria-label="Workspace"
         value={activeFigureId}
         onChange={(event) =>
           setActiveFigureId(event.currentTarget.value as FigureId)

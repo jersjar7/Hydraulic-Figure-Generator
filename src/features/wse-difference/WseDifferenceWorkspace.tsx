@@ -351,7 +351,6 @@ export function WseDifferenceWorkspace() {
 
   return (
     <FigureWorkspaceScaffold<SettingsSectionKey>
-      workspaceLabel={ACTIVE_FIGURE.workspaceLabel}
       figureLabel={ACTIVE_FIGURE.label}
       comparisonDescription={`${comparisonLabel} minus ${baselineLabel}`}
       inputsCollapsed={leftCollapsed}

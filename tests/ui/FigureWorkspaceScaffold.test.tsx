@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { SlidersHorizontal, Palette } from 'lucide-react'
 import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
@@ -25,7 +25,6 @@ function Harness() {
 
   return (
     <FigureWorkspaceScaffold
-      workspaceLabel="FRA workspace"
       figureLabel="Test figure"
       comparisonDescription="Comparison minus Baseline"
       inputsCollapsed={false}
@@ -38,6 +37,11 @@ function Harness() {
       projectPanel={<aside>Project panel</aside>}
       mapContent={<canvas aria-label="Test map" />}
       settingsContent={<div>{active} controls</div>}
+      figurePicker={
+        <select aria-label="Workspace" defaultValue="test">
+          <option value="test">Test figure</option>
+        </select>
+      }
       onSave={() => undefined}
       onLoad={() => undefined}
       onOpenLeftPanel={() => undefined}
@@ -59,6 +63,11 @@ describe('FigureWorkspaceScaffold', () => {
     expect(screen.getByText('Project panel')).toBeInTheDocument()
     expect(screen.getByLabelText('Test map')).toBeInTheDocument()
     expect(screen.getByText('calculation controls')).toBeInTheDocument()
+    const brand = screen
+      .getByRole('heading', { name: 'Hydraulic Figure Generator' })
+      .closest('.brand')
+    expect(brand).not.toBeNull()
+    expect(within(brand!).getByLabelText('Workspace')).toBeInTheDocument()
   })
 
   it('provides reusable keyboard navigation for settings sections', () => {

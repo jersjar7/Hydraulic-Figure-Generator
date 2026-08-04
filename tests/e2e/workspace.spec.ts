@@ -13,7 +13,9 @@ test('shared figure workspace exposes scalable project and settings navigation',
   await expect(
     page.getByRole('heading', { name: 'Hydraulic Figure Generator' }),
   ).toBeVisible()
-  await expect(page.getByText('FRA workspace · WSE Difference')).toBeVisible()
+  await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
+    'fra-wse-difference',
+  )
   await expect(
     page.getByRole('heading', { name: 'Build a WSE Difference figure' }),
   ).toBeVisible()
@@ -124,10 +126,12 @@ test('loaded scenarios carry into the cross-section map-to-chart workflow', asyn
       h5Fixture('Proposed-Datasets.h5'),
     ])
 
-  await page.getByLabel('Figure type').selectOption(
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
     'fra-cross-section-comparison',
   )
-  await expect(page.getByText('FRA workspace · Cross-Section Comparison')).toBeVisible()
+  await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
+    'fra-cross-section-comparison',
+  )
   await expect(page.getByLabel('EX scenario name')).toBeVisible()
   await expect(page.getByLabel('PR scenario name')).toBeVisible()
 

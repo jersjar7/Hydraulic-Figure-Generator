@@ -8,8 +8,6 @@ import {
 import type { ReactNode } from 'react'
 
 type Props = {
-  workspaceLabel: string
-  figureLabel: string
   inputsCollapsed: boolean
   leftPanelOpen: boolean
   rightPanelOpen: boolean
@@ -24,8 +22,6 @@ type Props = {
 }
 
 export function FigureEditorShell({
-  workspaceLabel,
-  figureLabel,
   inputsCollapsed,
   leftPanelOpen,
   rightPanelOpen,
@@ -45,15 +41,12 @@ export function FigureEditorShell({
           <div className="brand-mark" aria-hidden="true">
             <Map size={20} />
           </div>
-          <div>
+          <div className="brand-content">
             <h1>Hydraulic Figure Generator</h1>
-            <p>
-              {workspaceLabel} · {figureLabel}
-            </p>
+            {figurePicker}
           </div>
         </div>
         <div className="topbar-actions">
-          {figurePicker}
           <button
             className="button secondary compact"
             type="button"

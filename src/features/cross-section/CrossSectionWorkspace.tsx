@@ -350,7 +350,6 @@ export function CrossSectionWorkspace() {
 
   return (
     <FigureWorkspaceScaffold<CrossSectionSettingsSectionKey>
-      workspaceLabel={crossSectionFigure.workspaceLabel}
       figureLabel={crossSectionFigure.label}
       comparisonDescription={`${comparisonLabel} vs ${baselineLabel}`}
       inputsCollapsed={leftCollapsed}
