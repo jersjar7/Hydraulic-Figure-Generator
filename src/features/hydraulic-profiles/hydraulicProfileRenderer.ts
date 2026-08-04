@@ -301,6 +301,8 @@ export function renderHydraulicProfileDocument(
 
   context.save()
   context.font = `600 ${Math.max(14, settings.fontSize - 2)}px Arial`
+  context.textAlign = 'left'
+  context.textBaseline = 'alphabetic'
   const direction = `Cross section is looking ${settings.lookingDirection}`
   const width = context.measureText(direction).width + 24
   const left = plot.left + 12

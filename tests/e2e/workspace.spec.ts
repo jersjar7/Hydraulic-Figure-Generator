@@ -5,6 +5,20 @@ import { join } from 'node:path'
 const h5Fixture = (name: string) =>
   join(process.cwd(), 'tests', 'fixtures', 'h5', name)
 
+const PROFILE_SUMMARY = [
+  'Reach\tStation\tMin',
+  'Hood Canal\t1047.09\t52.00',
+].join('\n')
+
+const PROFILE_VALUES = [
+  'Distance\tValue\tDistance\tValue\tDistance\tValue\tDistance\tValue\tDistance\tValue',
+  '1\t0\t58\t0\t57\t0\t56\t0\t60\t0\t59',
+  '2\t10\t55\t10\t57\t10\t56\t10\t60\t10\t59',
+  '3\t20\t52\t20\t57\t20\t56\t20\t60\t20\t59',
+  '4\t30\t55\t30\t57\t30\t56\t30\t60\t30\t59',
+  '5\t40\t58\t40\t57\t40\t56\t40\t60\t40\t59',
+].join('\n')
+
 test('shared figure workspace exposes scalable project and settings navigation', async ({
   page,
 }) => {
@@ -48,6 +62,74 @@ test('mobile controls keep both sidebars reachable', async ({ page }) => {
   await expect(
     page.getByRole('heading', { name: 'Figure settings' }),
   ).toBeVisible()
+})
+
+test('SMS profile paste reviews and exports one fitted station cross section', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto('.')
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'hydraulic-profiles-sections',
+  )
+  await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
+    'hydraulic-profiles-sections',
+  )
+
+  await page.getByRole('tab', { name: 'Summary', exact: true }).click()
+  await page.getByLabel('SMS Summary Table').fill(PROFILE_SUMMARY)
+  await page.getByRole('tab', { name: 'Profile', exact: true }).click()
+  await page.getByLabel('SMS Profile Values').fill(PROFILE_VALUES)
+  await expect(page.getByText('1 cross sections detected')).toBeVisible()
+
+  await page.getByRole('tab', { name: 'Review', exact: true }).click()
+  await expect(page.getByLabel('Profile station')).toHaveValue(
+    'profile-section-1',
+  )
+  await expect(page.getByText('Proposed Ground', { exact: true })).toBeVisible()
+  await expect(page.getByText('2080 100-year', { exact: true })).toBeVisible()
+
+  await page.getByTestId('generate-hydraulic-profile').click()
+  const canvas = page.getByLabel('Generated SMS hydraulic profile')
+  await expect(canvas).toHaveClass(/is-visible/)
+  const fit = await canvas.evaluate((element) => {
+    const chart = element.getBoundingClientRect()
+    const frame = element.parentElement!.getBoundingClientRect()
+    return {
+      fits: chart.width <= frame.width && chart.height <= frame.height,
+      ratio: chart.width / chart.height,
+      centerDeltaX: Math.abs(
+        chart.left + chart.width / 2 - (frame.left + frame.width / 2),
+      ),
+      centerDeltaY: Math.abs(
+        chart.top + chart.height / 2 - (frame.top + frame.height / 2),
+      ),
+    }
+  })
+  expect(fit.fits).toBe(true)
+  expect(Math.abs(fit.ratio - 1500 / 900)).toBeLessThan(0.02)
+  expect(fit.centerDeltaX).toBeLessThan(2)
+  expect(fit.centerDeltaY).toBeLessThan(2)
+  await expect.poll(() => canvas.evaluate((element) => {
+    const chart = element as HTMLCanvasElement
+    const context = chart.getContext('2d')
+    if (!context) return 0
+    const pixels = context.getImageData(0, 0, chart.width, chart.height).data
+    let colored = 0
+    for (let index = 0; index < pixels.length; index += 128) {
+      if (
+        Math.max(pixels[index], pixels[index + 1], pixels[index + 2]) -
+        Math.min(pixels[index], pixels[index + 1], pixels[index + 2]) > 20
+      ) colored += 1
+    }
+    return colored
+  })).toBeGreaterThan(100)
+
+  await page.getByRole('tab', { name: 'Export', exact: true }).click()
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Download PNG' }).click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toMatch(/Hydraulic_Profile_10_47\.png/)
 })
 
 test('synthetic SMS files upload and render a nonblank figure', async ({

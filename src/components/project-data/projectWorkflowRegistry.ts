@@ -26,6 +26,8 @@ const INPUT_WORKFLOWS = {
   'hydraulic-models': ['models'],
   'map-overlays': ['layers'],
   'assessment-lines': ['assessment', 'review'],
+  'sms-summary-table': [],
+  'sms-profile-values': [],
 } as const satisfies Partial<
   Record<
     WorkspaceInputCapability,

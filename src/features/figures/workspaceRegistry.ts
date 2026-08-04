@@ -2,6 +2,7 @@ import { wseDifferenceFigure } from '../wse-difference/wseDifferenceFigure'
 import { crossSectionFigure } from '../cross-section/crossSectionFigure'
 import { defineFigureWorkspace } from './workspaceModule'
 import { planViewResultFigure } from '../plan-view-results/planViewResultFigure'
+import { hydraulicProfileFigure } from '../hydraulic-profiles/hydraulicProfileFigure'
 
 export const FIGURE_WORKSPACES = [
   defineFigureWorkspace(
@@ -23,6 +24,13 @@ export const FIGURE_WORKSPACES = [
     () =>
       import('../plan-view-results/PlanViewResultWorkspace').then((module) => ({
         default: module.PlanViewResultWorkspace,
+      })),
+  ),
+  defineFigureWorkspace(
+    hydraulicProfileFigure,
+    () =>
+      import('../hydraulic-profiles/HydraulicProfilesWorkspace').then((module) => ({
+        default: module.HydraulicProfilesWorkspace,
       })),
   ),
 ] as const

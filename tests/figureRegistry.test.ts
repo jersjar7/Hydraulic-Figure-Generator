@@ -7,12 +7,14 @@ import {
 } from '../src/features/figures/workspaceRegistry'
 import {
   CROSS_SECTION_FIGURE_ID,
+  HYDRAULIC_PROFILES_FIGURE_ID,
   PLAN_VIEW_RESULTS_FIGURE_ID,
   WSE_DIFFERENCE_FIGURE_ID,
 } from '../src/core/figureIds'
 import { wseDifferenceFigure } from '../src/features/wse-difference/wseDifferenceFigure'
 import { crossSectionFigure } from '../src/features/cross-section/crossSectionFigure'
 import { planViewResultFigure } from '../src/features/plan-view-results/planViewResultFigure'
+import { hydraulicProfileFigure } from '../src/features/hydraulic-profiles/hydraulicProfileFigure'
 
 describe('figure module registry', () => {
   it('registers WSE Difference as the default figure workflow', () => {
@@ -23,6 +25,7 @@ describe('figure module registry', () => {
         WSE_DIFFERENCE_FIGURE_ID,
         CROSS_SECTION_FIGURE_ID,
         PLAN_VIEW_RESULTS_FIGURE_ID,
+        HYDRAULIC_PROFILES_FIGURE_ID,
       ],
     )
     assert.equal(
@@ -36,6 +39,10 @@ describe('figure module registry', () => {
     assert.equal(
       figureModuleById(PLAN_VIEW_RESULTS_FIGURE_ID),
       planViewResultFigure,
+    )
+    assert.equal(
+      figureModuleById(HYDRAULIC_PROFILES_FIGURE_ID),
+      hydraulicProfileFigure,
     )
     assert.equal(figureModuleById('not-registered'), null)
   })
