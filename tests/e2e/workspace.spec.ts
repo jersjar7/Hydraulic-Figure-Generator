@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const h5Fixture = (name: string) =>
@@ -356,6 +357,24 @@ test('Plan-View builds and reviews a multi-result figure set', async ({ page }) 
     timeout: 15_000,
   })
   await expect(page.getByText('2 ready · 2 included · 2 total')).toBeVisible()
+
+  await page.getByRole('tab', { name: 'Document', exact: true }).click()
+  await expect(page.getByText('2 pages · one figure per page')).toBeVisible()
+  await page.getByRole('spinbutton', { name: 'Start number' }).fill('10')
+  await expect(page.getByText(/^Figure 10\./)).toBeVisible()
+  await page.getByRole('textbox', { name: 'Caption', exact: true }).fill(
+    'Existing-condition water depth.',
+  )
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByTestId('export-figure-document').click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toMatch(/\.docx$/)
+  const downloadPath = await download.path()
+  if (!downloadPath) throw new Error('Word download did not produce a local file.')
+  const bytes = await readFile(downloadPath)
+  expect(bytes.subarray(0, 2).toString()).toBe('PK')
+
+  await page.getByRole('tab', { name: 'Figure Set', exact: true }).click()
   await page.getByRole('button', { name: /Open figure 1:/ }).click()
   await expect(page.getByRole('tab', { name: 'Figure', exact: true })).toHaveAttribute(
     'aria-selected',

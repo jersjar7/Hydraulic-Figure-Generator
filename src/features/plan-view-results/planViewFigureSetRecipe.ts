@@ -18,7 +18,7 @@ export type PlanViewFigureSetContext = {
 
 function thumbnail(canvas: HTMLCanvasElement) {
   const output = document.createElement('canvas')
-  output.width = 360
+  output.width = 720
   output.height = Math.round((canvas.height / canvas.width) * output.width)
   const context = output.getContext('2d')
   if (!context) throw new Error('This browser could not create a preview canvas.')

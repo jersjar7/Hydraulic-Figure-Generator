@@ -143,8 +143,9 @@ register its headless module and lazy React workspace together. See
 `docs/ADDING-A-FIGURE.md`.
 
 Global project inputs and reusable analysis objects belong in the left panel.
-The center workspace owns the selected output or bounded Figure Set gallery,
-while the right panel owns settings for that active production view. Future
+The center workspace owns the selected output, bounded Figure Set gallery, or
+page-oriented Document preview, while the right panel owns settings for that
+active production view. Future
 chart and table features should consume the
 shared, stationed assessment-line collection instead of duplicating it. Long
 review collections must scroll inside a fixed-height feature view rather than
@@ -186,10 +187,14 @@ project. Version 12 stores scenario role IDs, per-scenario run selections, and
 user scenario labels. Version 11 Existing/Proposed run selections migrate to
 Baseline `EX`, Comparison `PR`, and assessment source `EX`.
 
-The Plan-View workspace stores figure-set specifications and per-item settings
-in its version 2 envelope. Version 1 files migrate to an empty set. Runtime
-status, generated scenes, and thumbnail URLs are intentionally never persisted;
-they become stale and regenerate after local H5 files are restored.
+The Plan-View workspace stores figure-set specifications, per-item settings,
+captions, order, inclusion, and document assembly settings in its version 3
+envelope. Versions 1 and 2 migrate to document defaults, and version 1 also
+migrates to an empty set. Runtime status, generated scenes, thumbnail URLs, and
+full-resolution export images are intentionally never persisted; they become
+stale and regenerate after local H5 files are restored. Word export renders
+included figures sequentially through the shared recipe and releases each
+canvas after it is encoded, avoiding a report-size image cache for large sets.
 
 Generated assessment geometry is reproducible and is not stored in the project.
 The selected centerline, downstream direction, starting station, and per-line

@@ -5,4 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: '/Hydraulic-Figure-Generator/',
   plugins: [react()],
+  optimizeDeps: {
+    include: ['docx'],
+  },
 })

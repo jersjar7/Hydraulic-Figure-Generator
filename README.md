@@ -15,7 +15,9 @@ The application currently provides three independently registered workspaces:
   bounds are data-driven and remain editable; color ramps, contour interval,
   contour color/width, overlays, frame, report elements, project files, and PNG
   export are supported. Its Figure Set view expands selected scenarios, runs,
-  and results into a bounded preview queue for batch review.
+  and results into a bounded preview queue for batch review. Its Document view
+  assembles included figures into ordered, captioned Letter pages, previews
+  portrait or landscape output, and exports a client-side Word document.
 
 The FRA WSE Difference workspace:
 
@@ -45,7 +47,7 @@ The FRA WSE Difference workspace:
 
 ```text
 src/
-  application/         File, persistence, hydraulic, and figure-queue use cases
+  application/         File, persistence, hydraulic, figure-queue, and document use cases
   components/          Reusable workspace controls and project workflow views
     project-data/      Models, Layers, Assess, and Review navigation
   core/
@@ -66,14 +68,14 @@ src/
     annotations/       Reusable annotation capabilities and collection commands
     assessment-lines/  Stationing controls, bounded review state, and interface
     figures/           Figure, tool, settings-section, and workspace contracts
-    figure-sets/       Shared Figure / Figure Set production navigation
+    figure-sets/       Shared Figure / Figure Set / Document navigation
     project-document/  Shared project state independent of figure documents
     project-session/   H5 scenario catalog, role, run, and resource ownership
     stationing/        Centerline station figure-element controls
     plan-view-results/ Scalar workspace, batch recipe, review, persistence, and export
     tools/             Reusable editor-tool module contract
     wse-difference/    WSE workspace composition, controllers, panels, and export
-  infrastructure/      Browser downloads and shapefile gateway adapters
+  infrastructure/      Browser downloads, Word generation, and shapefile gateways
   App.tsx              Figure workspace host
 ```
 
