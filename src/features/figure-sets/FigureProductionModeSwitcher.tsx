@@ -1,6 +1,6 @@
-import { Image, LayoutGrid } from 'lucide-react'
+import { FileText, Image, LayoutGrid } from 'lucide-react'
 
-export type FigureProductionMode = 'figure' | 'set'
+export type FigureProductionMode = 'figure' | 'set' | 'document'
 
 type Props = {
   value: FigureProductionMode
@@ -33,6 +33,16 @@ export function FigureProductionModeSwitcher({ value, onChange }: Props) {
       >
         <LayoutGrid size={15} aria-hidden="true" />
         Figure Set
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={value === 'document'}
+        className={value === 'document' ? 'active' : ''}
+        onClick={() => onChange('document')}
+      >
+        <FileText size={15} aria-hidden="true" />
+        Document
       </button>
     </div>
   )

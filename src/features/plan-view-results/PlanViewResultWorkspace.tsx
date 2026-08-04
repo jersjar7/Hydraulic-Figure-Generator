@@ -32,14 +32,20 @@ import { planViewResultFigure } from './planViewResultFigure'
 import { createDefaultPlanViewResultSettings } from './planViewResultSettings'
 import { PlanViewResultSettingsPanel } from './PlanViewResultSettingsPanel'
 import { PlanViewFigureSetPanel } from './PlanViewFigureSetPanel'
+import { PlanViewFigureDocumentPanel } from './PlanViewFigureDocumentPanel'
 import {
   PLAN_VIEW_FIGURE_SET_SETTINGS,
   type PlanViewFigureSetSettingsSectionKey,
 } from './planViewFigureSetDefinition'
+import {
+  PLAN_VIEW_FIGURE_DOCUMENT_SETTINGS,
+  type PlanViewFigureDocumentSettingsSectionKey,
+} from './planViewFigureDocumentDefinition'
 import { PLAN_VIEW_RESULT_WORKSPACE_SETTINGS } from './planViewResultSettingsSections'
 import { usePlanViewResultProjectFiles } from './usePlanViewResultProjectFiles'
 import { usePlanViewResultRendering } from './usePlanViewResultRendering'
 import { usePlanViewFigureSet } from './usePlanViewFigureSet'
+import { usePlanViewFigureDocument } from './usePlanViewFigureDocument'
 import { PlanViewWorkspaceFooter } from './PlanViewWorkspaceFooter'
 import { PlanViewWorkspaceMap } from './PlanViewWorkspaceMap'
 
@@ -50,6 +56,7 @@ const SCENARIO_ROLES: readonly ScenarioRoleOption[] = [
 type WorkspaceSettingsSectionKey =
   | PlanViewResultSettingsSectionKey
   | PlanViewFigureSetSettingsSectionKey
+  | PlanViewFigureDocumentSettingsSectionKey
 
 export function PlanViewResultWorkspace() {
   const { projectSession, projectDocument } = useHydraulicProjectWorkspace()
@@ -103,6 +110,12 @@ export function PlanViewResultWorkspace() {
     runByScenario,
     overlays,
     baseSettings: settings,
+    appendNotices,
+  })
+  const figureDocument = usePlanViewFigureDocument({
+    engine,
+    overlays,
+    figureSet,
     appendNotices,
   })
 
@@ -238,6 +251,7 @@ export function PlanViewResultWorkspace() {
     },
     project: projectDocument.document,
     figureSet: figureSet.figureSet,
+    figureDocument: figureDocument.settings,
   }
   const projectFiles = usePlanViewResultProjectFiles({ snapshot, appendNotices })
   const loadProject = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -250,6 +264,7 @@ export function PlanViewResultWorkspace() {
     loadDocument(loaded.project)
     projectSession.loadSelection(loaded.scenarioSelection)
     figureSet.load(loaded.figureSet ?? figureSet.figureSet)
+    figureDocument.load(loaded.figureDocument)
     setScene(null)
     appendNotices([{
       level: 'success',
@@ -263,6 +278,7 @@ export function PlanViewResultWorkspace() {
     assessmentWorkflow.reset(1)
     setSettings(createDefaultPlanViewResultSettings())
     figureSet.reset()
+    figureDocument.reset()
     setScene(null)
     setNotices([])
     setLeftCollapsed(false)
@@ -303,10 +319,12 @@ export function PlanViewResultWorkspace() {
     <FigureWorkspaceScaffold<WorkspaceSettingsSectionKey>
       figureLabel={productionMode === 'figure'
         ? planViewResultFigure.label
-        : 'Figure Set'}
+        : productionMode === 'set' ? 'Figure Set' : 'Word Document'}
       comparisonDescription={productionMode === 'figure'
         ? `${scenarioLabel} · ${selectedResult?.label ?? 'Select a result'}`
-        : `${figureSet.draftCount} figure${figureSet.draftCount === 1 ? '' : 's'} selected`}
+        : productionMode === 'set'
+          ? `${figureSet.draftCount} figure${figureSet.draftCount === 1 ? '' : 's'} selected`
+          : `${figureDocument.pages.length} page${figureDocument.pages.length === 1 ? '' : 's'} assembled`}
       inputsCollapsed={leftCollapsed}
       leftPanelOpen={leftOpen}
       rightPanelOpen={rightOpen}
@@ -314,10 +332,12 @@ export function PlanViewResultWorkspace() {
       notices={notices}
       settingsSections={productionMode === 'figure'
         ? PLAN_VIEW_RESULT_WORKSPACE_SETTINGS
-        : PLAN_VIEW_FIGURE_SET_SETTINGS}
+        : productionMode === 'set'
+          ? PLAN_VIEW_FIGURE_SET_SETTINGS
+          : PLAN_VIEW_FIGURE_DOCUMENT_SETTINGS}
       activeSettingsSection={productionMode === 'figure'
         ? activeSection
-        : 'figure-set'}
+        : productionMode === 'set' ? 'figure-set' : 'figure-document'}
       onSave={projectFiles.saveProject}
       onLoad={() => projectInputRef.current?.click()}
       onOpenLeftPanel={() => { setLeftCollapsed(false); setLeftOpen(true) }}
@@ -325,7 +345,9 @@ export function PlanViewResultWorkspace() {
       onCloseMobilePanels={() => { setLeftOpen(false); setRightOpen(false) }}
       onCloseSettingsPanel={() => setRightOpen(false)}
       onSettingsSectionChange={(section) => {
-        if (section !== 'figure-set') setActiveSection(section)
+        if (section !== 'figure-set' && section !== 'figure-document') {
+          setActiveSection(section)
+        }
       }}
       onZoomOut={() => updateSettings('zoom', Math.max(0.35, settings.zoom - 0.1))}
       onZoomIn={() => updateSettings('zoom', Math.min(4, settings.zoom + 0.1))}
@@ -344,14 +366,14 @@ export function PlanViewResultWorkspace() {
           value={productionMode}
           onChange={(mode) => {
             setProductionMode(mode)
-            if (mode === 'figure') setEditingFigureSetItemId(null)
+            if (mode !== 'figure') setEditingFigureSetItemId(null)
           }}
         />
       }
       showMapActions={productionMode === 'figure'}
       settingsHeading={productionMode === 'figure'
         ? 'Figure settings'
-        : 'Figure set'}
+        : productionMode === 'set' ? 'Figure set' : 'Document'}
       projectPanel={
         <HydraulicProjectPanel
           inputCapabilities={planViewResultFigure.editor.inputs}
@@ -386,6 +408,7 @@ export function PlanViewResultWorkspace() {
           canvasFrameRef={canvasFrameRef}
           displaySize={displaySize}
           figureSet={figureSet}
+          figureDocument={figureDocument}
           onGenerate={generate}
           onOpenFigure={openFigureSetItem}
         />
@@ -404,11 +427,16 @@ export function PlanViewResultWorkspace() {
             onActiveElementChange={setActiveElement}
             onDownload={download}
           />
-        ) : (
+        ) : productionMode === 'set' ? (
           <PlanViewFigureSetPanel
             engine={engine}
             scenarios={scenarios}
             controller={figureSet}
+          />
+        ) : (
+          <PlanViewFigureDocumentPanel
+            controller={figureDocument}
+            onManageFigures={() => setProductionMode('set')}
           />
         )
       }
@@ -419,6 +447,7 @@ export function PlanViewResultWorkspace() {
           busy={busy}
           scene={scene}
           figureSet={figureSet}
+          figureDocument={figureDocument}
           onGenerateFigure={generate}
         />
       }

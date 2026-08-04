@@ -26,6 +26,32 @@ function thumbnail(canvas: HTMLCanvasElement) {
   return output.toDataURL('image/jpeg', 0.82)
 }
 
+export async function renderPlanViewFigureSetCanvas(
+  { engine, overlays }: PlanViewFigureSetContext,
+  item: PlanViewFigureSetItem,
+  signal?: AbortSignal,
+) {
+  const scene = planViewResultFigure.buildScene({
+    engine,
+    ...item.selection,
+  })
+  const canvas = document.createElement('canvas')
+  await planViewResultFigure.render({
+    canvas,
+    document: {
+      scene,
+      view: {
+        bounds: engine.commonBounds([item.selection.scenarioId]),
+        settings: item.settings,
+      },
+      layers: { overlays },
+      selection: {},
+    },
+    signal,
+  })
+  return { scene, canvas }
+}
+
 export const planViewFigureSetRecipe: FigureSetRecipe<
   PlanViewFigureSetScope & { engine: HydraulicEngine },
   PlanViewFigureSetSelection,
@@ -38,25 +64,12 @@ export const planViewFigureSetRecipe: FigureSetRecipe<
   label: 'Plan-View Hydraulic Results',
   expand: ({ engine, ...scope }, baseSettings) =>
     expandPlanViewFigureSet(engine, scope, baseSettings),
-  generate: async ({ engine, overlays }, item, signal) => {
-    const scene = planViewResultFigure.buildScene({
-      engine,
-      ...item.selection,
-    })
-    const canvas = document.createElement('canvas')
-    await planViewResultFigure.render({
-      canvas,
-      document: {
-        scene,
-        view: {
-          bounds: engine.commonBounds([item.selection.scenarioId]),
-          settings: item.settings,
-        },
-        layers: { overlays },
-        selection: {},
-      },
+  generate: async (context, item, signal) => {
+    const { scene, canvas } = await renderPlanViewFigureSetCanvas(
+      context,
+      item,
       signal,
-    })
+    )
     return { scene, thumbnailUrl: thumbnail(canvas) }
   },
 }

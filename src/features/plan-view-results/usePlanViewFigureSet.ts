@@ -16,6 +16,7 @@ import {
   type PlanViewFigureSetScope,
 } from './planViewFigureSet'
 import { planViewFigureSetRecipe } from './planViewFigureSetRecipe'
+import { movePlanViewFigureSetItem } from './planViewFigureDocument'
 
 type Options = {
   engine: HydraulicEngine
@@ -358,6 +359,13 @@ export function usePlanViewFigureSet({
       ...item,
       caption,
     })),
+    moveItem: (id: string, direction: -1 | 1) => {
+      setFigureSet((current) => movePlanViewFigureSetItem(
+        current,
+        id,
+        direction,
+      ))
+    },
     updateItemSettings: (id: string, settings: PlanViewResultSettings) => {
       updateItem(id, (item) => ({ ...item, settings }))
       updateRuntime(id, { status: 'stale' })

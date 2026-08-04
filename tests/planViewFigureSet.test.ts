@@ -6,6 +6,12 @@ import {
   expandPlanViewFigureSet,
 } from '../src/features/plan-view-results/planViewFigureSet'
 import { createDefaultPlanViewResultSettings } from '../src/features/plan-view-results/planViewResultSettings'
+import { createDefaultFigureDocumentSettings } from '../src/core/types'
+import {
+  buildPlanViewFigureDocumentPages,
+  figureDocumentFileName,
+  movePlanViewFigureSetItem,
+} from '../src/features/plan-view-results/planViewFigureDocument'
 
 const catalog = {
   condition: (key: string) => ({ key, label: key === 'EX' ? 'Existing' : key }),
@@ -68,5 +74,31 @@ describe('Plan-View figure set recipe', () => {
       name: 'Plan-View Hydraulic Results',
       items: [],
     })
+  })
+
+  it('assembles included pages in order and supports report ordering', () => {
+    const items = expandPlanViewFigureSet(
+      catalog,
+      {
+        scenarioIds: ['EX'],
+        runIndicesByScenario: { EX: [0, 1] },
+        resultParametersByScenario: { EX: ['Water_Depth_ft'] },
+      },
+      createDefaultPlanViewResultSettings(),
+    )
+    items[1] = { ...items[1], caption: 'One-hundred-year depth.' }
+    const set = createPlanViewFigureSetDocument(items)
+    const moved = movePlanViewFigureSetItem(set, items[1].id, -1)
+    const pages = buildPlanViewFigureDocumentPages(
+      moved,
+      { [items[1].id]: { status: 'ready', thumbnailUrl: 'preview' } },
+      { ...createDefaultFigureDocumentSettings(), startingFigureNumber: 9 },
+    )
+
+    assert.deepEqual(pages.map((page) => page.id), [items[1].id, items[0].id])
+    assert.deepEqual(pages.map((page) => page.figureNumber), [9, 10])
+    assert.equal(pages[0].thumbnailUrl, 'preview')
+    assert.equal(pages[0].caption, 'One-hundred-year depth.')
+    assert.equal(figureDocumentFileName(' Site 6 / Results '), 'Site_6_Results.docx')
   })
 })

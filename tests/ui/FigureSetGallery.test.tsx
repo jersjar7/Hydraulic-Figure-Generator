@@ -26,6 +26,8 @@ describe('figure-set review UI', () => {
     render(<FigureProductionModeSwitcher value="figure" onChange={onChange} />)
     fireEvent.click(screen.getByRole('tab', { name: 'Figure Set' }))
     expect(onChange).toHaveBeenCalledWith('set')
+    fireEvent.click(screen.getByRole('tab', { name: 'Document' }))
+    expect(onChange).toHaveBeenCalledWith('document')
   })
 
   it('opens and includes individual generated figures', () => {

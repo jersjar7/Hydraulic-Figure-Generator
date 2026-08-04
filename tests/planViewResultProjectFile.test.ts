@@ -6,6 +6,7 @@ import {
 } from '../src/features/plan-view-results/planViewResultProjectFile'
 import { createDefaultPlanViewResultSettings } from '../src/features/plan-view-results/planViewResultSettings'
 import { createPlanViewFigureSetDocument } from '../src/features/plan-view-results/planViewFigureSet'
+import { createDefaultFigureDocumentSettings } from '../src/core/types'
 
 describe('plan-view result project files', () => {
   it('round-trips settings, scenario selection, and shared overlays', () => {
@@ -24,6 +25,10 @@ describe('plan-view result project files', () => {
       },
       project: { overlays: [] },
       figureSet: createPlanViewFigureSetDocument(),
+      figureDocument: {
+        ...createDefaultFigureDocumentSettings(),
+        startingFigureNumber: 12,
+      },
     }
     assert.deepEqual(
       parsePlanViewResultProject(serializePlanViewResultProject(state)),
@@ -31,7 +36,7 @@ describe('plan-view result project files', () => {
     )
   })
 
-  it('migrates version 1 projects to an empty figure set', () => {
+  it('migrates version 1 projects to an empty figure set and document defaults', () => {
     const legacy = JSON.stringify({
       version: 1,
       figureId: 'plan-view-hydraulic-results',
@@ -47,6 +52,30 @@ describe('plan-view result project files', () => {
     assert.deepEqual(
       parsePlanViewResultProject(legacy).figureSet,
       createPlanViewFigureSetDocument(),
+    )
+    assert.deepEqual(
+      parsePlanViewResultProject(legacy).figureDocument,
+      createDefaultFigureDocumentSettings(),
+    )
+  })
+
+  it('migrates version 2 figure sets to document defaults', () => {
+    const version2 = JSON.stringify({
+      version: 2,
+      figureId: 'plan-view-hydraulic-results',
+      settings: createDefaultPlanViewResultSettings(),
+      scenarioSelection: {
+        baselineId: 'EX',
+        comparisonId: 'PR',
+        assessmentId: 'EX',
+        runByScenario: {},
+      },
+      project: { overlays: [] },
+      figureSet: createPlanViewFigureSetDocument(),
+    })
+    assert.deepEqual(
+      parsePlanViewResultProject(version2).figureDocument,
+      createDefaultFigureDocumentSettings(),
     )
   })
 

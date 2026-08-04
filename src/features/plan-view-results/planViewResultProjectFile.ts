@@ -1,6 +1,10 @@
 import { PLAN_VIEW_RESULTS_FIGURE_ID } from '../../core/figureIds'
 import { mergeElementStyles } from '../../core/figureElements'
-import type { PlanViewResultSettings } from '../../core/types'
+import {
+  createDefaultFigureDocumentSettings,
+  type FigureDocumentSettings,
+  type PlanViewResultSettings,
+} from '../../core/types'
 import type { HydraulicProjectDocument } from '../project-document/hydraulicProjectDocument'
 import type { ScenarioSelection } from '../project-session/useProjectSession'
 import { createDefaultPlanViewResultSettings } from './planViewResultSettings'
@@ -11,13 +15,14 @@ import {
   type PlanViewFigureSetItem,
 } from './planViewFigureSet'
 
-export const PLAN_VIEW_RESULT_PROJECT_VERSION = 2
+export const PLAN_VIEW_RESULT_PROJECT_VERSION = 3
 
 export type PlanViewResultProjectState = {
   settings: PlanViewResultSettings
   scenarioSelection: ScenarioSelection
   project: HydraulicProjectDocument
   figureSet?: PlanViewFigureSetDocument
+  figureDocument?: FigureDocumentSettings
 }
 
 type Envelope = PlanViewResultProjectState & {
@@ -33,8 +38,43 @@ export function serializePlanViewResultProject(
     figureId: PLAN_VIEW_RESULTS_FIGURE_ID,
     ...state,
     figureSet: state.figureSet ?? createPlanViewFigureSetDocument(),
+    figureDocument: state.figureDocument ?? createDefaultFigureDocumentSettings(),
   }
   return JSON.stringify(envelope, null, 2)
+}
+
+function hydrateFigureDocument(value: unknown): FigureDocumentSettings {
+  if (value === undefined) return createDefaultFigureDocumentSettings()
+  if (!value || typeof value !== 'object') {
+    throw new Error('The saved figure document settings are malformed.')
+  }
+  const defaults = createDefaultFigureDocumentSettings()
+  const incoming = value as Partial<FigureDocumentSettings>
+  const settings: FigureDocumentSettings = {
+    title: typeof incoming.title === 'string' ? incoming.title : defaults.title,
+    orientation: incoming.orientation === 'portrait' || incoming.orientation === 'landscape'
+      ? incoming.orientation
+      : defaults.orientation,
+    marginInches: typeof incoming.marginInches === 'number'
+      ? incoming.marginInches
+      : defaults.marginInches,
+    captionPrefix: typeof incoming.captionPrefix === 'string'
+      ? incoming.captionPrefix
+      : defaults.captionPrefix,
+    startingFigureNumber: typeof incoming.startingFigureNumber === 'number'
+      ? incoming.startingFigureNumber
+      : defaults.startingFigureNumber,
+  }
+  if (
+    !Number.isFinite(settings.marginInches) ||
+    settings.marginInches < 0.25 ||
+    settings.marginInches > 2 ||
+    !Number.isInteger(settings.startingFigureNumber) ||
+    settings.startingFigureNumber < 1
+  ) {
+    throw new Error('Figure document settings contain invalid values.')
+  }
+  return settings
 }
 
 function hydrateFigureSet(value: unknown): PlanViewFigureSetDocument {
@@ -126,7 +166,11 @@ export function parsePlanViewResultProject(
   if (parsed.figureId !== PLAN_VIEW_RESULTS_FIGURE_ID) {
     throw new Error('This is not a Plan-View Hydraulic Results project file.')
   }
-  if (parsed.version !== 1 && parsed.version !== PLAN_VIEW_RESULT_PROJECT_VERSION) {
+  if (
+    parsed.version !== 1 &&
+    parsed.version !== 2 &&
+    parsed.version !== PLAN_VIEW_RESULT_PROJECT_VERSION
+  ) {
     throw new Error(
       `Plan-view result project version ${String(parsed.version)} is not supported.`,
     )
@@ -144,5 +188,6 @@ export function parsePlanViewResultProject(
     scenarioSelection: parsed.scenarioSelection as ScenarioSelection,
     project: parsed.project,
     figureSet: hydrateFigureSet(parsed.figureSet),
+    figureDocument: hydrateFigureDocument(parsed.figureDocument),
   }
 }
