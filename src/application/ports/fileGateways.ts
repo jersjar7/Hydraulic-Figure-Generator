@@ -22,7 +22,17 @@ export type TextDownload = {
   mimeType: string
 }
 
+export type BinaryDownload = {
+  contents: ArrayBuffer
+  fileName: string
+  mimeType: string
+}
+
 export interface ProjectFilePort {
   readText(file: File): Promise<string>
   downloadText(download: TextDownload): void
+}
+
+export interface BinaryFilePort {
+  downloadBinary(download: BinaryDownload): void
 }
