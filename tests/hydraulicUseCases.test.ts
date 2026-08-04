@@ -5,10 +5,15 @@ import {
   compareWse,
 } from '../src/application/hydraulics/compareWse'
 import { generateWseAssessmentLines } from '../src/application/hydraulics/generateWseAssessmentLines'
+import {
+  buildPlanViewResult,
+  canBuildPlanViewResult,
+} from '../src/application/hydraulics/buildPlanViewResult'
 import type { HydraulicAnalysisPort } from '../src/application/ports/hydraulicAnalysis'
 import type {
   WseAssessmentLineCollection,
   WseDifferenceScene,
+  PlanViewResultScene,
 } from '../src/core/types'
 
 function analysisPort(
@@ -16,9 +21,24 @@ function analysisPort(
   assessment: WseAssessmentLineCollection,
 ): HydraulicAnalysisPort {
   return {
+    scalarResultOptions: () => [
+      {
+        paramName: 'Water_Depth_ft',
+        label: 'Water Depth',
+        units: 'ft',
+        defaultRamp: 'depth',
+        shape: [1, 4],
+      },
+    ],
+    buildPlanViewResult: () => ({
+      result: { paramName: 'Water_Depth_ft' },
+    }) as PlanViewResultScene,
     isReady: (baseline, comparison) => baseline !== comparison,
     buildWseDifference: () => scene,
     buildWseAssessmentLines: () => assessment,
+    buildCrossSection: () => {
+      throw new Error('Not used by this test.')
+    },
   }
 }
 
@@ -100,6 +120,30 @@ describe('hydraulic application use cases', () => {
         interval: 0.5,
       }),
       assessment,
+    )
+  })
+
+  it('checks and builds a selected scalar plan-view result', () => {
+    const port = analysisPort(
+      { validDifferenceNodes: 1 } as WseDifferenceScene,
+      {
+        scenarioKey: 'EX',
+        interval: 1,
+        levels: [],
+        levelCount: 0,
+        lines: [],
+      },
+    )
+    const request = {
+      scenarioId: 'EX',
+      runIndex: 0,
+      resultParameter: 'Water_Depth_ft',
+    }
+
+    assert.equal(canBuildPlanViewResult(port, request), true)
+    assert.equal(
+      buildPlanViewResult(port, request).result.paramName,
+      'Water_Depth_ft',
     )
   })
 })

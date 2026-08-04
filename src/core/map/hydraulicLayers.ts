@@ -123,7 +123,33 @@ export function fillDifferenceBands(
   interval: number | null,
 ) {
   const bandCount = differenceBandCount(maxAbsolute, interval)
-  const step = (2 * maxAbsolute) / bandCount
+  fillScalarBands(
+    context,
+    localX,
+    localY,
+    triangles,
+    values,
+    -maxAbsolute,
+    maxAbsolute,
+    bandCount,
+    (value) => differenceColor(value, maxAbsolute) ?? '#ffffff',
+  )
+}
+
+export function fillScalarBands(
+  context: CanvasRenderingContext2D,
+  localX: Float64Array,
+  localY: Float64Array,
+  triangles: Uint32Array,
+  values: Float32Array,
+  minimum: number,
+  maximum: number,
+  bandCount: number,
+  color: (value: number) => string,
+) {
+  const safeBandCount = Math.max(1, Math.min(160, bandCount))
+  const step = (maximum - minimum) / safeBandCount
+  if (!Number.isFinite(step) || step <= 0) return
 
   for (let triangle = 0; triangle < triangles.length; triangle += 3) {
     const first = triangles[triangle]
@@ -139,18 +165,18 @@ export function fillDifferenceBands(
       { x: localX[third], y: localY[third], value: valueC },
     ]
 
-    for (let band = 0; band < bandCount; band += 1) {
+    for (let band = 0; band < safeBandCount; band += 1) {
       const lower =
-        band === 0 ? Number.NEGATIVE_INFINITY : -maxAbsolute + band * step
+        band === 0 ? Number.NEGATIVE_INFINITY : minimum + band * step
       const upper =
-        band === bandCount - 1
+        band === safeBandCount - 1
           ? Number.POSITIVE_INFINITY
-          : -maxAbsolute + (band + 1) * step
+          : minimum + (band + 1) * step
       let polygon = clipScalarPolygon(source, lower, true)
       polygon = clipScalarPolygon(polygon, upper, false)
       if (polygon.length < 3) continue
-      const middle = -maxAbsolute + (band + 0.5) * step
-      context.fillStyle = differenceColor(middle, maxAbsolute) ?? '#ffffff'
+      const middle = minimum + (band + 0.5) * step
+      context.fillStyle = color(middle)
       context.beginPath()
       context.moveTo(polygon[0].x, polygon[0].y)
       for (let index = 1; index < polygon.length; index += 1) {
@@ -206,11 +232,12 @@ export function drawContourLevels(
   values: Float32Array,
   levels: number[],
   color: string,
+  width = 1.5,
 ) {
   if (levels.length === 0) return
   context.save()
   context.strokeStyle = color
-  context.lineWidth = 1.5
+  context.lineWidth = width
   context.globalAlpha = 0.9
   context.lineCap = 'round'
   context.lineJoin = 'round'

@@ -2,11 +2,22 @@ import type {
   ConditionKey,
   CrossSectionLine,
   HydraulicCrossSectionScene,
+  PlanViewResultScene,
+  ScalarResultOption,
   WseAssessmentLineCollection,
   WseDifferenceScene,
 } from '../../core/types'
 
 export type HydraulicAnalysisPort = {
+  scalarResultOptions(
+    key: ConditionKey,
+    runIndex: number,
+  ): ScalarResultOption[]
+  buildPlanViewResult(
+    key: ConditionKey,
+    runIndex: number,
+    paramName: string,
+  ): PlanViewResultScene
   isReady(
     baselineKey: ConditionKey,
     comparisonKey: ConditionKey,

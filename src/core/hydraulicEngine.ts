@@ -27,6 +27,8 @@ import {
   buildWseDifferenceScene,
   findResultParam,
 } from './hydraulics/wseDifferenceBuilder'
+import { buildScalarResultScene } from './hydraulics/scalarResultBuilder'
+import { scalarResultOptions } from './hydraulics/scalarResultMetadata'
 
 export { conditionNodeCountsMatch } from './hydraulics/conditionCompatibility'
 export {
@@ -241,6 +243,27 @@ export class HydraulicEngine {
       run,
       index,
     }))
+  }
+
+  scalarResultOptions(key: ConditionKey, runIndex: number) {
+    const selection = this.runOptions(key)[runIndex]
+    return selection ? scalarResultOptions(selection.run) : []
+  }
+
+  buildPlanViewResult(
+    key: ConditionKey,
+    runIndex: number,
+    paramName: string,
+  ) {
+    const selection = this.runOptions(key)[runIndex]
+    if (!selection) {
+      throw new Error('Select one complete hydraulic scenario and run.')
+    }
+    return buildScalarResultScene(
+      selection,
+      paramName,
+      this.scalarValues(selection, paramName),
+    )
   }
 
   isReady(baselineKey: ConditionKey, comparisonKey: ConditionKey) {

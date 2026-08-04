@@ -38,6 +38,21 @@ describe('synthetic SMS H5 contract', () => {
       Array.from(scene.diff).map((value) => Number(value.toFixed(2))),
       [0.5, -0.1, 0.6, -0.3],
     )
+    const scalarOptions = engine.scalarResultOptions('EX', 0)
+    assert.ok(
+      scalarOptions.some(
+        (option) => option.paramName === 'Water_Depth_ft',
+      ),
+    )
+    assert.ok(scalarOptions.every((option) => option.shape.length === 2))
+    const planView = engine.buildPlanViewResult(
+      'EX',
+      0,
+      'Water_Depth_ft',
+    )
+    assert.equal(planView.validNodes, 4)
+    assert.equal(planView.result.label, 'Water Depth')
+    assert.ok(planView.autoMax > planView.autoMin)
     const crossSection = engine.buildCrossSection(
       'EX',
       0,
