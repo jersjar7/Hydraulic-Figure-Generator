@@ -35,3 +35,8 @@ export type HydraulicProfileDataset = {
   datasetsPerSection: number
   eventNames: string[]
 }
+
+export type HydraulicProfileScene = {
+  conditionLabel: string
+  section: HydraulicProfileSection
+}
