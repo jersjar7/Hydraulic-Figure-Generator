@@ -4,7 +4,6 @@ import {
 } from 'lucide-react'
 import {
   useCallback,
-  useEffect,
   useRef,
   useState,
 } from 'react'
@@ -37,6 +36,7 @@ import { useWseGenerationController } from './useWseGenerationController'
 import { createWseProjectPersistenceController } from './wseProjectPersistenceController'
 import { createWseMapExportAction } from './wseMapExportAction'
 import { createWseScenarioContext } from './wseScenarioContext'
+import { createWseStationingSourceActions } from './wseStationingSourceActions'
 
 const ACTIVE_FIGURE = wseDifferenceFigure
 
@@ -137,6 +137,7 @@ export function WseDifferenceWorkspace() {
     stationing: settings.centerlineStationing,
     selectedStationLabelId,
     setCenterline: assessmentWorkflow.setCenterline,
+    setSelectedLabelId: setSelectedStationLabelId,
   })
   const figureElements = useWseFigureElementController({
     engine,
@@ -146,21 +147,11 @@ export function WseDifferenceWorkspace() {
     setSettings,
     setSelectedStationLabelId,
   })
-
-  useEffect(() => {
-    if (
-      selectedStationLabelId &&
-      !centerlineStationTicks.some(
-        (tick) => tick.id === selectedStationLabelId && tick.label,
-      )
-    ) {
-      setSelectedStationLabelId(null)
-    }
-  }, [
-    centerlineStationTicks,
-    selectedStationLabelId,
-    setSelectedStationLabelId,
-  ])
+  const stationingSourceActions = createWseStationingSourceActions({
+    assessmentWorkflow,
+    figureElements,
+    setSelectedLabelId: setSelectedStationLabelId,
+  })
 
   const appendNotices = useCallback((incoming: IngestNotice[]) => {
     if (incoming.length === 0) return
@@ -249,8 +240,7 @@ export function WseDifferenceWorkspace() {
     annotations,
     selectedAnnotationId,
     selectedElementKey:
-      activeSettingsSection === 'elements' &&
-      activeElement !== 'stationing'
+      activeSettingsSection === 'elements' && activeElement !== 'stationing'
         ? activeElement
         : null,
     interacting:
@@ -289,8 +279,7 @@ export function WseDifferenceWorkspace() {
     setElementDragging,
     setHoveredElement,
     selectStationLabel: (id) => {
-      setActiveSettingsSection('elements')
-      setActiveElement('stationing')
+      setActiveSettingsSection('stationing')
       setSelectedStationLabelId(id)
       setRightOpen(true)
     },
@@ -456,12 +445,19 @@ export function WseDifferenceWorkspace() {
           selectedStationLabelId={selectedStationLabelId}
           centerlineStationTicks={centerlineStationTicks}
           hasCenterline={Boolean(selectedCenterline)}
+          centerlineCandidates={centerlineCandidates}
+          centerlineId={assessmentState.centerlineId}
+          centerlineDirection={assessmentState.direction}
+          startStation={assessmentState.startStation}
           sceneReady={Boolean(scene)}
           figureElements={figureElements}
           annotationController={annotationController}
           updateSettings={updateSettings}
           onActiveElementChange={setActiveElement}
           onStationLabelSelect={setSelectedStationLabelId}
+          onCenterlineChange={stationingSourceActions.changeCenterline}
+          onCenterlineDirectionChange={stationingSourceActions.changeDirection}
+          onStartStationChange={stationingSourceActions.changeStartStation}
           onDryDepthChange={(dryDepth) => {
             updateSettings('dryDepth', dryDepth)
             setScene(null)

@@ -75,6 +75,7 @@ describe('figure module registry', () => {
         'legend',
         'frame',
         'elements',
+        'stationing',
         'annotations',
         'export',
       ],

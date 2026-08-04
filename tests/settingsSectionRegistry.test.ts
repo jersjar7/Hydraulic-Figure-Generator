@@ -18,9 +18,14 @@ describe('settings section module registry', () => {
         'legend',
         'frame',
         'elements',
+        'stationing',
         'annotations',
         'export',
       ],
+    )
+    assert.equal(
+      wseSettingsSectionByKey('stationing').label,
+      'Stationing',
     )
     assert.equal(
       wseSettingsSectionByKey('annotations').label,

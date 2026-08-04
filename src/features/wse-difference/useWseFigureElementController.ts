@@ -1,13 +1,9 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { createDefaultFigureSettings } from '../../core/defaults'
 import {
   DEFAULT_ELEMENT_STYLES,
 } from '../../core/figureElements'
 import {
-  canvasPointToMap,
   DEFAULT_ELEMENT_POSITIONS,
-  mapPointToCanvas,
-  stationLabelPosition,
 } from '../../core/mapRenderer'
 import type { HydraulicEngine } from '../../core/hydraulicEngine'
 import type {
@@ -15,8 +11,8 @@ import type {
   FigureSettings,
   MapElementKey,
   MapElementStyles,
-  StationLabelOverride,
 } from '../../core/types'
+import { useCenterlineStationingController } from '../stationing/useCenterlineStationingController'
 
 type FigureElementControllerOptions = {
   engine: HydraulicEngine
@@ -35,35 +31,14 @@ export function useWseFigureElementController({
   setSettings,
   setSelectedStationLabelId,
 }: FigureElementControllerOptions) {
-  const updateCenterlineStationing = (
-    patch: Partial<FigureSettings['centerlineStationing']>,
-  ) => {
-    setSettings((current) => ({
-      ...current,
-      centerlineStationing: {
-        ...current.centerlineStationing,
-        ...patch,
-      },
-    }))
-  }
-
-  const updateStationLabelOverride = (
-    id: string,
-    override: StationLabelOverride | null,
-  ) => {
-    setSettings((current) => {
-      const overrides = { ...current.centerlineStationing.overrides }
-      if (override) overrides[id] = override
-      else delete overrides[id]
-      return {
-        ...current,
-        centerlineStationing: {
-          ...current.centerlineStationing,
-          overrides,
-        },
-      }
-    })
-  }
+  const stationing = useCenterlineStationingController({
+    bounds: engine.commonBounds(),
+    settings,
+    stationingLayer,
+    selectedLabelId: selectedStationLabelId,
+    setSettings,
+    setSelectedLabelId: setSelectedStationLabelId,
+  })
 
   const updateElementPosition = (
     key: MapElementKey,
@@ -143,38 +118,6 @@ export function useWseFigureElementController({
     })
   }
 
-  const nudgeStationLabel = (dx: number, dy: number) => {
-    if (!selectedStationLabelId || !stationingLayer) return
-    const bounds = engine.commonBounds()
-    const currentPoint = stationLabelPosition(
-      stationingLayer,
-      bounds,
-      settings,
-      selectedStationLabelId,
-    )
-    if (!currentPoint) return
-    const screenPoint = mapPointToCanvas(currentPoint, bounds, settings)
-    const nextPoint = canvasPointToMap(
-      screenPoint.x + dx,
-      screenPoint.y + dy,
-      bounds,
-      settings,
-    )
-    updateStationLabelOverride(selectedStationLabelId, {
-      ...settings.centerlineStationing.overrides[selectedStationLabelId],
-      labelPoint: nextPoint,
-    })
-  }
-
-  const resetCenterlineStationing = () => {
-    const defaults = createDefaultFigureSettings().centerlineStationing
-    setSettings((current) => ({
-      ...current,
-      centerlineStationing: structuredClone(defaults),
-    }))
-    setSelectedStationLabelId(null)
-  }
-
   const resetView = () => {
     setSettings((current) => ({
       ...current,
@@ -186,15 +129,15 @@ export function useWseFigureElementController({
   }
 
   return {
-    updateCenterlineStationing,
-    updateStationLabelOverride,
+    updateCenterlineStationing: stationing.update,
+    updateStationLabelOverride: stationing.updateLabelOverride,
     updateElementPosition,
     updateElementStyle,
     updateElementVisibility,
     nudgeElement,
     resetElement,
-    nudgeStationLabel,
-    resetCenterlineStationing,
+    nudgeStationLabel: stationing.nudgeSelectedLabel,
+    resetCenterlineStationing: stationing.reset,
     resetView,
   }
 }

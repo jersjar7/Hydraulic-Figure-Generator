@@ -1,8 +1,4 @@
-import { useEffect, useMemo } from 'react'
-import {
-  extractCenterlineCandidates,
-  generateCenterlineStationTicks,
-} from '../../core/centerlineStationing'
+import { useMemo } from 'react'
 import { stationWseAssessmentLines } from '../../application/hydraulics/stationWseAssessmentLines'
 import type {
   AssessmentMapLayer,
@@ -10,6 +6,7 @@ import type {
   MapOverlay,
 } from '../../core/types'
 import type { AssessmentWorkflowState } from '../assessment-lines/useAssessmentWorkflow'
+import { useCenterlineStationingLayer } from '../stationing/useCenterlineStationingLayer'
 import { assessmentWseLabel } from './workspaceInteractions'
 
 type AssessmentMapLayerOptions = {
@@ -19,6 +16,7 @@ type AssessmentMapLayerOptions = {
   stationing: FigureSettings['centerlineStationing']
   selectedStationLabelId: string | null
   setCenterline: (id: string) => void
+  setSelectedLabelId?: (id: string | null) => void
 }
 
 export function useAssessmentMapLayers({
@@ -28,51 +26,24 @@ export function useAssessmentMapLayers({
   stationing,
   selectedStationLabelId,
   setCenterline,
+  setSelectedLabelId,
 }: AssessmentMapLayerOptions) {
-  const centerlineCandidates = useMemo(() => {
-    if (!modelWkt) return []
-    try {
-      return extractCenterlineCandidates(overlays, modelWkt)
-    } catch {
-      return []
-    }
-  }, [modelWkt, overlays])
-
-  const selectedCenterline =
-    centerlineCandidates.find(
-      (candidate) => candidate.id === state.centerlineId,
-    ) ?? null
-
-  const centerlineStationTicks = useMemo(() => {
-    if (!selectedCenterline) return []
-    try {
-      return generateCenterlineStationTicks(
-        selectedCenterline,
-        state.direction,
-        state.startStation,
-        stationing,
-      )
-    } catch {
-      return []
-    }
-  }, [
+  const {
+    candidates: centerlineCandidates,
     selectedCenterline,
-    state.direction,
-    state.startStation,
-    stationing,
-  ])
-
-  const centerlineStationLayer = useMemo(
-    () =>
-      selectedCenterline
-        ? {
-            centerline: selectedCenterline,
-            direction: state.direction,
-            ticks: centerlineStationTicks,
-          }
-        : undefined,
-    [centerlineStationTicks, selectedCenterline, state.direction],
-  )
+    ticks: centerlineStationTicks,
+    layer: centerlineStationLayer,
+  } = useCenterlineStationingLayer({
+    modelWkt,
+    overlays,
+    settings: stationing,
+    centerlineId: state.centerlineId,
+    direction: state.direction,
+    startStation: state.startStation,
+    selectedLabelId: selectedStationLabelId,
+    setCenterline,
+    setSelectedLabelId,
+  })
 
   const stationedAssessmentLines = useMemo(
     () =>
@@ -95,10 +66,13 @@ export function useAssessmentMapLayers({
   )
 
   const exportLayer = useMemo<AssessmentMapLayer>(() => {
+    const exportStationing = centerlineStationLayer
+      ? { ...centerlineStationLayer, selectedLabelId: null }
+      : undefined
     if (!stationedAssessmentLines) {
       return {
         lines: state.collection.lines,
-        centerlineStationing: centerlineStationLayer,
+        centerlineStationing: exportStationing,
       }
     }
 
@@ -107,7 +81,7 @@ export function useAssessmentMapLayers({
     )
     return {
       lines: included.map((item) => item.line),
-      centerlineStationing: centerlineStationLayer,
+      centerlineStationing: exportStationing,
       wseCallouts: included
         .filter((item) => state.overrides[item.line.id]?.labelVisible !== false)
         .map((item) => ({
@@ -129,12 +103,7 @@ export function useAssessmentMapLayers({
     const baseLayer = {
       ...exportLayer,
       selectedCalloutId: state.selectedLineId,
-      centerlineStationing: exportLayer.centerlineStationing
-        ? {
-            ...exportLayer.centerlineStationing,
-            selectedLabelId: selectedStationLabelId,
-          }
-        : undefined,
+      centerlineStationing: centerlineStationLayer,
     }
     if (state.panelView !== 'review' || !stationedAssessmentLines) {
       return baseLayer
@@ -161,33 +130,10 @@ export function useAssessmentMapLayers({
     }
   }, [
     exportLayer,
-    selectedStationLabelId,
+    centerlineStationLayer,
     state.panelView,
     state.selectedLineId,
     stationedAssessmentLines,
-  ])
-
-  useEffect(() => {
-    if (
-      state.centerlineId &&
-      modelWkt &&
-      overlays.length > 0 &&
-      !centerlineCandidates.some(
-        (candidate) => candidate.id === state.centerlineId,
-      )
-    ) {
-      setCenterline('')
-      return
-    }
-    if (!state.centerlineId && centerlineCandidates.length === 1) {
-      setCenterline(centerlineCandidates[0].id)
-    }
-  }, [
-    centerlineCandidates,
-    modelWkt,
-    overlays.length,
-    setCenterline,
-    state.centerlineId,
   ])
 
   return {

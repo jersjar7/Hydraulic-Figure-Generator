@@ -2,12 +2,14 @@ import {
   ImageDown,
   MapPin,
   MessageSquareText,
+  Milestone,
   Palette,
   Settings2,
   SlidersHorizontal,
 } from 'lucide-react'
 import type { ComponentProps } from 'react'
 import { FigureElementsPanel } from '../../components/FigureElementsPanel'
+import { CenterlineStationingToolPanel } from '../stationing/CenterlineStationingToolPanel'
 import {
   defineSettingsSections,
   settingsSectionByKey,
@@ -24,6 +26,7 @@ import {
   ExportSection,
   FrameSection,
   LegendSection,
+  StationingSection,
 } from './components/WseSettingsSectionPanels'
 import {
   WSE_DIFFERENCE_SETTINGS_SECTIONS,
@@ -35,6 +38,7 @@ export type WseSettingsSectionContext = {
   legend: ComponentProps<typeof LegendSettingsPanel>
   frame: ComponentProps<typeof FrameSettingsPanel>
   elements: ComponentProps<typeof FigureElementsPanel>
+  stationing: ComponentProps<typeof CenterlineStationingToolPanel>
   annotations: ComponentProps<typeof AnnotationSettingsPanel>
   export: {
     canDownload: boolean
@@ -47,6 +51,7 @@ const COMPONENTS = {
   legend: LegendSection,
   frame: FrameSection,
   elements: ElementsSection,
+  stationing: StationingSection,
   annotations: AnnotationsSection,
   export: ExportSection,
 } as const
@@ -56,6 +61,7 @@ const ICONS = {
   legend: Palette,
   frame: SlidersHorizontal,
   elements: MapPin,
+  stationing: Milestone,
   annotations: MessageSquareText,
   export: ImageDown,
 } as const

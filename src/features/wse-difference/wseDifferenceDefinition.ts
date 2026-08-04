@@ -20,6 +20,11 @@ export const WSE_DIFFERENCE_SETTINGS_SECTIONS = [
     title: 'Figure elements',
   },
   {
+    key: 'stationing',
+    label: 'Stationing',
+    title: 'Centerline stationing',
+  },
+  {
     key: 'annotations',
     label: 'Callouts',
     title: 'Annotations and callouts',

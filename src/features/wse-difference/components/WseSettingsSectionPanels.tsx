@@ -4,6 +4,7 @@ import {
 } from 'lucide-react'
 import { ControlSection } from '../../../components/ControlSection'
 import { FigureElementsPanel } from '../../../components/FigureElementsPanel'
+import { CenterlineStationingToolPanel } from '../../stationing/CenterlineStationingToolPanel'
 import type { WseSettingsSectionContext } from '../wseSettingsSections'
 import { AnnotationSettingsPanel } from './AnnotationSettingsPanel'
 import { CalculationSettingsPanel } from './CalculationSettingsPanel'
@@ -32,6 +33,10 @@ export function ElementsSection({ context }: Props) {
       <FigureElementsPanel {...context.elements} />
     </ControlSection>
   )
+}
+
+export function StationingSection({ context }: Props) {
+  return <CenterlineStationingToolPanel {...context.stationing} />
 }
 
 export function AnnotationsSection({ context }: Props) {
