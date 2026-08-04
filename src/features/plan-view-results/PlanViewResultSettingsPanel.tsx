@@ -305,14 +305,6 @@ export function PlanViewResultSettingsPanel(props: Props) {
           onPositionChange={elements.updateElementPosition}
           onNudge={elements.nudgeElement}
           onResetElement={elements.resetElement}
-          stationTicks={[]}
-          selectedStationLabelId={null}
-          hasCenterline={false}
-          onStationingChange={() => undefined}
-          onStationLabelSelect={() => undefined}
-          onStationLabelOverrideChange={() => undefined}
-          onNudgeStationLabel={() => undefined}
-          onResetStationing={() => undefined}
         />
       </ControlSection>
     )

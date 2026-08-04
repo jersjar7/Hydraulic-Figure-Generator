@@ -240,9 +240,7 @@ export function WseDifferenceWorkspace() {
     annotations,
     selectedAnnotationId,
     selectedElementKey:
-      activeSettingsSection === 'elements' && activeElement !== 'stationing'
-        ? activeElement
-        : null,
+      activeSettingsSection === 'elements' ? activeElement : null,
     interacting:
       annotationDragging ||
       assessmentCalloutDragging ||

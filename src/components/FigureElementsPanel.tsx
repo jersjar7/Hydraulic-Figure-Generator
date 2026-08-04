@@ -4,11 +4,9 @@ import type {
   ElementPosition,
   FigureSettings,
   FigureElementPanelKey,
-  CenterlineStationTick,
   MapElementKey,
   MapElementStyles,
 } from '../core/types'
-import { CenterlineStationingPanel } from '../features/stationing/CenterlineStationingPanel'
 import {
   BoxControls,
   PositionControls,
@@ -39,19 +37,6 @@ type Props = {
   onPositionChange(key: MapElementKey, patch: Partial<ElementPosition>): void
   onNudge(key: MapElementKey, dx: number, dy: number): void
   onResetElement(key: MapElementKey): void
-  stationTicks: CenterlineStationTick[]
-  selectedStationLabelId: string | null
-  hasCenterline: boolean
-  onStationingChange(
-    patch: Partial<FigureSettings['centerlineStationing']>,
-  ): void
-  onStationLabelSelect(id: string | null): void
-  onStationLabelOverrideChange(
-    id: string,
-    override: FigureSettings['centerlineStationing']['overrides'][string] | null,
-  ): void
-  onNudgeStationLabel(dx: number, dy: number): void
-  onResetStationing(): void
 }
 
 export function FigureElementsPanel({
@@ -65,14 +50,6 @@ export function FigureElementsPanel({
   onPositionChange,
   onNudge,
   onResetElement,
-  stationTicks,
-  selectedStationLabelId,
-  hasCenterline,
-  onStationingChange,
-  onStationLabelSelect,
-  onStationLabelOverrideChange,
-  onNudgeStationLabel,
-  onResetStationing,
 }: Props) {
   const elementDefinitions = availableElements
     ? FIGURE_ELEMENTS.filter((element) =>
@@ -83,14 +60,8 @@ export function FigureElementsPanel({
     (element) => element.key === activeElement,
   )
   const activeDefinition = elementDefinitions[Math.max(0, activeIndex)]
-  const activeMapElement =
-    activeElement === 'stationing' ? null : activeElement
-  const position = activeMapElement
-    ? settings.elementPositions[activeMapElement]
-    : null
-  const visible = activeMapElement
-    ? isElementVisible(settings, activeMapElement)
-    : settings.centerlineStationing.visible
+  const position = settings.elementPositions[activeElement]
+  const visible = isElementVisible(settings, activeElement)
 
   const handleTabKeyDown = (
     event: KeyboardEvent<HTMLButtonElement>,
@@ -116,14 +87,14 @@ export function FigureElementsPanel({
       [nextIndex]?.focus()
   }
 
-  const commonHeader = activeMapElement ? (
+  const commonHeader = (
     <>
       <div className="element-menu-header">
         <strong>{activeDefinition.label}</strong>
         <button
           className="button secondary compact element-reset"
           type="button"
-          onClick={() => onResetElement(activeMapElement)}
+          onClick={() => onResetElement(activeElement)}
         >
           <RotateCcw size={13} aria-hidden="true" />
           Reset
@@ -133,11 +104,11 @@ export function FigureElementsPanel({
         label="Show on figure"
         checked={visible}
         onChange={(nextVisible) =>
-          onVisibilityChange(activeMapElement, nextVisible)
+          onVisibilityChange(activeElement, nextVisible)
         }
       />
     </>
-  ) : null
+  )
 
   return (
     <>
@@ -148,10 +119,7 @@ export function FigureElementsPanel({
       >
         {elementDefinitions.map((element, index) => {
           const Icon = element.icon
-          const elementVisible =
-            element.key === 'stationing'
-              ? settings.centerlineStationing.visible
-              : isElementVisible(settings, element.key)
+          const elementVisible = isElementVisible(settings, element.key)
           return (
             <button
               className={`element-tab${activeElement === element.key ? ' active' : ''}`}
@@ -180,58 +148,42 @@ export function FigureElementsPanel({
       </div>
 
       <div className="element-settings-panel">
-        {activeElement === 'stationing' ? (
-          <CenterlineStationingPanel
-            settings={settings.centerlineStationing}
-            ticks={stationTicks}
-            selectedLabelId={selectedStationLabelId}
-            hasCenterline={hasCenterline}
-            onChange={onStationingChange}
-            onSelectLabel={onStationLabelSelect}
-            onOverrideChange={onStationLabelOverrideChange}
-            onNudgeSelected={onNudgeStationLabel}
-            onReset={onResetStationing}
-          />
-        ) : (
-          <>
-            {commonHeader}
+        {commonHeader}
 
-        {activeMapElement === 'title' ? (
+        {activeElement === 'title' ? (
           <TitleElementEditor
             settings={settings}
             onStyleChange={onStyleChange}
             onTitleTemplateChange={onTitleTemplateChange}
           />
         ) : null}
-        {activeMapElement === 'diffLegend' ? (
+        {activeElement === 'diffLegend' ? (
           <DifferenceLegendEditor
             settings={settings}
             onStyleChange={onStyleChange}
           />
         ) : null}
-        {activeMapElement === 'wetDry' ? (
+        {activeElement === 'wetDry' ? (
           <WetDryKeyEditor settings={settings} onStyleChange={onStyleChange} />
         ) : null}
-        {activeMapElement === 'north' ? (
+        {activeElement === 'north' ? (
           <NorthArrowEditor settings={settings} onStyleChange={onStyleChange} />
         ) : null}
-        {activeMapElement === 'scale' ? (
+        {activeElement === 'scale' ? (
           <ScaleBarEditor settings={settings} onStyleChange={onStyleChange} />
         ) : null}
         <SectionHeading>Appearance</SectionHeading>
         <BoxControls
-          style={settings.elementStyles[activeMapElement!]}
-          onChange={(patch) => onStyleChange(activeMapElement!, patch)}
+          style={settings.elementStyles[activeElement]}
+          onChange={(patch) => onStyleChange(activeElement, patch)}
         />
         <SectionHeading>Placement</SectionHeading>
         <PositionControls
           position={position!}
           label={activeDefinition.label}
-          onChange={(patch) => onPositionChange(activeMapElement!, patch)}
-          onNudge={(dx, dy) => onNudge(activeMapElement!, dx, dy)}
+          onChange={(patch) => onPositionChange(activeElement, patch)}
+          onNudge={(dx, dy) => onNudge(activeElement, dx, dy)}
         />
-          </>
-        )}
       </div>
     </>
   )

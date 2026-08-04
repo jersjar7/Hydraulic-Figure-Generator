@@ -18,14 +18,6 @@ function renderPanel() {
       onPositionChange={vi.fn()}
       onNudge={vi.fn()}
       onResetElement={vi.fn()}
-      stationTicks={[]}
-      selectedStationLabelId={null}
-      hasCenterline={false}
-      onStationingChange={vi.fn()}
-      onStationLabelSelect={vi.fn()}
-      onStationLabelOverrideChange={vi.fn()}
-      onNudgeStationLabel={vi.fn()}
-      onResetStationing={vi.fn()}
     />,
   )
   return { onActiveElementChange, onVisibilityChange }

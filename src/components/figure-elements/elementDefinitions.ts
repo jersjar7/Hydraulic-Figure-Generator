@@ -2,7 +2,6 @@ import {
   BarChart3,
   Compass,
   Droplets,
-  Milestone,
   Ruler,
   Type,
 } from 'lucide-react'
@@ -19,7 +18,6 @@ export const FIGURE_ELEMENTS = [
   { key: 'wetDry', label: 'Wet/dry key', icon: Droplets },
   { key: 'north', label: 'North arrow', icon: Compass },
   { key: 'scale', label: 'Scale bar', icon: Ruler },
-  { key: 'stationing', label: 'Centerline stationing', icon: Milestone },
 ] as const satisfies ReadonlyArray<{
   key: FigureElementPanelKey
   label: string

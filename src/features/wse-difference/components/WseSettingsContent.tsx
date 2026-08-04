@@ -95,15 +95,6 @@ export function WseSettingsContent({
       onPositionChange: figureElements.updateElementPosition,
       onNudge: figureElements.nudgeElement,
       onResetElement: figureElements.resetElement,
-      stationTicks: centerlineStationTicks,
-      selectedStationLabelId,
-      hasCenterline,
-      onStationingChange: figureElements.updateCenterlineStationing,
-      onStationLabelSelect,
-      onStationLabelOverrideChange:
-        figureElements.updateStationLabelOverride,
-      onNudgeStationLabel: figureElements.nudgeStationLabel,
-      onResetStationing: figureElements.resetCenterlineStationing,
     },
     stationing: {
       candidates: centerlineCandidates,

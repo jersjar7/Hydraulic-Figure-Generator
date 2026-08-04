@@ -17,7 +17,7 @@ export type ElementPosition = {
 
 export type MapElementKey = 'title' | 'diffLegend' | 'north' | 'scale' | 'wetDry'
 
-export type FigureElementPanelKey = MapElementKey | 'stationing'
+export type FigureElementPanelKey = MapElementKey
 
 export type MapElementPositions = Record<MapElementKey, ElementPosition>
 
@@ -93,4 +93,3 @@ export type MapElementBounds = {
   width: number
   height: number
 }
-
