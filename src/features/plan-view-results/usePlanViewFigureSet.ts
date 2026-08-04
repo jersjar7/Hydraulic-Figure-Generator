@@ -17,6 +17,7 @@ import {
 } from './planViewFigureSet'
 import { planViewFigureSetRecipe } from './planViewFigureSetRecipe'
 import { movePlanViewFigureSetItem } from './planViewFigureDocument'
+import { planViewGeometryOutputOptions } from '../../core/hydraulics/planViewGeometryResults'
 
 type Options = {
   engine: HydraulicEngine
@@ -43,11 +44,15 @@ function scopeFromItems(items: PlanViewFigureSetItem[]): PlanViewFigureSetScope 
     resultParametersByScenario: {},
   }
   for (const item of items) {
-    const { scenarioId, runIndex, resultParameter } = item.selection
+    const { scenarioId, resultParameter } = item.selection
     if (!scope.scenarioIds.includes(scenarioId)) scope.scenarioIds.push(scenarioId)
-    const runs = scope.runIndicesByScenario[scenarioId] ?? []
-    if (!runs.includes(runIndex)) runs.push(runIndex)
-    scope.runIndicesByScenario[scenarioId] = runs
+    if (item.selection.kind === 'scalar') {
+      const runs = scope.runIndicesByScenario[scenarioId] ?? []
+      if (!runs.includes(item.selection.runIndex)) {
+        runs.push(item.selection.runIndex)
+      }
+      scope.runIndicesByScenario[scenarioId] = runs
+    }
     const results = scope.resultParametersByScenario[scenarioId] ?? []
     if (!results.includes(resultParameter)) results.push(resultParameter)
     scope.resultParametersByScenario[scenarioId] = results
@@ -214,11 +219,16 @@ export function usePlanViewFigureSet({
     updateScope((current) => {
       const runs = current.runIndicesByScenario[scenarioId] ?? []
       const parameters = selected
-        ? [...new Set(runs.flatMap((runIndex) =>
-            engine.scalarResultOptions(scenarioId, runIndex).map(
+        ? [...new Set([
+            ...planViewGeometryOutputOptions(engine.condition(scenarioId)).map(
               (result) => result.paramName,
             ),
-          ))]
+            ...runs.flatMap((runIndex) =>
+              engine.scalarResultOptions(scenarioId, runIndex).map(
+                (result) => result.paramName,
+              ),
+            ),
+          ])]
         : []
       return {
         ...current,

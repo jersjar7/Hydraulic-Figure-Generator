@@ -23,7 +23,7 @@ import { createDefaultPlanViewResultSettings } from './planViewResultSettings'
 export type PlanViewResultBuildRequest = {
   engine: HydraulicEngine
   scenarioId: ConditionKey
-  runIndex: number
+  runIndex?: number
   resultParameter: string
 }
 
@@ -65,11 +65,9 @@ export const planViewResultFigure = {
   render: ({ canvas, document, signal }) =>
     renderPlanViewResultDocument(canvas, document, signal),
   exportFileName: (scene) =>
-    [
-      scene.selection.condition.label,
-      runDisplayName(scene.selection.run.name),
-      scene.result.label,
-    ]
+    [scene.condition.label,
+      scene.selection ? runDisplayName(scene.selection.run.name) : '',
+      scene.result.label]
       .map((part) => part.replace(/\W+/g, '_').replace(/^_|_$/g, ''))
       .filter(Boolean)
       .join('_') + '.png',

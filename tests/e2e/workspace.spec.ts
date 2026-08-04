@@ -324,6 +324,46 @@ test('one SMS scenario renders a fitted plan-view scalar result map', async ({
     .toBeGreaterThan(100)
 })
 
+test('Plan-View renders topography, mesh, and combined geometry outputs', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto('.')
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'plan-view-hydraulic-results',
+  )
+  await page
+    .getByTestId('h5-file-drop')
+    .locator('input[type="file"]')
+    .setInputFiles([h5Fixture('Existing-Geometry.h5')])
+
+  const mapContent = page.getByLabel('Map content')
+  await expect(mapContent).toContainText('Topography')
+  await expect(mapContent).toContainText('Mesh Elements')
+  await expect(mapContent).toContainText('Topography + Mesh Elements')
+
+  await page.getByRole('tab', { name: 'Frame', exact: true }).click()
+  await page
+    .locator('label.range-field')
+    .filter({ hasText: 'Aerial opacity' })
+    .locator('input')
+    .fill('0')
+
+  for (const value of [
+    '__topography__',
+    '__mesh_elements__',
+    '__topography_mesh_elements__',
+  ]) {
+    await page.getByRole('tab', { name: 'Result', exact: true }).click()
+    await mapContent.selectOption(value)
+    await expect(page.getByTestId('generate-plan-view')).toBeEnabled()
+    await page.getByTestId('generate-plan-view').click()
+    await expect(
+      page.getByLabel('Generated plan-view hydraulic result figure'),
+    ).toHaveClass(/is-visible/)
+  }
+})
+
 test('Plan-View builds and reviews a multi-result figure set', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.goto('.')
@@ -350,16 +390,20 @@ test('Plan-View builds and reviews a multi-result figure set', async ({ page }) 
   const figureSetPanel = page.locator('.right-sidebar')
   await expect(figureSetPanel.getByText('1 figure selected')).toBeVisible()
   await page.getByRole('checkbox', { name: /Water Surface Elevation/ }).check()
-  await expect(figureSetPanel.getByText('2 figures selected')).toBeVisible()
+  await page.getByRole('checkbox', {
+    name: 'Topography geometry output',
+    exact: true,
+  }).check()
+  await expect(figureSetPanel.getByText('3 figures selected')).toBeVisible()
   await page.getByTestId('generate-figure-set').click()
 
-  await expect(page.locator('.figure-set-status.ready')).toHaveCount(2, {
+  await expect(page.locator('.figure-set-status.ready')).toHaveCount(3, {
     timeout: 15_000,
   })
-  await expect(page.getByText('2 ready · 2 included · 2 total')).toBeVisible()
+  await expect(page.getByText('3 ready · 3 included · 3 total')).toBeVisible()
 
   await page.getByRole('tab', { name: 'Document', exact: true }).click()
-  await expect(page.getByText('2 pages · one figure per page')).toBeVisible()
+  await expect(page.getByText('3 pages · one figure per page')).toBeVisible()
   await page.getByRole('spinbutton', { name: 'Start number' }).fill('10')
   await expect(page.getByText(/^Figure 10\./)).toBeVisible()
   await page.getByRole('textbox', { name: 'Caption', exact: true }).fill(

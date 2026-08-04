@@ -18,7 +18,7 @@ function niceStep(value: number) {
     )
 }
 
-function resultRange(values: Float32Array) {
+export function resultRange(values: Float32Array) {
   let validMin = Number.POSITIVE_INFINITY
   let validMax = Number.NEGATIVE_INFINITY
   let validNodes = 0
@@ -76,7 +76,9 @@ export function buildScalarResultScene(
       )
     : values
   return {
+    condition: selection.condition,
     selection,
+    outputKind: 'scalar',
     projected,
     result: scalarResultMetadata(paramName),
     values: displayValues,

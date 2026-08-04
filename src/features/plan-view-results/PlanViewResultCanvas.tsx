@@ -28,8 +28,8 @@ export function PlanViewResultCanvas({
           <div className="empty-symbol"><Layers3 size={28} /></div>
           <h2>Build a plan-view result map</h2>
           <p>
-            Add one SMS geometry and datasets pair, choose the scenario, run,
-            and scalar result, then generate the map.
+            Add SMS geometry, choose the scenario and map content, then
+            generate the map. Hydraulic results also require a datasets file.
           </p>
           <button
             className="button primary"

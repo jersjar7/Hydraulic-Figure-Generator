@@ -10,6 +10,7 @@ import type {
 import { drawBasemap } from './basemapLayer'
 import {
   drawContourLevels,
+  drawMeshElements,
   fillScalarBands,
   localCoordinates,
 } from './hydraulicLayers'
@@ -39,11 +40,16 @@ export function resolvePlanViewTitle(
 ) {
   const title = template.trim() || '{run} - {parameter} ({units})'
   return title
-    .replaceAll('{run}', runDisplayName(scene.selection.run.name))
-    .replaceAll('{condition}', scene.selection.condition.label)
+    .replaceAll(
+      '{run}',
+      scene.selection ? runDisplayName(scene.selection.run.name) : '',
+    )
+    .replaceAll('{condition}', scene.condition.label)
     .replaceAll('{parameter}', scene.result.label)
     .replaceAll('{units}', scene.result.units)
     .replace(/\(\s*\)/g, '')
+    .replace(/:\s*-/g, ' -')
+    .replace(/-\s*-/g, '-')
     .replace(/\s{2,}/g, ' ')
     .trim()
 }
@@ -62,6 +68,10 @@ export async function renderPlanViewResultDocument(
   if (!context) throw new Error('This browser could not create the map canvas.')
   const view = makeMapView(bounds, frame, settings)
   const scale = resolveScalarResultScale(scene, settings)
+  const showsSurface = scene.outputKind !== 'mesh-elements'
+  const showsMesh =
+    scene.outputKind === 'mesh-elements' ||
+    scene.outputKind === 'topography-mesh-elements'
   const elementBounds: MapElementBounds[] = []
 
   context.fillStyle = '#dce4ec'
@@ -73,24 +83,26 @@ export async function renderPlanViewResultDocument(
   context.save()
   context.translate(view.originX, view.originY)
   context.rotate(view.rotationRadians)
-  fillScalarBands(
-    context,
-    localX,
-    localY,
-    scene.projected.tris,
-    scene.values,
-    scale.minimum,
-    scale.maximum,
-    scale.bandCount,
-    (value) =>
-      scalarColor(
-        settings.ramp,
-        value,
-        scale.minimum,
-        scale.maximum,
-      ),
-  )
-  if (settings.showContours) {
+  if (showsSurface) {
+    fillScalarBands(
+      context,
+      localX,
+      localY,
+      scene.projected.tris,
+      scene.values,
+      scale.minimum,
+      scale.maximum,
+      scale.bandCount,
+      (value) =>
+        scalarColor(
+          settings.ramp,
+          value,
+          scale.minimum,
+          scale.maximum,
+        ),
+    )
+  }
+  if (showsSurface && settings.showContours) {
     drawContourLevels(
       context,
       localX,
@@ -105,6 +117,17 @@ export async function renderPlanViewResultDocument(
       ),
       settings.contourColor,
       settings.contourWidth,
+    )
+  }
+  if (showsMesh) {
+    drawMeshElements(
+      context,
+      localX,
+      localY,
+      scene.projected.tris,
+      settings.meshLineColor,
+      settings.meshLineWidth,
+      settings.meshLineOpacity,
     )
   }
   if (settings.showOverlays) {
@@ -123,7 +146,7 @@ export async function renderPlanViewResultDocument(
       ),
     )
   }
-  if (settings.showLegend) {
+  if (settings.showLegend && showsSurface) {
     elementBounds.push(
       drawScalarResultLegend(
         context,

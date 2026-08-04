@@ -23,7 +23,9 @@ function scene(): PlanViewResultScene {
     vector: false,
   }
   return {
+    condition: selection.condition,
     selection,
+    outputKind: 'scalar',
     projected,
     result: {
       paramName: 'Water_Depth_ft',

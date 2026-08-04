@@ -4,6 +4,7 @@ import type { HydraulicEngine } from '../../core/hydraulicEngine'
 import { runDisplayName } from '../../core/hydraulicEngine'
 import type { ConditionData } from '../../core/types'
 import type { usePlanViewFigureSet } from './usePlanViewFigureSet'
+import { planViewGeometryOutputOptions } from '../../core/hydraulics/planViewGeometryResults'
 
 type Props = {
   engine: HydraulicEngine
@@ -20,14 +21,18 @@ export function PlanViewFigureSetPanel({
   const activeScenario = scenarios.find((scenario) => scenario.key === activeId)
   const runs = activeScenario ? engine.runOptions(activeId) : []
   const selectedRuns = controller.scope.runIndicesByScenario[activeId] ?? []
-  const resultMap = new Map(
-    selectedRuns.flatMap((runIndex) =>
+  const resultMap = new Map([
+    ...planViewGeometryOutputOptions(activeScenario).map((result) => [
+      result.paramName,
+      result,
+    ] as const),
+    ...selectedRuns.flatMap((runIndex) =>
       engine.scalarResultOptions(activeId, runIndex).map((result) => [
         result.paramName,
-        result,
+        { ...result, kind: 'scalar' as const, runDependent: true },
       ] as const),
     ),
-  )
+  ])
   const selectedResults =
     controller.scope.resultParametersByScenario[activeId] ?? []
 
@@ -125,7 +130,6 @@ export function PlanViewFigureSetPanel({
                   type="button"
                   title="Select all results"
                   aria-label="Select all results"
-                  disabled={selectedRuns.length === 0}
                   onClick={() => controller.selectAllResults(activeId, true)}
                 ><CheckCheck size={13} /></button>
                 <button
@@ -148,12 +152,16 @@ export function PlanViewFigureSetPanel({
                   />
                   <span>
                     <strong>{result.label}</strong>
-                    <small>{result.units || 'dimensionless'}</small>
+                    <small>
+                      {result.runDependent
+                        ? result.units || 'dimensionless'
+                        : 'geometry output'}
+                    </small>
                   </span>
                 </label>
               ))}
-              {selectedRuns.length === 0 ? (
-                <p className="empty-control-copy">Select at least one run.</p>
+              {resultMap.size === 0 ? (
+                <p className="empty-control-copy">Add scenario geometry.</p>
               ) : null}
             </div>
           </div>

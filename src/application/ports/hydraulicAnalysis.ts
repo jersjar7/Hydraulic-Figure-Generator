@@ -3,6 +3,7 @@ import type {
   CrossSectionLine,
   HydraulicCrossSectionScene,
   PlanViewResultScene,
+  PlanViewOutputOption,
   ScalarResultOption,
   WseAssessmentLineCollection,
   WseDifferenceScene,
@@ -13,9 +14,13 @@ export type HydraulicAnalysisPort = {
     key: ConditionKey,
     runIndex: number,
   ): ScalarResultOption[]
-  buildPlanViewResult(
+  planViewResultOptions(
     key: ConditionKey,
     runIndex: number,
+  ): PlanViewOutputOption[]
+  buildPlanViewResult(
+    key: ConditionKey,
+    runIndex: number | undefined,
     paramName: string,
   ): PlanViewResultScene
   isReady(

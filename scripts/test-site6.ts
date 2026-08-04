@@ -36,6 +36,12 @@ import type {
   AssessmentMapLayer,
   FigureSettings,
   MapAnnotation,
+  PlanViewGeometryOutputId,
+} from '../src/core/types'
+import {
+  PLAN_VIEW_MESH_ELEMENTS_ID,
+  PLAN_VIEW_TOPOGRAPHY_ID,
+  PLAN_VIEW_TOPOGRAPHY_MESH_ID,
 } from '../src/core/types'
 import { renderCrossSectionDocument } from '../src/features/cross-section/crossSectionRenderer'
 import { createDefaultCrossSectionSettings } from '../src/features/cross-section/crossSectionSettings'
@@ -139,6 +145,14 @@ const scalarScenes = expectedScalarResults.map((pattern) => {
   }
   return result
 })
+const geometryOutputIds: PlanViewGeometryOutputId[] = [
+  PLAN_VIEW_TOPOGRAPHY_ID,
+  PLAN_VIEW_MESH_ELEMENTS_ID,
+  PLAN_VIEW_TOPOGRAPHY_MESH_ID,
+]
+const geometryScenes = geometryOutputIds.map((outputId) =>
+  engine.buildPlanViewResult('EX', undefined, outputId),
+)
 const figureSetScenarioIds = ['EX', 'PR']
 const figureSetItems = expandPlanViewFigureSet(
   engine,
@@ -153,13 +167,14 @@ const figureSetItems = expandPlanViewFigureSet(
     resultParametersByScenario: Object.fromEntries(
       figureSetScenarioIds.map((scenarioId) => [
         scenarioId,
-        [...new Set(
-          engine.runOptions(scenarioId).flatMap((_, runIndex) =>
+        [...new Set([
+          ...geometryOutputIds,
+          ...engine.runOptions(scenarioId).flatMap((_, runIndex) =>
             engine.scalarResultOptions(scenarioId, runIndex).map(
               (result) => result.paramName,
             ),
           ),
-        )],
+        ])],
       ]),
     ),
   },
@@ -168,9 +183,9 @@ const figureSetItems = expandPlanViewFigureSet(
     basemapOpacity: 0,
   },
 )
-if (figureSetItems.length !== 40) {
+if (figureSetItems.length !== 46) {
   throw new Error(
-    `Expected 40 valid Existing and Proposed Site 6 plan-view figures, found ${figureSetItems.length}.`,
+    `Expected 46 valid Site 6 plan-view figures, found ${figureSetItems.length}.`,
   )
 }
 const depthScene = scalarScenes.find((result) =>
@@ -214,6 +229,39 @@ const planViewOutputPath =
   process.env.HFG_TEST_PLAN_VIEW_OUTPUT ||
   join(tmpdir(), 'hydraulic-site6-plan-view.png')
 await writeFile(planViewOutputPath, planViewCanvas.toBuffer('image/png'))
+
+const geometryCanvas = createCanvas(1650, 1275)
+await renderPlanViewResultDocument(
+  geometryCanvas as unknown as HTMLCanvasElement,
+  {
+    scene: geometryScenes[2],
+    view: {
+      bounds: engine.commonBounds(['EX']),
+      settings: {
+        ...createDefaultPlanViewResultSettings(),
+        resultParameter: PLAN_VIEW_TOPOGRAPHY_MESH_ID,
+        ramp: 'topography',
+        basemapOpacity: 0,
+        showOverlays: false,
+        elementStyles: {
+          ...createDefaultPlanViewResultSettings().elementStyles,
+          diffLegend: {
+            ...createDefaultPlanViewResultSettings().elementStyles.diffLegend,
+            title: 'Topography',
+            units: 'ft',
+          },
+        },
+      },
+    },
+    layers: { overlays: [] },
+    selection: {},
+  },
+)
+const geometryOutputPath = join(
+  tmpdir(),
+  'hydraulic-site6-topography-mesh.png',
+)
+await writeFile(geometryOutputPath, geometryCanvas.toBuffer('image/png'))
 
 const scene = engine.buildWseDifference(
   'EX',
@@ -1268,8 +1316,10 @@ console.log(
         halfFootAssessmentLevels: halfFootAssessmentLines.levelCount,
       },
       planViewResults: {
-        run: depthScene.selection.run.name,
+        run: depthScene.selection!.run.name,
         outputPath: planViewOutputPath,
+        geometryOutputPath,
+        geometryOutputs: geometryScenes.map((result) => result.result.label),
         parameters: scalarScenes.map((result) => ({
           name: result.result.paramName,
           validNodes: result.validNodes,

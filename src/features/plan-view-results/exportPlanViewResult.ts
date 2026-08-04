@@ -29,7 +29,7 @@ export async function exportPlanViewResult({
       document: {
         scene,
         view: {
-          bounds: engine.commonBounds([scene.selection.key]),
+          bounds: engine.commonBounds([scene.condition.key]),
           settings,
         },
         layers: { overlays },

@@ -89,7 +89,7 @@ export function PlanViewResultWorkspace() {
   const resultOptions = useMemo(
     () => {
       void scenarios
-      return engine.scalarResultOptions(baselineId, runIndex)
+      return engine.planViewResultOptions(baselineId, runIndex)
     }, [baselineId, engine, runIndex, scenarios],
   )
   const selectedResult = resultOptions.find(
@@ -291,7 +291,9 @@ export function PlanViewResultWorkspace() {
     item: (typeof figureSet.figureSet.items)[number],
   ) => {
     projectSession.changeRole('baseline', item.selection.scenarioId)
-    projectSession.changeRun(item.selection.scenarioId, item.selection.runIndex)
+    if (item.selection.kind === 'scalar') {
+      projectSession.changeRun(item.selection.scenarioId, item.selection.runIndex)
+    }
     setSettings(item.settings)
     setScene(
       figureSet.sceneFor(item.id) ?? planViewResultFigure.buildScene({
@@ -321,7 +323,7 @@ export function PlanViewResultWorkspace() {
         ? planViewResultFigure.label
         : productionMode === 'set' ? 'Figure Set' : 'Word Document'}
       comparisonDescription={productionMode === 'figure'
-        ? `${scenarioLabel} · ${selectedResult?.label ?? 'Select a result'}`
+            ? `${scenarioLabel} · ${selectedResult?.label ?? 'Select map content'}`
         : productionMode === 'set'
           ? `${figureSet.draftCount} figure${figureSet.draftCount === 1 ? '' : 's'} selected`
           : `${figureDocument.pages.length} page${figureDocument.pages.length === 1 ? '' : 's'} assembled`}

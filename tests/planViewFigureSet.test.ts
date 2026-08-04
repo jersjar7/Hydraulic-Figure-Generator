@@ -8,6 +8,12 @@ import {
 import { createDefaultPlanViewResultSettings } from '../src/features/plan-view-results/planViewResultSettings'
 import { createDefaultFigureDocumentSettings } from '../src/core/types'
 import {
+  PLAN_VIEW_MESH_ELEMENTS_ID,
+  PLAN_VIEW_TOPOGRAPHY_ID,
+  PLAN_VIEW_TOPOGRAPHY_MESH_ID,
+} from '../src/core/types'
+import { syntheticGeometry } from './fixtures/syntheticHydraulics'
+import {
   buildPlanViewFigureDocumentPages,
   figureDocumentFileName,
   movePlanViewFigureSetItem,
@@ -74,6 +80,45 @@ describe('Plan-View figure set recipe', () => {
       name: 'Plan-View Hydraulic Results',
       items: [],
     })
+  })
+
+  it('adds geometry outputs once per scenario instead of once per run', () => {
+    const geometryCatalog = {
+      ...catalog,
+      condition: (key: string) => ({
+        key,
+        label: 'Existing',
+        projected: syntheticGeometry(),
+      }),
+    } as unknown as PlanViewFigureSetCatalog
+    const items = expandPlanViewFigureSet(
+      geometryCatalog,
+      {
+        scenarioIds: ['EX'],
+        runIndicesByScenario: { EX: [0, 1] },
+        resultParametersByScenario: {
+          EX: [
+            PLAN_VIEW_TOPOGRAPHY_ID,
+            PLAN_VIEW_MESH_ELEMENTS_ID,
+            PLAN_VIEW_TOPOGRAPHY_MESH_ID,
+            'Water_Depth_ft',
+          ],
+        },
+      },
+      createDefaultPlanViewResultSettings(),
+    )
+
+    assert.equal(items.length, 5)
+    assert.deepEqual(
+      items.slice(0, 3).map((item) => item.title),
+      [
+        'Existing - Topography',
+        'Existing - Mesh Elements',
+        'Existing - Topography + Mesh Elements',
+      ],
+    )
+    assert.ok(items.slice(0, 3).every((item) => item.selection.kind === 'geometry'))
+    assert.ok(items.slice(3).every((item) => item.selection.kind === 'scalar'))
   })
 
   it('assembles included pages in order and supports report ordering', () => {

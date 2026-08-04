@@ -30,6 +30,17 @@ function analysisPort(
         shape: [1, 4],
       },
     ],
+    planViewResultOptions: () => [
+      {
+        paramName: 'Water_Depth_ft',
+        label: 'Water Depth',
+        units: 'ft',
+        defaultRamp: 'depth',
+        shape: [1, 4],
+        kind: 'scalar',
+        runDependent: true,
+      },
+    ],
     buildPlanViewResult: () => ({
       result: { paramName: 'Water_Depth_ft' },
     }) as PlanViewResultScene,

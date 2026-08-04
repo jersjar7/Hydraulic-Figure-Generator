@@ -8,7 +8,7 @@ import {
 import type {
   FigureElementPanelKey,
   PlanViewResultSettings,
-  ScalarResultOption,
+  PlanViewOutputOption,
   ScalarRampKey,
 } from '../../core/types'
 import type { useMapElementController } from '../figures/useMapElementController'
@@ -20,7 +20,7 @@ import type { PlanViewResultSettingsSectionKey } from './planViewResultDefinitio
 type Props = {
   section: PlanViewResultSettingsSectionKey
   settings: PlanViewResultSettings
-  resultOptions: ScalarResultOption[]
+  resultOptions: PlanViewOutputOption[]
   activeElement: FigureElementPanelKey
   elements: ReturnType<typeof useMapElementController<PlanViewResultSettings>>
   canDownload: boolean
@@ -41,74 +41,86 @@ function optionalNumber(value: string) {
 
 function LegendControls({
   settings,
+  resultOptions,
   onSettingsChange,
-}: Pick<Props, 'settings' | 'onSettingsChange'>) {
+}: Pick<Props, 'settings' | 'resultOptions' | 'onSettingsChange'>) {
+  const output = resultOptions.find(
+    (option) => option.paramName === settings.resultParameter,
+  )
+  const showsSurface = output?.kind !== 'mesh-elements'
+  const showsMesh =
+    output?.kind === 'mesh-elements' ||
+    output?.kind === 'topography-mesh-elements'
   return (
     <ControlSection>
-      <label className="field">
-        <span>Color ramp</span>
-        <select
-          value={settings.ramp}
-          onChange={(event) =>
-            onSettingsChange('ramp', event.currentTarget.value as ScalarRampKey)
-          }
-        >
-          {SCALAR_RAMP_OPTIONS.map((option) => (
-            <option value={option.key} key={option.key}>{option.label}</option>
-          ))}
-        </select>
-        <span
-          className="ramp-preview"
-          style={{ background: scalarRampGradient(settings.ramp) }}
-          aria-hidden="true"
-        />
-      </label>
-      <div className="field-grid two">
-        <label className="field">
-          <span>Minimum</span>
-          <input
-            type="number"
-            placeholder="Auto"
-            value={settings.legendMin ?? ''}
-            onChange={(event) =>
-              onSettingsChange('legendMin', optionalNumber(event.currentTarget.value))
-            }
+      {showsSurface ? (
+        <>
+          <label className="field">
+            <span>Color ramp</span>
+            <select
+              value={settings.ramp}
+              onChange={(event) =>
+                onSettingsChange('ramp', event.currentTarget.value as ScalarRampKey)
+              }
+            >
+              {SCALAR_RAMP_OPTIONS.map((option) => (
+                <option value={option.key} key={option.key}>{option.label}</option>
+              ))}
+            </select>
+            <span
+              className="ramp-preview"
+              style={{ background: scalarRampGradient(settings.ramp) }}
+              aria-hidden="true"
+            />
+          </label>
+          <div className="field-grid two">
+            <label className="field">
+              <span>Minimum</span>
+              <input
+                type="number"
+                placeholder="Auto"
+                value={settings.legendMin ?? ''}
+                onChange={(event) =>
+                  onSettingsChange('legendMin', optionalNumber(event.currentTarget.value))
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Maximum</span>
+              <input
+                type="number"
+                placeholder="Auto"
+                value={settings.legendMax ?? ''}
+                onChange={(event) =>
+                  onSettingsChange('legendMax', optionalNumber(event.currentTarget.value))
+                }
+              />
+            </label>
+          </div>
+          <label className="field">
+            <span>Class interval</span>
+            <input
+              type="number"
+              min="0.0001"
+              step="any"
+              placeholder="Auto"
+              value={settings.scalarLegendInterval ?? ''}
+              onChange={(event) =>
+                onSettingsChange(
+                  'scalarLegendInterval',
+                  optionalNumber(event.currentTarget.value),
+                )
+              }
+            />
+          </label>
+          <Toggle
+            label="Contour lines"
+            checked={settings.showContours}
+            onChange={(checked) => onSettingsChange('showContours', checked)}
           />
-        </label>
-        <label className="field">
-          <span>Maximum</span>
-          <input
-            type="number"
-            placeholder="Auto"
-            value={settings.legendMax ?? ''}
-            onChange={(event) =>
-              onSettingsChange('legendMax', optionalNumber(event.currentTarget.value))
-            }
-          />
-        </label>
-      </div>
-      <label className="field">
-        <span>Class interval</span>
-        <input
-          type="number"
-          min="0.0001"
-          step="any"
-          placeholder="Auto"
-          value={settings.scalarLegendInterval ?? ''}
-          onChange={(event) =>
-            onSettingsChange(
-              'scalarLegendInterval',
-              optionalNumber(event.currentTarget.value),
-            )
-          }
-        />
-      </label>
-      <Toggle
-        label="Contour lines"
-        checked={settings.showContours}
-        onChange={(checked) => onSettingsChange('showContours', checked)}
-      />
-      {settings.showContours ? (
+        </>
+      ) : null}
+      {showsSurface && settings.showContours ? (
         <div className="field-grid two">
           <label className="field">
             <span>Contour interval</span>
@@ -154,6 +166,49 @@ function LegendControls({
           </label>
         </div>
       ) : null}
+      {showsMesh ? (
+        <div className="field-grid two">
+          <label className="field color-field">
+            <span>Mesh line color</span>
+            <input
+              type="color"
+              value={settings.meshLineColor}
+              onChange={(event) =>
+                onSettingsChange('meshLineColor', event.currentTarget.value)
+              }
+            />
+          </label>
+          <label className="field">
+            <span>Line width <small>px</small></span>
+            <input
+              type="number"
+              min="0.25"
+              max="8"
+              step="0.25"
+              value={settings.meshLineWidth}
+              onChange={(event) =>
+                onSettingsChange(
+                  'meshLineWidth',
+                  Math.max(0.25, Number(event.currentTarget.value) || 0.75),
+                )
+              }
+            />
+          </label>
+          <label className="field">
+            <span>Line opacity</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={settings.meshLineOpacity}
+              onChange={(event) =>
+                onSettingsChange('meshLineOpacity', Number(event.currentTarget.value))
+              }
+            />
+          </label>
+        </div>
+      ) : null}
     </ControlSection>
   )
 }
@@ -171,11 +226,14 @@ export function PlanViewResultSettingsPanel(props: Props) {
     onActiveElementChange,
     onDownload,
   } = props
+  const selectedOutput = resultOptions.find(
+    (option) => option.paramName === settings.resultParameter,
+  )
   if (section === 'result') {
     return (
       <ControlSection>
         <label className="field">
-          <span>Scalar result</span>
+          <span>Map content</span>
           <select
             value={settings.resultParameter}
             disabled={resultOptions.length === 0}
@@ -184,12 +242,25 @@ export function PlanViewResultSettingsPanel(props: Props) {
             }
           >
             {resultOptions.length === 0 ? (
-              <option value="">Add a scenario and select a run</option>
-            ) : resultOptions.map((option) => (
-              <option value={option.paramName} key={option.paramName}>
-                {option.label}{option.units ? ` (${option.units})` : ''}
-              </option>
-            ))}
+              <option value="">Add scenario geometry</option>
+            ) : (
+              <>
+                <optgroup label="Geometry">
+                  {resultOptions.filter((option) => !option.runDependent).map((option) => (
+                    <option value={option.paramName} key={option.paramName}>
+                      {option.label}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Hydraulic results">
+                  {resultOptions.filter((option) => option.runDependent).map((option) => (
+                    <option value={option.paramName} key={option.paramName}>
+                      {option.label}{option.units ? ` (${option.units})` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              </>
+            )}
           </select>
         </label>
         <Toggle
@@ -217,7 +288,9 @@ export function PlanViewResultSettingsPanel(props: Props) {
       <ControlSection>
         <FigureElementsPanel
           settings={settings}
-          availableElements={['title', 'diffLegend', 'north', 'scale']}
+          availableElements={selectedOutput?.kind === 'mesh-elements'
+            ? ['title', 'north', 'scale']
+            : ['title', 'diffLegend', 'north', 'scale']}
           activeElement={activeElement}
           onActiveElementChange={onActiveElementChange}
           onVisibilityChange={elements.updateElementVisibility}

@@ -14,8 +14,9 @@ import {
   type PlanViewFigureSetDocument,
   type PlanViewFigureSetItem,
 } from './planViewFigureSet'
+import { isPlanViewGeometryOutput } from '../../core/hydraulics/planViewGeometryResults'
 
-export const PLAN_VIEW_RESULT_PROJECT_VERSION = 3
+export const PLAN_VIEW_RESULT_PROJECT_VERSION = 4
 
 export type PlanViewResultProjectState = {
   settings: PlanViewResultSettings
@@ -91,19 +92,42 @@ function hydrateFigureSet(value: unknown): PlanViewFigureSetDocument {
       throw new Error('A saved figure-set item is malformed.')
     }
     const item = value as Partial<PlanViewFigureSetItem>
-    const selection = item.selection
+    const rawSelection = item.selection as Partial<
+      PlanViewFigureSetItem['selection'] & { kind?: string }
+    > | undefined
     if (
       typeof item.id !== 'string' ||
       item.recipeId !== PLAN_VIEW_FIGURE_SET_RECIPE_ID ||
       item.figureId !== PLAN_VIEW_RESULTS_FIGURE_ID ||
-      !selection ||
-      typeof selection.scenarioId !== 'string' ||
-      !Number.isInteger(selection.runIndex) ||
-      selection.runIndex < 0 ||
-      typeof selection.resultParameter !== 'string'
+      !rawSelection ||
+      typeof rawSelection.scenarioId !== 'string' ||
+      typeof rawSelection.resultParameter !== 'string'
     ) {
       throw new Error('A saved figure-set item is malformed.')
     }
+    const selection = rawSelection.kind === 'geometry'
+      ? (() => {
+          if (!isPlanViewGeometryOutput(rawSelection.resultParameter!)) {
+            throw new Error('A saved geometry figure-set item is malformed.')
+          }
+          return {
+            kind: 'geometry' as const,
+            scenarioId: rawSelection.scenarioId!,
+            resultParameter: rawSelection.resultParameter!,
+          }
+        })()
+      : (() => {
+          const runIndex = (rawSelection as { runIndex?: number }).runIndex
+          if (!Number.isInteger(runIndex) || runIndex! < 0) {
+            throw new Error('A saved scalar figure-set item is malformed.')
+          }
+          return {
+            kind: 'scalar' as const,
+            scenarioId: rawSelection.scenarioId!,
+            runIndex: runIndex!,
+            resultParameter: rawSelection.resultParameter!,
+          }
+        })()
     return {
       id: item.id,
       recipeId: item.recipeId,
@@ -152,7 +176,12 @@ function hydrateSettings(value: unknown): PlanViewResultSettings {
     !Number.isFinite(settings.zoom) ||
     settings.zoom <= 0 ||
     !Number.isFinite(settings.contourWidth) ||
-    settings.contourWidth <= 0
+    settings.contourWidth <= 0 ||
+    !Number.isFinite(settings.meshLineWidth) ||
+    settings.meshLineWidth <= 0 ||
+    !Number.isFinite(settings.meshLineOpacity) ||
+    settings.meshLineOpacity < 0 ||
+    settings.meshLineOpacity > 1
   ) {
     throw new Error('Plan-view result settings contain invalid values.')
   }
@@ -169,6 +198,7 @@ export function parsePlanViewResultProject(
   if (
     parsed.version !== 1 &&
     parsed.version !== 2 &&
+    parsed.version !== 3 &&
     parsed.version !== PLAN_VIEW_RESULT_PROJECT_VERSION
   ) {
     throw new Error(

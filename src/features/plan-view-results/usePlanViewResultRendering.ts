@@ -41,7 +41,7 @@ export function usePlanViewResultRendering({
         document: {
           scene,
           view: {
-            bounds: engine.commonBounds([scene.selection.key]),
+            bounds: engine.commonBounds([scene.condition.key]),
             settings,
           },
           layers: { overlays },

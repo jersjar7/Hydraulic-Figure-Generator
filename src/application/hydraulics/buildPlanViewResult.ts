@@ -3,7 +3,7 @@ import type { ConditionKey } from '../../core/types'
 
 export type BuildPlanViewResultRequest = {
   scenarioId: ConditionKey
-  runIndex: number
+  runIndex?: number
   resultParameter: string
 }
 
@@ -12,7 +12,7 @@ export function canBuildPlanViewResult(
   request: BuildPlanViewResultRequest,
 ) {
   return analysis
-    .scalarResultOptions(request.scenarioId, request.runIndex)
+    .planViewResultOptions(request.scenarioId, request.runIndex ?? 0)
     .some((option) => option.paramName === request.resultParameter)
 }
 

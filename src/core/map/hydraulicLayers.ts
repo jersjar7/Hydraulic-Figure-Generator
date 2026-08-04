@@ -284,6 +284,34 @@ export function drawContourLevels(
   context.restore()
 }
 
+export function drawMeshElements(
+  context: CanvasRenderingContext2D,
+  localX: Float64Array,
+  localY: Float64Array,
+  triangles: Uint32Array,
+  color: string,
+  width: number,
+  opacity: number,
+) {
+  context.save()
+  context.strokeStyle = color
+  context.lineWidth = Math.max(0.25, width)
+  context.globalAlpha = Math.max(0, Math.min(1, opacity))
+  context.lineJoin = 'round'
+  context.beginPath()
+  for (let triangle = 0; triangle < triangles.length; triangle += 3) {
+    const first = triangles[triangle]
+    const second = triangles[triangle + 1]
+    const third = triangles[triangle + 2]
+    context.moveTo(localX[first], localY[first])
+    context.lineTo(localX[second], localY[second])
+    context.lineTo(localX[third], localY[third])
+    context.closePath()
+  }
+  context.stroke()
+  context.restore()
+}
+
 export function drawValidBoundary(
   context: CanvasRenderingContext2D,
   localX: Float64Array,

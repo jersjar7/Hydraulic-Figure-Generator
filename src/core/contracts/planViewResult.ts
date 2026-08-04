@@ -1,8 +1,24 @@
 import type { FigureSettings } from './figureSettings'
 import type {
+  ConditionData,
   ProjectedGeometry,
   RunSelection,
 } from './hydraulic'
+
+export const PLAN_VIEW_TOPOGRAPHY_ID = '__topography__'
+export const PLAN_VIEW_MESH_ELEMENTS_ID = '__mesh_elements__'
+export const PLAN_VIEW_TOPOGRAPHY_MESH_ID = '__topography_mesh_elements__'
+
+export type PlanViewOutputKind =
+  | 'scalar'
+  | 'topography'
+  | 'mesh-elements'
+  | 'topography-mesh-elements'
+
+export type PlanViewGeometryOutputId =
+  | typeof PLAN_VIEW_TOPOGRAPHY_ID
+  | typeof PLAN_VIEW_MESH_ELEMENTS_ID
+  | typeof PLAN_VIEW_TOPOGRAPHY_MESH_ID
 
 export type ScalarRampKey =
   | 'topography'
@@ -25,8 +41,15 @@ export type ScalarResultOption = ScalarResultMetadata & {
   shape: number[]
 }
 
+export type PlanViewOutputOption = ScalarResultOption & {
+  kind: PlanViewOutputKind
+  runDependent: boolean
+}
+
 export type PlanViewResultScene = {
-  selection: RunSelection
+  condition: ConditionData
+  selection: RunSelection | null
+  outputKind: PlanViewOutputKind
   projected: ProjectedGeometry
   result: ScalarResultMetadata
   values: Float32Array
@@ -48,4 +71,7 @@ export type PlanViewResultSettings = FigureSettings & {
   contourInterval: number | null
   contourColor: string
   contourWidth: number
+  meshLineColor: string
+  meshLineWidth: number
+  meshLineOpacity: number
 }
