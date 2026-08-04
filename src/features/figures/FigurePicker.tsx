@@ -1,6 +1,8 @@
-import type { FigureId } from '../../core/figureIds'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
-import { FIGURE_MODULES } from './registry'
+import {
+  FIGURE_WORKSPACES,
+  type FigureId,
+} from './workspaceRegistry'
 
 export function FigurePicker() {
   const { activeFigureId, setActiveFigureId } =
@@ -15,9 +17,9 @@ export function FigurePicker() {
           setActiveFigureId(event.currentTarget.value as FigureId)
         }
       >
-        {FIGURE_MODULES.map((figure) => (
-          <option value={figure.id} key={figure.id}>
-            {figure.label}
+        {FIGURE_WORKSPACES.map((workspace) => (
+          <option value={workspace.id} key={workspace.id}>
+            {workspace.figure.label}
           </option>
         ))}
       </select>

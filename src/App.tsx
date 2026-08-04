@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { FIGURE_WORKSPACES } from './features/figures/workspaceRegistry'
 import {
   HydraulicProjectWorkspaceProvider,
@@ -10,7 +11,17 @@ function ActiveWorkspace() {
     FIGURE_WORKSPACES.find((workspace) => workspace.id === activeFigureId) ??
     FIGURE_WORKSPACES[0]
   const Workspace = definition.Workspace
-  return <Workspace />
+  return (
+    <Suspense
+      fallback={
+        <div className="workspace-loading" role="status">
+          Loading figure workspace…
+        </div>
+      }
+    >
+      <Workspace />
+    </Suspense>
+  )
 }
 
 function App() {

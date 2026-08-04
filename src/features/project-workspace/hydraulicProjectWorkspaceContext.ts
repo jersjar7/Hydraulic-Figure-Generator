@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { FigureId } from '../../core/figureIds'
+import type { FigureId } from '../figures/workspaceRegistry'
 import type { useHydraulicProjectDocument } from '../project-document/useHydraulicProjectDocument'
 import type { useProjectSession } from '../project-session/useProjectSession'
 

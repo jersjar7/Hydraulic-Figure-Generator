@@ -68,3 +68,14 @@ summary:focus-visible {
   white-space: nowrap !important;
   border: 0 !important;
 }
+
+.workspace-loading {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: #52677d;
+  background: #eef2f6;
+  font-size: 13px;
+  font-weight: 650;
+}

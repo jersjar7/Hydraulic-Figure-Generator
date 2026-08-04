@@ -4,7 +4,7 @@ import {
   DEFAULT_FIGURE_MODULE,
   FIGURE_MODULES,
   figureModuleById,
-} from '../src/features/figures/registry'
+} from '../src/features/figures/workspaceRegistry'
 import {
   CROSS_SECTION_FIGURE_ID,
   WSE_DIFFERENCE_FIGURE_ID,

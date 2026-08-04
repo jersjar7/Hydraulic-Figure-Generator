@@ -40,13 +40,7 @@ export type WseDifferenceRenderRequest = {
   signal?: AbortSignal
 }
 
-export const wseDifferenceFigure: FigureModule<
-  FigureSettings,
-  WseDifferenceScene,
-  WseDifferenceBuildRequest,
-  WseDifferenceRenderRequest,
-  WseDifferenceSettingsSectionKey
-> = {
+export const wseDifferenceFigure = {
   id: WSE_DIFFERENCE_FIGURE_ID,
   label: 'WSE Difference',
   workspaceLabel: 'FRA workspace',
@@ -89,4 +83,10 @@ export const wseDifferenceFigure: FigureModule<
     ]
       .map((part) => part.replace(/\s+/g, '_'))
       .join('_') + '.png',
-}
+} satisfies FigureModule<
+  FigureSettings,
+  WseDifferenceScene,
+  WseDifferenceBuildRequest,
+  WseDifferenceRenderRequest,
+  WseDifferenceSettingsSectionKey
+>

@@ -39,13 +39,7 @@ export type CrossSectionRenderRequest = {
   document: CrossSectionRenderDocument
 }
 
-export const crossSectionFigure: FigureModule<
-  CrossSectionFigureSettings,
-  HydraulicCrossSectionScene,
-  CrossSectionBuildRequest,
-  CrossSectionRenderRequest,
-  CrossSectionSettingsSectionKey
-> = {
+export const crossSectionFigure = {
   id: CROSS_SECTION_FIGURE_ID,
   label: 'Cross-Section Comparison',
   workspaceLabel: 'FRA workspace',
@@ -93,4 +87,10 @@ export const crossSectionFigure: FigureModule<
     ]
       .map((part) => part.replace(/\s+/g, '_'))
       .join('_') + '.png',
-}
+} satisfies FigureModule<
+  CrossSectionFigureSettings,
+  HydraulicCrossSectionScene,
+  CrossSectionBuildRequest,
+  CrossSectionRenderRequest,
+  CrossSectionSettingsSectionKey
+>

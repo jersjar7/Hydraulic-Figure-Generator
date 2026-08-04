@@ -2,9 +2,12 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { WSE_DIFFERENCE_FIGURE_ID, type FigureId } from '../../core/figureIds'
 import { useHydraulicProjectDocument } from '../project-document/useHydraulicProjectDocument'
 import { useProjectSession } from '../project-session/useProjectSession'
+import {
+  DEFAULT_FIGURE_WORKSPACE,
+  type FigureId,
+} from '../figures/workspaceRegistry'
 import { HydraulicProjectWorkspaceContext } from './hydraulicProjectWorkspaceContext'
 
 export function HydraulicProjectWorkspaceProvider({
@@ -15,7 +18,7 @@ export function HydraulicProjectWorkspaceProvider({
   const projectSession = useProjectSession()
   const projectDocument = useHydraulicProjectDocument()
   const [activeFigureId, setActiveFigureId] = useState<FigureId>(
-    WSE_DIFFERENCE_FIGURE_ID,
+    DEFAULT_FIGURE_WORKSPACE.id,
   )
 
   return (
