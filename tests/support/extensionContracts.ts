@@ -40,6 +40,10 @@ export function assertFigureModuleContract<
     figure.editor.projectFileExtension.startsWith('.'),
     'Project file extension must start with a period',
   )
+  assert.ok(
+    figure.editor.inputs.length > 0,
+    'A figure must declare at least one input capability',
+  )
   assertUnique(
     'Figure settings section',
     figure.editor.settingsSections.map((section) => section.key),
@@ -61,6 +65,30 @@ export function assertFigureModuleContract<
   assert.equal(typeof figure.buildScene, 'function')
   assert.equal(typeof figure.render, 'function')
   assert.equal(typeof figure.exportFileName, 'function')
+}
+
+type RegisteredWorkspace = {
+  id: string
+  figure: { id: string }
+  Workspace: unknown
+}
+
+export function assertWorkspaceRegistryContract(
+  workspaces: readonly RegisteredWorkspace[],
+) {
+  assert.ok(workspaces.length > 0, 'At least one workspace is required')
+  assertUnique(
+    'Workspace',
+    workspaces.map((workspace) => workspace.id),
+  )
+  for (const workspace of workspaces) {
+    assert.equal(
+      workspace.id,
+      workspace.figure.id,
+      `Workspace ${workspace.id} must use its figure module id`,
+    )
+    assert.ok(workspace.Workspace, `Workspace ${workspace.id} needs a component`)
+  }
 }
 
 export function assertEditorToolContract<Tool extends EditorToolModule>(

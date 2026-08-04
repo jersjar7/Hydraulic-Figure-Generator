@@ -23,7 +23,9 @@ The application uses seven layers:
 Dependencies point inward: infrastructure may use application and core;
 application may use core; core imports only core. Core and application modules
 must not import React. `npm run check:architecture` enforces these rules and a
-1,000-line source-file ceiling in local and deployment builds.
+600-line source-file ceiling in local and deployment builds. Workspace
+composition roots have a stricter 500-line ceiling and may not import browser
+infrastructure directly.
 
 ## Stable Core Boundaries
 
@@ -54,12 +56,12 @@ must not import React. `npm run check:architecture` enforces these rules and a
   catalog, role assignments, and per-scenario run selections.
 - `features/project-document/` owns shared persisted state such as overlays.
   Figure documents own only settings and annotations for that output.
-- `features/figures/registry.ts` registers headless figure modules.
 - `features/figures/settingsSectionModule.ts` defines the typed settings-panel
   registry; `features/tools/editorToolModule.ts` defines editor-tool metadata
   and activation contracts.
-- `features/figures/workspaceRegistry.ts` associates those modules with React
-  workspaces without pulling CSS or React into Node-based core tests.
+- `features/figures/workspaceRegistry.ts` is the single figure manifest. It
+  associates headless modules with lazy React workspaces and derives figure
+  IDs, picker entries, routing, and extension coverage.
 - `components/editor/FigureWorkspaceScaffold.tsx` composes the reusable
   project/sidebar, map, and settings regions. Figure workspaces provide
   feature content and callbacks rather than rebuilding the editor frame.
@@ -70,9 +72,9 @@ must not import React. `npm run check:architecture` enforces these rules and a
   lifecycle. Feature tools own hit testing and the behavior of one action.
 - `features/editor-history/` owns immutable editor commands and bounded
   undo/redo history independently of any annotation UI.
-- `components/project-data/projectWorkflowRegistry.ts` registers Models,
-  Layers, Assess, and Review as independent workflow modules with their own
-  status and view adapters.
+- `components/project-data/projectWorkflowRegistry.ts` maps declared workspace
+  input capabilities to independent Models, Layers, Assess, and Review workflow
+  modules with their own status and view adapters.
 
 New figure modules should consume these contracts rather than read H5 files or
 draw shared map elements independently.
@@ -118,19 +120,18 @@ contract.
 
 ## Frontend Growth
 
-`App.tsx` is a figure-workspace host. The current editor is composed by
-`features/wse-difference/WseDifferenceWorkspace.tsx`; input, project-file,
-generation, map-canvas, settings, annotation, rendering, and interaction
-responsibilities live in focused hooks and components around that composition
-root. Settings sections and annotation tools are registered modules rather
-than conditional branches in the workspace. Controls that become useful to a
-second figure should be promoted into a focused shared component or hook
-rather than copied.
+`App.tsx` is a figure-workspace host. WSE Difference and Cross-Section
+Comparison are separate composition roots; input, project-file, generation,
+map-canvas, settings, rendering, and interaction responsibilities live in
+focused controllers and components around them. Settings sections and tools
+are registered modules rather than conditional branches in a workspace.
+Controls that become useful to a second figure are promoted into a focused
+shared component or action instead of copied.
 
 Prefer one reducer or feature hook per workflow over adding more independent
 top-level state variables. A new figure type should live under
 `src/features/<figure-name>/`, implement the `FigureModule` contract, and
-register its headless module and React workspace separately. See
+register its headless module and lazy React workspace together. See
 `docs/ADDING-A-FIGURE.md`.
 
 Global project inputs and reusable analysis objects belong in the left panel.
@@ -140,7 +141,7 @@ shared, stationed assessment-line collection instead of duplicating it. Long
 review collections must scroll inside a fixed-height feature view rather than
 grow the workspace sidebar.
 
-The left panel is a four-view project workflow:
+The complete hydraulic left panel offers four project workflows:
 
 - Models owns the H5 scenario catalog, role assignment, and run selection.
 - Layers owns imported shapefile overlays.
@@ -148,9 +149,10 @@ The left panel is a four-view project workflow:
 - Review owns bounded included/review/excluded collections and per-line
   decisions.
 
-Only one project workflow view is mounted at a time. Status badges summarize
-progress without duplicating each view's controls, and the collapsed rail keeps
-all four destinations reachable. Canvas selection may activate Review, but
+Each figure declares the input capabilities it needs, so only relevant
+workflows appear. Only one workflow view is mounted at a time. Status badges
+summarize progress without duplicating each view's controls, and the collapsed
+rail keeps every enabled destination reachable. Canvas selection may activate Review, but
 canvas dragging must not resize or reveal a sidebar until pointer release.
 
 ## Resource Ownership

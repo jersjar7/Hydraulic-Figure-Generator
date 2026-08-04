@@ -13,7 +13,8 @@ const layerRules: Record<string, Set<string>> = {
     'core',
   ]),
 }
-const maxLines = 1_000
+const maxLines = 600
+const workspaceMaxLines = 500
 const importPattern =
   /(?:import|export)\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]/g
 
@@ -53,6 +54,11 @@ for (const file of await sourceFiles(sourceRoot)) {
       `${relativeFile}: ${lineCount} lines exceeds the ${maxLines}-line composition ceiling`,
     )
   }
+  if (file.endsWith('Workspace.tsx') && lineCount > workspaceMaxLines) {
+    violations.push(
+      `${relativeFile}: ${lineCount} lines exceeds the ${workspaceMaxLines}-line workspace composition ceiling`,
+    )
+  }
 
   const layer = sourceLayer(file)
   if (
@@ -61,6 +67,15 @@ for (const file of await sourceFiles(sourceRoot)) {
   ) {
     violations.push(
       `${relativeFile}: ${layer} must remain independent of React`,
+    )
+  }
+
+  if (
+    file.endsWith('Workspace.tsx') &&
+    /from\s+['"][^'"]*infrastructure(?:\/|['"])/.test(source)
+  ) {
+    violations.push(
+      `${relativeFile}: workspaces must call feature/application adapters instead of infrastructure directly`,
     )
   }
 
@@ -82,6 +97,6 @@ if (violations.length > 0) {
   process.exitCode = 1
 } else {
   console.log(
-    'Architecture checks passed: dependency direction, React isolation, and file-size ceiling.',
+    'Architecture checks passed: dependency direction, React isolation, workspace boundaries, and file-size ceilings.',
   )
 }

@@ -22,23 +22,31 @@ export function projectWorkflowByKey(
   return findProjectWorkflowModule(PROJECT_WORKFLOW_MODULES, key)
 }
 
-const INPUT_WORKFLOWS: Record<
-  Extract<
-    WorkspaceInputCapability,
-    'hydraulic-models' | 'map-overlays' | 'assessment-lines'
-  >,
-  readonly (typeof PROJECT_WORKFLOW_MODULES)[number]['key'][]
-> = {
+const INPUT_WORKFLOWS = {
   'hydraulic-models': ['models'],
   'map-overlays': ['layers'],
   'assessment-lines': ['assessment', 'review'],
+} as const satisfies Partial<
+  Record<
+    WorkspaceInputCapability,
+    readonly (typeof PROJECT_WORKFLOW_MODULES)[number]['key'][]
+  >
+>
+
+export function hasProjectWorkflowForInput(
+  input: WorkspaceInputCapability,
+) {
+  return input in INPUT_WORKFLOWS
 }
 
 export function projectWorkflowsForInputs(
   inputs: readonly WorkspaceInputCapability[],
 ) {
   const enabled = new Set(
-    inputs.flatMap((input) => INPUT_WORKFLOWS[input as keyof typeof INPUT_WORKFLOWS] ?? []),
+    inputs.flatMap(
+      (input) =>
+        INPUT_WORKFLOWS[input as keyof typeof INPUT_WORKFLOWS] ?? [],
+    ),
   )
   return PROJECT_WORKFLOW_MODULES.filter((module) => enabled.has(module.key))
 }

@@ -1,9 +1,12 @@
+import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { PROJECT_WORKFLOW_MODULES } from '../src/components/project-data/projectWorkflowRegistry'
+import {
+  hasProjectWorkflowForInput,
+  PROJECT_WORKFLOW_MODULES,
+} from '../src/components/project-data/projectWorkflowRegistry'
 import { WSE_DIFFERENCE_RENDER_LAYERS } from '../src/core/map/wseDifferenceRenderLayers'
 import { WSE_ANNOTATION_TOOLS } from '../src/features/wse-difference/annotationTools'
-import { wseDifferenceFigure } from '../src/features/wse-difference/wseDifferenceFigure'
-import { crossSectionFigure } from '../src/features/cross-section/crossSectionFigure'
+import { FIGURE_WORKSPACES } from '../src/features/figures/workspaceRegistry'
 import { WSE_SETTINGS_SECTIONS } from '../src/features/wse-difference/wseSettingsSections'
 import {
   assertEditorToolContract,
@@ -11,12 +14,22 @@ import {
   assertProjectWorkflowContract,
   assertRenderLayerContract,
   assertSettingsSectionContract,
+  assertWorkspaceRegistryContract,
 } from './support/extensionContracts'
 
 describe('extension contracts', () => {
-  it('accepts the registered WSE figure module', () => {
-    assertFigureModuleContract(wseDifferenceFigure)
-    assertFigureModuleContract(crossSectionFigure)
+  it('accepts every registered figure workspace', () => {
+    assertWorkspaceRegistryContract(FIGURE_WORKSPACES)
+    for (const workspace of FIGURE_WORKSPACES) {
+      assertFigureModuleContract(workspace.figure)
+      for (const input of workspace.figure.editor.inputs) {
+        assert.equal(
+          hasProjectWorkflowForInput(input),
+          true,
+          `${workspace.id} input ${input} needs a project workflow`,
+        )
+      }
+    }
   })
 
   it('accepts the registered editor tools and settings sections', () => {

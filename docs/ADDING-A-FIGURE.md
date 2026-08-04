@@ -16,19 +16,24 @@ Create `src/features/<figure-name>/` with:
   contract instead of hard-coding toolbar branches.
 
 The module must define its stable ID, readiness rule, scene construction,
-render entry point, and export filename. Compose the UI with
+render entry point, export filename, and input capabilities. Compose the UI with
 `FigureWorkspaceScaffold`, compose canvas responsibilities as ordered render
 layers, and call application use cases rather than parsing H5 directly.
+
+Choose inputs from `WorkspaceInputCapability`. A declared capability must have
+a project workflow registered in `projectWorkflowRegistry.ts`; this prevents a
+workspace from advertising an input that the shared left panel cannot supply.
 
 Add one file per render layer. Register the files in a short ordered facade;
 do not place new layer implementations directly in the registry.
 
 ## 2. Register It
 
-Register the headless definition in `features/figures/registry.ts`. Register its
-React workspace in `features/figures/workspaceRegistry.ts`. Keeping these
-registries separate allows Node regression tests to import figure calculations
-without loading React or CSS.
+Register the headless definition and lazy React workspace together in
+`features/figures/workspaceRegistry.ts` with `defineFigureWorkspace`. This is
+the only workspace manifest: routing, the picker, figure metadata, and extension
+tests are derived from it. Keep the headless figure definition free of React so
+engineering tests can still import it directly.
 
 Reusable project inputs belong in a project-workflow module. Figure-only
 controls belong in a settings-section module. Canvas behavior belongs in an
@@ -58,7 +63,8 @@ Before registration, add:
 - A Playwright path covering workspace selection and the primary workflow.
 - A local real-file acceptance script when proprietary H5 data cannot be
   committed.
-- Registration in `tests/extensionContracts.test.ts`.
+- Registration in the workspace manifest; `extensionContracts.test.ts`
+  validates every manifest entry automatically.
 
 Every commit must pass `npm run lint`, `npm test`, `npm run build`, and
 `npm run test:e2e`.

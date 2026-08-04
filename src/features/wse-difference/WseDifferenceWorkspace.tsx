@@ -36,6 +36,7 @@ import { WseSettingsContent } from './components/WseSettingsContent'
 import { useWseGenerationController } from './useWseGenerationController'
 import { createWseProjectPersistenceController } from './wseProjectPersistenceController'
 import { createWseMapExportAction } from './wseMapExportAction'
+import { createWseScenarioContext } from './wseScenarioContext'
 
 const ACTIVE_FIGURE = wseDifferenceFigure
 
@@ -43,13 +44,6 @@ export function WseDifferenceWorkspace() {
   const { projectSession, projectDocument } = useHydraulicProjectWorkspace()
   const figureDocument = useWseFigureDocument()
   const editorUi = useWseEditorUi()
-  const {
-    engine,
-    baselineId: baselineScenarioId,
-    comparisonId: comparisonScenarioId,
-    assessmentId: assessmentScenarioId,
-    runByScenario,
-  } = projectSession
   const {
     settings,
     annotations,
@@ -64,6 +58,20 @@ export function WseDifferenceWorkspace() {
     setOverlays,
     resetDocument: resetProjectDocument,
   } = projectDocument
+  const {
+    engine,
+    baselineId: baselineScenarioId,
+    comparisonId: comparisonScenarioId,
+    assessmentId: assessmentScenarioId,
+    baselineRun,
+    comparisonRun,
+    assessmentRun,
+    assessmentCondition,
+    baselineLabel,
+    comparisonLabel,
+    assessmentLabel,
+    ready,
+  } = createWseScenarioContext(projectSession, settings)
   const assessmentWorkflow = useAssessmentWorkflow(1)
   const assessmentState = assessmentWorkflow.state
   const {
@@ -114,23 +122,6 @@ export function WseDifferenceWorkspace() {
     settings.orientation,
   )
   const projectInputRef = useRef<HTMLInputElement>(null)
-  const baselineCondition = engine.condition(baselineScenarioId)
-  const comparisonCondition = engine.condition(comparisonScenarioId)
-  const assessmentCondition = engine.condition(assessmentScenarioId)
-  const baselineRun = runByScenario[baselineScenarioId] ?? 0
-  const comparisonRun = runByScenario[comparisonScenarioId] ?? 0
-  const assessmentRun = runByScenario[assessmentScenarioId] ?? 0
-  const ready = ACTIVE_FIGURE.canGenerate({
-    engine,
-    baselineId: baselineScenarioId,
-    baselineRun,
-    comparisonId: comparisonScenarioId,
-    comparisonRun,
-    dryDepth: settings.dryDepth,
-  })
-  const baselineLabel = baselineCondition?.label ?? 'Baseline'
-  const comparisonLabel = comparisonCondition?.label ?? 'Comparison'
-  const assessmentLabel = assessmentCondition?.label ?? 'Assessment source'
   const {
     centerlineCandidates,
     selectedCenterline,

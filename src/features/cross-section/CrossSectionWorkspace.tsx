@@ -1,8 +1,5 @@
 import {
-  ImageDown,
   LineChart,
-  Palette,
-  Ruler,
 } from 'lucide-react'
 import {
   useCallback,
@@ -30,14 +27,10 @@ import { FigurePicker } from '../figures/FigurePicker'
 import { useAssessmentMapLayers } from '../wse-difference/useAssessmentMapLayers'
 import { wseDifferenceFigure } from '../wse-difference/wseDifferenceFigure'
 import {
-  CROSS_SECTION_SETTINGS_SECTIONS,
   type CrossSectionSettingsSectionKey,
 } from './crossSectionDefinition'
 import { crossSectionFigure } from './crossSectionFigure'
 import { CrossSectionCanvas } from './CrossSectionCanvas'
-import {
-  renderCrossSectionDocument,
-} from './crossSectionRenderer'
 import { CrossSectionSettingsPanel } from './CrossSectionSettingsPanel'
 import {
   createDefaultCrossSectionSettings,
@@ -45,20 +38,8 @@ import {
 import { useCrossSectionProjectFiles } from './useCrossSectionProjectFiles'
 import { useCrossSectionRendering } from './useCrossSectionRendering'
 import { useCrossSectionSelection } from './useCrossSectionSelection'
-
-const SETTINGS_SECTIONS = [
-  { ...CROSS_SECTION_SETTINGS_SECTIONS[0], icon: Ruler },
-  { ...CROSS_SECTION_SETTINGS_SECTIONS[1], icon: LineChart },
-  { ...CROSS_SECTION_SETTINGS_SECTIONS[2], icon: Palette },
-  { ...CROSS_SECTION_SETTINGS_SECTIONS[3], icon: ImageDown },
-] as const
-
-function downloadCanvas(canvas: HTMLCanvasElement, fileName: string) {
-  const link = document.createElement('a')
-  link.download = fileName
-  link.href = canvas.toDataURL('image/png')
-  link.click()
-}
+import { CROSS_SECTION_WORKSPACE_SETTINGS } from './crossSectionSettingsSections'
+import { downloadCrossSectionPng } from './exportCrossSection'
 
 export function CrossSectionWorkspace() {
   const { projectSession, projectDocument } = useHydraulicProjectWorkspace()
@@ -342,9 +323,7 @@ export function CrossSectionWorkspace() {
 
   const downloadChart = () => {
     if (!chartScene) return
-    const canvas = document.createElement('canvas')
-    renderCrossSectionDocument(canvas, { scene: chartScene, settings })
-    downloadCanvas(canvas, crossSectionFigure.exportFileName(chartScene))
+    downloadCrossSectionPng(chartScene, settings)
   }
 
   const resetProject = () => {
@@ -379,7 +358,7 @@ export function CrossSectionWorkspace() {
       rightPanelOpen={rightOpen}
       busy={busy}
       notices={notices}
-      settingsSections={SETTINGS_SECTIONS}
+      settingsSections={CROSS_SECTION_WORKSPACE_SETTINGS}
       activeSettingsSection={activeSection}
       onSave={projectFiles.saveProject}
       onLoad={() => projectInputRef.current?.click()}

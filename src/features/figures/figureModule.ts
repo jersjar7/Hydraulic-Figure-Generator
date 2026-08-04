@@ -1,8 +1,8 @@
+import type { WorkspaceInputCapability } from '../../core/contracts/workspace'
 import type {
   MapElementBounds,
   ScenarioRole,
 } from '../../core/types'
-import type { WorkspaceInputCapability } from '../../core/contracts/workspace'
 
 export type FigureEditorSection<Key extends string = string> = {
   key: Key
