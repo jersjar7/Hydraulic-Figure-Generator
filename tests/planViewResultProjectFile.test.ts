@@ -5,6 +5,7 @@ import {
   serializePlanViewResultProject,
 } from '../src/features/plan-view-results/planViewResultProjectFile'
 import { createDefaultPlanViewResultSettings } from '../src/features/plan-view-results/planViewResultSettings'
+import { createPlanViewFigureSetDocument } from '../src/features/plan-view-results/planViewFigureSet'
 
 describe('plan-view result project files', () => {
   it('round-trips settings, scenario selection, and shared overlays', () => {
@@ -22,10 +23,30 @@ describe('plan-view result project files', () => {
         runByScenario: { NA: 1 },
       },
       project: { overlays: [] },
+      figureSet: createPlanViewFigureSetDocument(),
     }
     assert.deepEqual(
       parsePlanViewResultProject(serializePlanViewResultProject(state)),
       state,
+    )
+  })
+
+  it('migrates version 1 projects to an empty figure set', () => {
+    const legacy = JSON.stringify({
+      version: 1,
+      figureId: 'plan-view-hydraulic-results',
+      settings: createDefaultPlanViewResultSettings(),
+      scenarioSelection: {
+        baselineId: 'EX',
+        comparisonId: 'PR',
+        assessmentId: 'EX',
+        runByScenario: {},
+      },
+      project: { overlays: [] },
+    })
+    assert.deepEqual(
+      parsePlanViewResultProject(legacy).figureSet,
+      createPlanViewFigureSetDocument(),
     )
   })
 

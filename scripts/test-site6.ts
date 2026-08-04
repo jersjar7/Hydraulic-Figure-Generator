@@ -40,6 +40,7 @@ import type {
 import { renderCrossSectionDocument } from '../src/features/cross-section/crossSectionRenderer'
 import { createDefaultCrossSectionSettings } from '../src/features/cross-section/crossSectionSettings'
 import { createDefaultPlanViewResultSettings } from '../src/features/plan-view-results/planViewResultSettings'
+import { expandPlanViewFigureSet } from '../src/features/plan-view-results/planViewFigureSet'
 
 const dataDirectory = process.env.HFG_SITE6_DATA
 if (!dataDirectory) {
@@ -138,6 +139,40 @@ const scalarScenes = expectedScalarResults.map((pattern) => {
   }
   return result
 })
+const figureSetScenarioIds = ['EX', 'PR']
+const figureSetItems = expandPlanViewFigureSet(
+  engine,
+  {
+    scenarioIds: figureSetScenarioIds,
+    runIndicesByScenario: Object.fromEntries(
+      figureSetScenarioIds.map((scenarioId) => [
+        scenarioId,
+        engine.runOptions(scenarioId).map((_, index) => index),
+      ]),
+    ),
+    resultParametersByScenario: Object.fromEntries(
+      figureSetScenarioIds.map((scenarioId) => [
+        scenarioId,
+        [...new Set(
+          engine.runOptions(scenarioId).flatMap((_, runIndex) =>
+            engine.scalarResultOptions(scenarioId, runIndex).map(
+              (result) => result.paramName,
+            ),
+          ),
+        )],
+      ]),
+    ),
+  },
+  {
+    ...createDefaultPlanViewResultSettings(),
+    basemapOpacity: 0,
+  },
+)
+if (figureSetItems.length !== 40) {
+  throw new Error(
+    `Expected 40 valid Existing and Proposed Site 6 plan-view figures, found ${figureSetItems.length}.`,
+  )
+}
 const depthScene = scalarScenes.find((result) =>
   /Water_?Depth/i.test(result.result.paramName),
 )!
@@ -1241,6 +1276,7 @@ console.log(
           range: [result.autoMin, result.autoMax],
         })),
         coloredPixelSamples: planViewColoredSamples,
+        figureSetItems: figureSetItems.length,
       },
       overlay: {
         layers: overlayResult.overlays.map((overlay) => overlay.name),

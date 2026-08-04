@@ -4,13 +4,20 @@ import type { PlanViewResultSettings } from '../../core/types'
 import type { HydraulicProjectDocument } from '../project-document/hydraulicProjectDocument'
 import type { ScenarioSelection } from '../project-session/useProjectSession'
 import { createDefaultPlanViewResultSettings } from './planViewResultSettings'
+import {
+  createPlanViewFigureSetDocument,
+  PLAN_VIEW_FIGURE_SET_RECIPE_ID,
+  type PlanViewFigureSetDocument,
+  type PlanViewFigureSetItem,
+} from './planViewFigureSet'
 
-export const PLAN_VIEW_RESULT_PROJECT_VERSION = 1
+export const PLAN_VIEW_RESULT_PROJECT_VERSION = 2
 
 export type PlanViewResultProjectState = {
   settings: PlanViewResultSettings
   scenarioSelection: ScenarioSelection
   project: HydraulicProjectDocument
+  figureSet?: PlanViewFigureSetDocument
 }
 
 type Envelope = PlanViewResultProjectState & {
@@ -25,8 +32,56 @@ export function serializePlanViewResultProject(
     version: PLAN_VIEW_RESULT_PROJECT_VERSION,
     figureId: PLAN_VIEW_RESULTS_FIGURE_ID,
     ...state,
+    figureSet: state.figureSet ?? createPlanViewFigureSetDocument(),
   }
   return JSON.stringify(envelope, null, 2)
+}
+
+function hydrateFigureSet(value: unknown): PlanViewFigureSetDocument {
+  if (value === undefined) return createPlanViewFigureSetDocument()
+  if (!value || typeof value !== 'object') {
+    throw new Error('The saved figure set is malformed.')
+  }
+  const incoming = value as Partial<PlanViewFigureSetDocument>
+  if (!Array.isArray(incoming.items)) {
+    throw new Error('The saved figure set is malformed.')
+  }
+  const items = incoming.items.map((value): PlanViewFigureSetItem => {
+    if (!value || typeof value !== 'object') {
+      throw new Error('A saved figure-set item is malformed.')
+    }
+    const item = value as Partial<PlanViewFigureSetItem>
+    const selection = item.selection
+    if (
+      typeof item.id !== 'string' ||
+      item.recipeId !== PLAN_VIEW_FIGURE_SET_RECIPE_ID ||
+      item.figureId !== PLAN_VIEW_RESULTS_FIGURE_ID ||
+      !selection ||
+      typeof selection.scenarioId !== 'string' ||
+      !Number.isInteger(selection.runIndex) ||
+      selection.runIndex < 0 ||
+      typeof selection.resultParameter !== 'string'
+    ) {
+      throw new Error('A saved figure-set item is malformed.')
+    }
+    return {
+      id: item.id,
+      recipeId: item.recipeId,
+      figureId: item.figureId,
+      title: typeof item.title === 'string' ? item.title : item.id,
+      caption: typeof item.caption === 'string' ? item.caption : '',
+      included: item.included !== false,
+      selection,
+      settings: hydrateSettings(item.settings),
+    }
+  })
+  return {
+    id: typeof incoming.id === 'string' ? incoming.id : 'plan-view-results-set',
+    name: typeof incoming.name === 'string'
+      ? incoming.name
+      : 'Plan-View Hydraulic Results',
+    items,
+  }
 }
 
 function hydrateSettings(value: unknown): PlanViewResultSettings {
@@ -71,7 +126,7 @@ export function parsePlanViewResultProject(
   if (parsed.figureId !== PLAN_VIEW_RESULTS_FIGURE_ID) {
     throw new Error('This is not a Plan-View Hydraulic Results project file.')
   }
-  if (parsed.version !== PLAN_VIEW_RESULT_PROJECT_VERSION) {
+  if (parsed.version !== 1 && parsed.version !== PLAN_VIEW_RESULT_PROJECT_VERSION) {
     throw new Error(
       `Plan-view result project version ${String(parsed.version)} is not supported.`,
     )
@@ -88,5 +143,6 @@ export function parsePlanViewResultProject(
     settings: hydrateSettings(parsed.settings),
     scenarioSelection: parsed.scenarioSelection as ScenarioSelection,
     project: parsed.project,
+    figureSet: hydrateFigureSet(parsed.figureSet),
   }
 }
