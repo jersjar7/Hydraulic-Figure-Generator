@@ -11,6 +11,8 @@ type Props = {
   onZoomOut(): void
   onZoomIn(): void
   onFitFrame(): void
+  toolbarContent?: ReactNode
+  showMapActions?: boolean
   children: ReactNode
 }
 
@@ -22,6 +24,8 @@ export function FigureMapWorkspace({
   onZoomOut,
   onZoomIn,
   onFitFrame,
+  toolbarContent,
+  showMapActions = true,
   children,
 }: Props) {
   return (
@@ -32,7 +36,8 @@ export function FigureMapWorkspace({
           <strong>{figureLabel}</strong>
           <span>{comparisonDescription}</span>
         </div>
-        <div className="map-toolbar-actions">
+        {toolbarContent}
+        {showMapActions ? <div className="map-toolbar-actions">
           <button
             className="icon-button"
             type="button"
@@ -60,7 +65,7 @@ export function FigureMapWorkspace({
           >
             <RefreshCcw size={18} />
           </button>
-        </div>
+        </div> : null}
       </div>
 
       <div className="map-stage">

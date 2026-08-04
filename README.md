@@ -14,7 +14,8 @@ The application currently provides three independently registered workspaces:
   water depth, WSE, velocity magnitude, Froude number, and shear stress. Legend
   bounds are data-driven and remain editable; color ramps, contour interval,
   contour color/width, overlays, frame, report elements, project files, and PNG
-  export are supported.
+  export are supported. Its Figure Set view expands selected scenarios, runs,
+  and results into a bounded preview queue for batch review.
 
 The FRA WSE Difference workspace:
 
@@ -44,7 +45,7 @@ The FRA WSE Difference workspace:
 
 ```text
 src/
-  application/         File-ingestion and project-persistence use cases and ports
+  application/         File, persistence, hydraulic, and figure-queue use cases
   components/          Reusable workspace controls and project workflow views
     project-data/      Models, Layers, Assess, and Review navigation
   core/
@@ -65,10 +66,11 @@ src/
     annotations/       Reusable annotation capabilities and collection commands
     assessment-lines/  Stationing controls, bounded review state, and interface
     figures/           Figure, tool, settings-section, and workspace contracts
+    figure-sets/       Shared Figure / Figure Set production navigation
     project-document/  Shared project state independent of figure documents
     project-session/   H5 scenario catalog, role, run, and resource ownership
     stationing/        Centerline station figure-element controls
-    plan-view-results/ Scalar result workspace, settings, persistence, and export
+    plan-view-results/ Scalar workspace, batch recipe, review, persistence, and export
     tools/             Reusable editor-tool module contract
     wse-difference/    WSE workspace composition, controllers, panels, and export
   infrastructure/      Browser downloads and shapefile gateway adapters
@@ -103,8 +105,9 @@ npm run test:e2e
 ```
 
 The optional Site 6 integration test reads data from a local directory and
-validates WSE comparison, cross-section, and all supported scalar plan-view
-results. It writes rendered PNGs to the temporary directory:
+validates WSE comparison, cross-section, all supported scalar plan-view
+results, and the 40-item Existing/Proposed Site 6 figure-set matrix. It writes
+rendered PNGs to the temporary directory:
 
 ```powershell
 $env:HFG_SITE6_DATA = "C:\path\to\Data h5 and shapefiles"

@@ -34,6 +34,9 @@ infrastructure directly.
   detection, run labels, WSE calculation, assessment lines, and extrema.
 - Generic scalar-result discovery and final-timestep access also stay behind
   `HydraulicAnalysisPort`; Plan-View UI code never reads HDF5 paths directly.
+- `core/contracts/figureSet.ts` separates portable figure specifications from
+  ephemeral preview status. `application/figure-sets/` owns the reusable
+  recipe contract and bounded, cancellable generation queue without React.
 - `meshMatching.ts` owns spatial-index and comparison-point rules.
 - `assessmentLines.ts` turns the selected assessment-source WSE surface into reusable,
   level-aware map polylines. It does not own their UI or cartographic style.
@@ -64,6 +67,9 @@ infrastructure directly.
 - `features/figures/workspaceRegistry.ts` is the single figure manifest. It
   associates headless modules with lazy React workspaces and derives figure
   IDs, picker entries, routing, and extension coverage.
+- `features/figure-sets/` owns production-view navigation. Figure-specific
+  recipes expand valid selections and generate previews inside their owning
+  feature; they do not add batch branches to `App.tsx`.
 - `components/editor/FigureWorkspaceScaffold.tsx` composes the reusable
   project/sidebar, map, and settings regions. Figure workspaces provide
   feature content and callbacks rather than rebuilding the editor frame.
@@ -137,8 +143,9 @@ register its headless module and lazy React workspace together. See
 `docs/ADDING-A-FIGURE.md`.
 
 Global project inputs and reusable analysis objects belong in the left panel.
-The center workspace owns the selected output, while the right panel owns
-settings for that output. Future chart and table features should consume the
+The center workspace owns the selected output or bounded Figure Set gallery,
+while the right panel owns settings for that active production view. Future
+chart and table features should consume the
 shared, stationed assessment-line collection instead of duplicating it. Long
 review collections must scroll inside a fixed-height feature view rather than
 grow the workspace sidebar.
@@ -178,6 +185,11 @@ Version 13 and earlier flat files migrate into the normalized version 14
 project. Version 12 stores scenario role IDs, per-scenario run selections, and
 user scenario labels. Version 11 Existing/Proposed run selections migrate to
 Baseline `EX`, Comparison `PR`, and assessment source `EX`.
+
+The Plan-View workspace stores figure-set specifications and per-item settings
+in its version 2 envelope. Version 1 files migrate to an empty set. Runtime
+status, generated scenes, and thumbnail URLs are intentionally never persisted;
+they become stale and regenerate after local H5 files are restored.
 
 Generated assessment geometry is reproducible and is not stored in the project.
 The selected centerline, downstream direction, starting station, and per-line

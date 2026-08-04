@@ -23,6 +23,7 @@ type Props<Key extends string> = {
   onMobileClose(): void
   children: ReactNode
   footer?: ReactNode
+  heading?: string
 }
 
 export function FigureSettingsSidebar<Key extends string>({
@@ -34,6 +35,7 @@ export function FigureSettingsSidebar<Key extends string>({
   onMobileClose,
   children,
   footer,
+  heading = 'Figure settings',
 }: Props<Key>) {
   return (
     <aside
@@ -42,7 +44,7 @@ export function FigureSettingsSidebar<Key extends string>({
       <div className="sidebar-heading">
         <div>
           <span className="eyebrow">Output</span>
-          <h2>Figure settings</h2>
+          <h2>{heading}</h2>
         </div>
         <button
           className="icon-button mobile-close"

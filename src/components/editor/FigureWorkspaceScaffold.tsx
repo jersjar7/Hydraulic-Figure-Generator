@@ -24,6 +24,9 @@ type Props<Key extends string> = {
   settingsFooter?: ReactNode
   loadInput?: ReactNode
   figurePicker?: ReactNode
+  mapToolbarContent?: ReactNode
+  showMapActions?: boolean
+  settingsHeading?: string
   onSave(): void
   onLoad(): void
   onOpenLeftPanel(): void
@@ -52,6 +55,9 @@ export function FigureWorkspaceScaffold<Key extends string>({
   settingsFooter,
   loadInput,
   figurePicker,
+  mapToolbarContent,
+  showMapActions = true,
+  settingsHeading,
   onSave,
   onLoad,
   onOpenLeftPanel,
@@ -90,6 +96,8 @@ export function FigureWorkspaceScaffold<Key extends string>({
         onZoomOut={onZoomOut}
         onZoomIn={onZoomIn}
         onFitFrame={onFitFrame}
+        toolbarContent={mapToolbarContent}
+        showMapActions={showMapActions}
       >
         {mapContent}
       </FigureMapWorkspace>
@@ -101,6 +109,7 @@ export function FigureWorkspaceScaffold<Key extends string>({
         onSectionKeyDown={handleSettingsTabKeyDown}
         onMobileClose={onCloseSettingsPanel}
         footer={settingsFooter}
+        heading={settingsHeading}
       >
         {settingsContent}
       </FigureSettingsSidebar>
