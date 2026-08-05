@@ -16,6 +16,11 @@ export type HydraulicProfileLine = SmsProfileSeries & {
   kind: 'ground' | 'wse'
 }
 
+export type HydraulicProfileDatasetMapping = {
+  groundSlot: number
+  surfaceSlots: number[]
+}
+
 export type HydraulicProfileSection = {
   id: string
   sourceIndex: number
@@ -34,6 +39,7 @@ export type HydraulicProfileDataset = {
   warnings: string[]
   datasetsPerSection: number
   eventNames: string[]
+  mapping: HydraulicProfileDatasetMapping | null
 }
 
 export type HydraulicProfileScene = {

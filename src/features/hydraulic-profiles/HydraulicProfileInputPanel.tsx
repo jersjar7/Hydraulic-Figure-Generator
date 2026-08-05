@@ -14,7 +14,10 @@ import {
   X,
 } from 'lucide-react'
 import { useState } from 'react'
-import type { HydraulicProfileDataset } from '../../core/types'
+import type {
+  HydraulicProfileDataset,
+  HydraulicProfileDatasetMapping,
+} from '../../core/types'
 
 type InputSection = 'scenario' | 'summary' | 'profile' | 'review'
 
@@ -32,7 +35,7 @@ type Props = {
   onSummaryTextChange(value: string): void
   onProfileTextChange(value: string): void
   onSelectedSectionChange(id: string): void
-  onGroundOverride(sectionIndex: number, groundIndex: number): void
+  onDatasetMappingChange(mapping: HydraulicProfileDatasetMapping): void
   onCollapse(): void
   onExpand(): void
   onMobileClose(): void
@@ -65,7 +68,7 @@ export function HydraulicProfileInputPanel({
   onSummaryTextChange,
   onProfileTextChange,
   onSelectedSectionChange,
-  onGroundOverride,
+  onDatasetMappingChange,
   onCollapse,
   onExpand,
   onMobileClose,
@@ -73,6 +76,15 @@ export function HydraulicProfileInputPanel({
 }: Props) {
   const [active, setActive] = useState<InputSection>('scenario')
   const selected = dataset.sections.find((section) => section.id === selectedSectionId) ?? null
+
+  const assignDataset = (roleIndex: number, nextSlot: number) => {
+    if (!dataset.mapping) return
+    const slots = [dataset.mapping.groundSlot, ...dataset.mapping.surfaceSlots]
+    const previousRole = slots.indexOf(nextSlot)
+    if (previousRole < 0 || previousRole === roleIndex) return
+    ;[slots[roleIndex], slots[previousRole]] = [slots[previousRole], slots[roleIndex]]
+    onDatasetMappingChange({ groundSlot: slots[0], surfaceSlots: slots.slice(1) })
+  }
 
   if (collapsed) {
     return (
@@ -149,10 +161,22 @@ export function HydraulicProfileInputPanel({
           <div className="profile-input-stack">
             <label className="field"><span>Station</span><select aria-label="Profile station" value={selectedSectionId} onChange={(event) => onSelectedSectionChange(event.currentTarget.value)}><option value="">Choose a station</option>{dataset.sections.map((section) => <option value={section.id} key={section.id}>{section.stationLabel}</option>)}</select></label>
             {selected ? <>
-              <label className="field"><span>Ground dataset</span><select aria-label="Ground dataset" value={selected.groundSourceIndex} onChange={(event) => onGroundOverride(selected.sourceIndex, Number(event.currentTarget.value))}>{selected.sourceSeries.map((series, index) => <option value={index} key={series.id}>Dataset {series.sourceIndex + 1} (min {seriesMinimum(series.elevations)} ft)</option>)}</select></label>
-              <div className="profile-mapping-list">
-                <div><span className="profile-line-swatch ground" /><strong>{selected.ground.name}</strong><small>Dataset {selected.ground.sourceIndex + 1}</small></div>
-                {selected.surfaces.map((surface) => <div key={surface.id}><span className="profile-line-swatch" /><strong>{surface.name}</strong><small>Dataset {surface.sourceIndex + 1}</small></div>)}
+              <div className="profile-input-header"><strong>Dataset mapping</strong><small>Applies to every station</small></div>
+              <div className="profile-mapping-editor">
+                <label>
+                  <span>Ground</span>
+                  <select aria-label="Ground dataset" value={dataset.mapping?.groundSlot ?? 0} onChange={(event) => assignDataset(0, Number(event.currentTarget.value))}>
+                    {selected.sourceSeries.map((series, slot) => <option value={slot} key={series.id}>Dataset {series.sourceIndex + 1} (min {seriesMinimum(series.elevations)} ft)</option>)}
+                  </select>
+                </label>
+                {eventNames.map((name, index) => (
+                  <div className="profile-mapping-row" key={`mapping-${index}`}>
+                    <input aria-label={`Legend name ${index + 1}`} value={name} onChange={(event) => onEventNamesChange(eventNames.map((item, itemIndex) => itemIndex === index ? event.currentTarget.value : item))} />
+                    <select aria-label={`Dataset for ${name}`} value={dataset.mapping?.surfaceSlots[index] ?? index + 1} onChange={(event) => assignDataset(index + 1, Number(event.currentTarget.value))}>
+                      {selected.sourceSeries.map((series, slot) => <option value={slot} key={series.id}>Dataset {series.sourceIndex + 1}</option>)}
+                    </select>
+                  </div>
+                ))}
               </div>
             </> : <div className="profile-empty-review">Paste profile values to review the detected lines.</div>}
           </div>

@@ -14,7 +14,7 @@ function state(): HydraulicProfileProjectState {
     summaryText: 'Reach\tStation\tMin',
     profileText: 'Distance\tValue',
     selectedSectionId: 'profile-section-1',
-    groundOverrides: { 0: 1 },
+    datasetMapping: { groundSlot: 1, surfaceSlots: [0, 2] },
     settings: createDefaultHydraulicProfileSettings(),
   }
 }

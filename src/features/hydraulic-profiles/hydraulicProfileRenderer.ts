@@ -167,6 +167,8 @@ function drawLegend(
   const fontSize = Math.max(14, settings.fontSize - 2)
   context.save()
   context.font = `${fontSize}px Arial`
+  context.textAlign = 'left'
+  context.textBaseline = 'middle'
   const width = Math.max(...entries.map((entry) => context.measureText(entry.name).width)) + 72
   const height = entries.length * (fontSize + 11) + 18
   const left = plot.left + plot.width - width - 15
@@ -183,7 +185,7 @@ function drawLegend(
     context.stroke()
     context.setLineDash([])
     context.fillStyle = settings.textColor
-    context.fillText(entry.name, left + 57, location + fontSize * 0.32)
+    context.fillText(entry.name, left + 57, location)
   })
   context.restore()
 }

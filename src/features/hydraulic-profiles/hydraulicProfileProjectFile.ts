@@ -1,10 +1,11 @@
 import { HYDRAULIC_PROFILES_FIGURE_ID } from '../../core/figureIds'
+import type { HydraulicProfileDatasetMapping } from '../../core/types'
 import {
   createDefaultHydraulicProfileSettings,
   type HydraulicProfileFigureSettings,
 } from './hydraulicProfileSettings'
 
-export const HYDRAULIC_PROFILE_PROJECT_VERSION = 1
+export const HYDRAULIC_PROFILE_PROJECT_VERSION = 2
 
 export type HydraulicProfileProjectState = {
   conditionLabel: string
@@ -12,7 +13,7 @@ export type HydraulicProfileProjectState = {
   summaryText: string
   profileText: string
   selectedSectionId: string
-  groundOverrides: Record<number, number>
+  datasetMapping: HydraulicProfileDatasetMapping | null
   settings: HydraulicProfileFigureSettings
 }
 
@@ -59,7 +60,7 @@ export function serializeHydraulicProfileProject(state: HydraulicProfileProjectS
 export function parseHydraulicProfileProject(text: string): HydraulicProfileProjectState {
   const parsed = JSON.parse(text) as Partial<Envelope>
   if (parsed.figureId !== HYDRAULIC_PROFILES_FIGURE_ID) throw new Error('This is not a Hydraulic Profiles & Sections project file.')
-  if (parsed.version !== HYDRAULIC_PROFILE_PROJECT_VERSION) throw new Error(`Hydraulic profile project version ${String(parsed.version)} is not supported.`)
+  if (parsed.version !== 1 && parsed.version !== HYDRAULIC_PROFILE_PROJECT_VERSION) throw new Error(`Hydraulic profile project version ${String(parsed.version)} is not supported.`)
   if (
     typeof parsed.conditionLabel !== 'string' ||
     !Array.isArray(parsed.eventNames) ||
@@ -68,16 +69,20 @@ export function parseHydraulicProfileProject(text: string): HydraulicProfileProj
     typeof parsed.summaryText !== 'string' ||
     typeof parsed.profileText !== 'string'
   ) throw new Error('The saved SMS profile inputs are malformed.')
-  const groundOverrides = parsed.groundOverrides && typeof parsed.groundOverrides === 'object'
-    ? Object.fromEntries(Object.entries(parsed.groundOverrides).filter(([key, value]) => Number.isInteger(Number(key)) && Number.isInteger(value) && Number(value) >= 0).map(([key, value]) => [Number(key), Number(value)]))
-    : {}
+  const candidateMapping = 'datasetMapping' in parsed ? parsed.datasetMapping : null
+  const datasetMapping = candidateMapping && typeof candidateMapping === 'object'
+    && Number.isInteger(candidateMapping.groundSlot)
+    && Array.isArray(candidateMapping.surfaceSlots)
+    && candidateMapping.surfaceSlots.every((slot) => Number.isInteger(slot))
+    ? candidateMapping as HydraulicProfileDatasetMapping
+    : null
   return {
     conditionLabel: parsed.conditionLabel,
     eventNames: parsed.eventNames,
     summaryText: parsed.summaryText,
     profileText: parsed.profileText,
     selectedSectionId: typeof parsed.selectedSectionId === 'string' ? parsed.selectedSectionId : '',
-    groundOverrides,
+    datasetMapping,
     settings: hydrateSettings(parsed.settings),
   }
 }

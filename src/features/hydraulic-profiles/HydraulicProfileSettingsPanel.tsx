@@ -14,7 +14,9 @@ type Props = {
   settings: HydraulicProfileFigureSettings
   profileSection: HydraulicProfileSection | null
   canDownload: boolean
+  eventNames: string[]
   onSettingsChange(update: (settings: HydraulicProfileFigureSettings) => HydraulicProfileFigureSettings): void
+  onEventNamesChange(names: string[]): void
   onDownload(): void
 }
 
@@ -26,14 +28,16 @@ function LineStyleEditor({
   label,
   style,
   onChange,
+  onLabelChange,
 }: {
   label: string
   style: HydraulicProfileLineStyle
   onChange(style: HydraulicProfileLineStyle): void
+  onLabelChange?(label: string): void
 }) {
   return (
     <div className="profile-style-row">
-      <strong>{label}</strong>
+      {onLabelChange ? <input aria-label={`${label} legend name`} value={label} onChange={(event) => onLabelChange(event.currentTarget.value)} /> : <strong>{label}</strong>}
       <label><span>Color</span><input aria-label={`${label} color`} type="color" value={style.color} onChange={(event) => onChange({ ...style, color: event.currentTarget.value })} /></label>
       <label><span>Width</span><input aria-label={`${label} width`} type="number" min="0.5" max="8" step="0.25" value={style.width} onChange={(event) => onChange({ ...style, width: Math.max(0.5, Number(event.currentTarget.value) || 0.5) })} /></label>
     </div>
@@ -45,7 +49,9 @@ export function HydraulicProfileSettingsPanel({
   settings,
   profileSection,
   canDownload,
+  eventNames,
   onSettingsChange,
+  onEventNamesChange,
   onDownload,
 }: Props) {
   const update = <Key extends keyof HydraulicProfileFigureSettings>(key: Key, value: HydraulicProfileFigureSettings[Key]) =>
@@ -69,7 +75,7 @@ export function HydraulicProfileSettingsPanel({
           <LineStyleEditor label={profileSection?.ground.name ?? 'Ground'} style={settings.groundStyle} onChange={(groundStyle) => update('groundStyle', groundStyle)} />
           {(profileSection?.surfaces ?? []).map((surface, index) => {
             const style = settings.surfaceStyles[index % settings.surfaceStyles.length]
-            return <LineStyleEditor label={surface.name} style={style} key={surface.id} onChange={(nextStyle) => update('surfaceStyles', settings.surfaceStyles.map((item, itemIndex) => itemIndex === index ? nextStyle : item))} />
+            return <LineStyleEditor label={surface.name} style={style} key={surface.id} onLabelChange={(label) => onEventNamesChange(eventNames.map((name, itemIndex) => itemIndex === index ? label : name))} onChange={(nextStyle) => update('surfaceStyles', settings.surfaceStyles.map((item, itemIndex) => itemIndex === index ? nextStyle : item))} />
           })}
           {!profileSection ? <div className="profile-empty-review">Select a parsed station to style its lines.</div> : null}
         </> : null}

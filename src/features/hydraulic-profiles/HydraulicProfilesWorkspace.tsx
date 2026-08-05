@@ -15,7 +15,11 @@ import {
   parseSmsProfileValues,
   parseSmsSummaryTable,
 } from '../../core/hydraulic-profiles/smsClipboard'
-import type { HydraulicProfileScene, IngestNotice } from '../../core/types'
+import type {
+  HydraulicProfileDatasetMapping,
+  HydraulicProfileScene,
+  IngestNotice,
+} from '../../core/types'
 import { FigurePicker } from '../figures/FigurePicker'
 import { downloadHydraulicProfilePng } from './exportHydraulicProfile'
 import { HydraulicProfileCanvas } from './HydraulicProfileCanvas'
@@ -34,7 +38,7 @@ export function HydraulicProfilesWorkspace() {
   const [eventNames, setEventNames] = useState(DEFAULT_EVENTS)
   const [summaryText, setSummaryText] = useState('')
   const [profileText, setProfileText] = useState('')
-  const [groundOverrides, setGroundOverrides] = useState<Record<number, number>>({})
+  const [datasetMapping, setDatasetMapping] = useState<HydraulicProfileDatasetMapping | null>(null)
   const [selectedSectionId, setSelectedSectionId] = useState('')
   const [settings, setSettings] = useState(createDefaultHydraulicProfileSettings)
   const [scene, setScene] = useState<HydraulicProfileScene | null>(null)
@@ -51,8 +55,8 @@ export function HydraulicProfilesWorkspace() {
   const dataset = useMemo(() => buildHydraulicProfileDataset(
     parsedProfile.value,
     parsedSummary.value,
-    { conditionLabel, eventNames, groundOverrides },
-  ), [conditionLabel, eventNames, groundOverrides, parsedProfile.value, parsedSummary.value])
+    { conditionLabel, eventNames, datasetMapping },
+  ), [conditionLabel, datasetMapping, eventNames, parsedProfile.value, parsedSummary.value])
   const selectedSection = dataset.sections.find((section) => section.id === selectedSectionId) ?? null
   const ready = Boolean(selectedSection)
 
@@ -100,7 +104,7 @@ export function HydraulicProfilesWorkspace() {
       summaryText,
       profileText,
       selectedSectionId,
-      groundOverrides,
+      datasetMapping,
       settings,
     },
     appendNotices,
@@ -117,7 +121,7 @@ export function HydraulicProfilesWorkspace() {
     setSummaryText(payload.summaryText)
     setProfileText(payload.profileText)
     setSelectedSectionId(payload.selectedSectionId)
-    setGroundOverrides(payload.groundOverrides)
+    setDatasetMapping(payload.datasetMapping)
     setSettings(payload.settings)
     setScene(null)
     appendNotices([{ level: 'success', text: 'Hydraulic profile project loaded.' }])
@@ -128,7 +132,7 @@ export function HydraulicProfilesWorkspace() {
     setEventNames(DEFAULT_EVENTS)
     setSummaryText('')
     setProfileText('')
-    setGroundOverrides({})
+    setDatasetMapping(null)
     setSelectedSectionId('')
     setSettings(createDefaultHydraulicProfileSettings())
     setScene(null)
@@ -170,11 +174,14 @@ export function HydraulicProfilesWorkspace() {
           dataset={dataset}
           selectedSectionId={selectedSectionId}
           onConditionLabelChange={setConditionLabel}
-          onEventNamesChange={(names) => { setEventNames(names); setGroundOverrides({}) }}
+          onEventNamesChange={(names) => {
+            if (names.length !== eventNames.length) setDatasetMapping(null)
+            setEventNames(names)
+          }}
           onSummaryTextChange={setSummaryText}
-          onProfileTextChange={(text) => { setProfileText(text); setGroundOverrides({}) }}
+          onProfileTextChange={(text) => { setProfileText(text); setDatasetMapping(null) }}
           onSelectedSectionChange={setSelectedSectionId}
-          onGroundOverride={(sectionIndex, groundIndex) => setGroundOverrides((current) => ({ ...current, [sectionIndex]: groundIndex }))}
+          onDatasetMappingChange={setDatasetMapping}
           onCollapse={() => setLeftCollapsed(true)}
           onExpand={() => setLeftCollapsed(false)}
           onMobileClose={() => setLeftOpen(false)}
@@ -188,7 +195,9 @@ export function HydraulicProfilesWorkspace() {
           settings={settings}
           profileSection={selectedSection}
           canDownload={Boolean(scene)}
+          eventNames={eventNames}
           onSettingsChange={setSettings}
+          onEventNamesChange={setEventNames}
           onDownload={() => { if (scene) downloadHydraulicProfilePng(scene, settings) }}
         />
       }

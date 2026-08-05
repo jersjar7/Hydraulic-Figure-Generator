@@ -36,7 +36,7 @@ describe('SMS hydraulic profile parsing', () => {
     ])
   })
 
-  it('classifies ground, ranks WSE events, and pairs stations by elevation order', () => {
+  it('suggests one dataset mapping and applies it consistently across stations', () => {
     const pairs = parseSmsProfileValues(profile).value
     const rows = parseSmsSummaryTable(summary).value
     const dataset = buildHydraulicProfileDataset(pairs, rows, {
@@ -58,17 +58,43 @@ describe('SMS hydraulic profile parsing', () => {
       dataset.sections[0].surfaces.map((surface) => surface.elevations[0]),
       [56, 58, 60],
     )
+    assert.deepEqual(dataset.mapping, {
+      groundSlot: 0,
+      surfaceSlots: [2, 3, 1],
+    })
+    assert.deepEqual(
+      dataset.sections[1].surfaces.map((surface) => surface.sourceIndex),
+      [6, 7, 5],
+    )
   })
 
-  it('reports mismatched event counts and allows a reviewed ground override', () => {
+  it('reports mismatched event counts and honors a reviewed global mapping', () => {
     const pairs = parseSmsProfileValues(profile).value.slice(0, 7)
     const rows = parseSmsSummaryTable(summary).value
     const mismatched = buildHydraulicProfileDataset(pairs, rows, {
       conditionLabel: 'Existing',
       eventNames: ['2-year', '100-year', '500-year'],
-      groundOverrides: { 0: 2 },
+      datasetMapping: { groundSlot: 2, surfaceSlots: [0, 1, 3] },
     })
     assert.match(mismatched.warnings[0], /not divisible/)
     assert.equal(mismatched.sections[0].groundSourceIndex, 2)
+  })
+
+  it('keeps explicit event identities even when their elevation order crosses', () => {
+    const pairs = parseSmsProfileValues(profile).value
+    const rows = parseSmsSummaryTable(summary).value
+    const dataset = buildHydraulicProfileDataset(pairs, rows, {
+      conditionLabel: 'Proposed',
+      eventNames: ['2080 100-year', '500-year', '2-year'],
+      datasetMapping: { groundSlot: 0, surfaceSlots: [1, 3, 2] },
+    })
+    assert.deepEqual(
+      dataset.sections[0].surfaces.map((surface) => [surface.name, surface.sourceIndex]),
+      [['2080 100-year', 1], ['500-year', 3], ['2-year', 2]],
+    )
+    assert.deepEqual(
+      dataset.sections[1].surfaces.map((surface) => [surface.name, surface.sourceIndex]),
+      [['2080 100-year', 5], ['500-year', 7], ['2-year', 6]],
+    )
   })
 })

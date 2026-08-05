@@ -1,5 +1,6 @@
 import type {
   HydraulicProfileDataset,
+  HydraulicProfileDatasetMapping,
   HydraulicProfileLine,
   HydraulicProfileSection,
   SmsProfileSeries,
@@ -10,7 +11,7 @@ import { formatHydraulicStation } from './smsClipboard'
 type BuildOptions = {
   conditionLabel: string
   eventNames: string[]
-  groundOverrides?: Record<number, number>
+  datasetMapping?: HydraulicProfileDatasetMapping | null
 }
 
 function validElevations(series: SmsProfileSeries) {
@@ -29,6 +30,38 @@ function mean(series: SmsProfileSeries) {
   return values.length > 0
     ? values.reduce((sum, value) => sum + value, 0) / values.length
     : Number.POSITIVE_INFINITY
+}
+
+function isValidMapping(
+  mapping: HydraulicProfileDatasetMapping,
+  datasetsPerSection: number,
+) {
+  const slots = [mapping.groundSlot, ...mapping.surfaceSlots]
+  return (
+    slots.length === datasetsPerSection &&
+    new Set(slots).size === datasetsPerSection &&
+    slots.every((slot) => Number.isInteger(slot) && slot >= 0 && slot < datasetsPerSection)
+  )
+}
+
+export function suggestHydraulicProfileDatasetMapping(
+  series: SmsProfileSeries[],
+  eventCount: number,
+): HydraulicProfileDatasetMapping | null {
+  const datasetsPerSection = eventCount + 1
+  if (eventCount < 1 || series.length < datasetsPerSection) return null
+  const group = series.slice(0, datasetsPerSection)
+  const groundSlot = group.reduce(
+    (best, candidate, index) =>
+      minimum(candidate) < minimum(group[best]) ? index : best,
+    0,
+  )
+  const surfaceSlots = group
+    .map((item, slot) => ({ item, slot }))
+    .filter(({ slot }) => slot !== groundSlot)
+    .sort((a, b) => mean(a.item) - mean(b.item))
+    .map(({ slot }) => slot)
+  return { groundSlot, surfaceSlots }
 }
 
 function groundLabel(conditionLabel: string) {
@@ -96,6 +129,7 @@ export function buildHydraulicProfileDataset(
       warnings: ['Add at least one WSE event before reviewing the profile.'],
       datasetsPerSection,
       eventNames,
+      mapping: null,
     }
   }
   if (series.length % datasetsPerSection !== 0) {
@@ -104,27 +138,29 @@ export function buildHydraulicProfileDataset(
     )
   }
   const sectionCount = Math.floor(series.length / datasetsPerSection)
+  const suggestedMapping = suggestHydraulicProfileDatasetMapping(
+    series,
+    eventNames.length,
+  )
+  const requestedMapping = options.datasetMapping ?? suggestedMapping
+  const mapping = requestedMapping && isValidMapping(requestedMapping, datasetsPerSection)
+    ? requestedMapping
+    : suggestedMapping
+  if (options.datasetMapping && mapping !== options.datasetMapping) {
+    warnings.push('The saved profile dataset mapping was invalid, so a new mapping was suggested.')
+  }
   const sections: HydraulicProfileSection[] = []
   for (let sourceIndex = 0; sourceIndex < sectionCount; sourceIndex += 1) {
     const group = series.slice(
       sourceIndex * datasetsPerSection,
       (sourceIndex + 1) * datasetsPerSection,
     )
-    const inferredGround = group.reduce(
-      (best, candidate, index) =>
-        minimum(candidate) < minimum(group[best]) ? index : best,
-      0,
-    )
-    const requestedGround = options.groundOverrides?.[sourceIndex]
-    const groundIndex =
-      requestedGround != null && requestedGround >= 0 && requestedGround < group.length
-        ? requestedGround
-        : inferredGround
+    if (!mapping) continue
+    const groundIndex = mapping.groundSlot
     const ground = group[groundIndex]
-    const surfaces = group
-      .filter((_, index) => index !== groundIndex)
-      .sort((a, b) => mean(a) - mean(b))
-      .map((item, index) => line(item, eventNames[index] ?? `Event ${index + 1}`, 'wse'))
+    const surfaces = mapping.surfaceSlots.map((slot, index) =>
+      line(group[slot], eventNames[index] ?? `Event ${index + 1}`, 'wse'),
+    )
     sections.push({
       id: `profile-section-${sourceIndex + 1}`,
       sourceIndex,
@@ -145,5 +181,5 @@ export function buildHydraulicProfileDataset(
     if (b.station != null) return 1
     return a.sourceIndex - b.sourceIndex
   })
-  return { sections, warnings, datasetsPerSection, eventNames }
+  return { sections, warnings, datasetsPerSection, eventNames, mapping }
 }

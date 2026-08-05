@@ -136,6 +136,30 @@
   font-size: 9px;
 }
 
+.profile-mapping-editor {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-mapping-editor > label,
+.profile-mapping-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(118px, 0.9fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.profile-mapping-editor > label > span {
+  color: #294058;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.profile-mapping-row input,
+.profile-mapping-row select {
+  min-width: 0;
+}
+
 .profile-line-swatch {
   width: 16px;
   height: 3px;
@@ -173,6 +197,11 @@
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.profile-style-row > input {
+  min-width: 0;
+  font-weight: 700;
 }
 
 .profile-style-row label {
