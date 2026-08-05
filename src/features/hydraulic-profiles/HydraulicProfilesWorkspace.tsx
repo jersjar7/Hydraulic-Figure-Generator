@@ -9,6 +9,7 @@ import {
 } from 'react'
 import '../../App.css'
 import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspaceScaffold'
+import { WorkspaceActionBar } from '../../components/settings/WorkspaceActionBar'
 import { buildHydraulicProfileDataset } from '../../core/hydraulic-profiles/buildHydraulicProfileDataset'
 import {
   parseSmsProfileValues,
@@ -180,20 +181,27 @@ export function HydraulicProfilesWorkspace() {
           onReset={reset}
         />
       }
-      mapContent={<HydraulicProfileCanvas scene={scene} ready={ready} orientation={settings.orientation} canvasRef={canvasRef} onGenerate={generate} />}
+      mapContent={<HydraulicProfileCanvas scene={scene} orientation={settings.orientation} canvasRef={canvasRef} />}
       settingsContent={
         <HydraulicProfileSettingsPanel
           section={activeSection}
           settings={settings}
           profileSection={selectedSection}
-          canGenerate={ready}
           canDownload={Boolean(scene)}
           onSettingsChange={setSettings}
-          onGenerate={generate}
           onDownload={() => { if (scene) downloadHydraulicProfilePng(scene, settings) }}
         />
       }
-      settingsFooter={<div className="generate-bar"><button className="button primary full" type="button" data-testid="generate-hydraulic-profile" disabled={!ready} onClick={generate}><LineChart size={18} />{scene ? 'Regenerate cross section' : 'Generate cross section'}</button></div>}
+      settingsFooter={
+        <WorkspaceActionBar
+          icon={<LineChart size={18} aria-hidden="true" />}
+          label={scene ? 'Regenerate cross section' : 'Generate cross section'}
+          disabled={!ready}
+          testId="generate-hydraulic-profile"
+          hint={!ready ? 'Paste and review one complete SMS profile first' : undefined}
+          onClick={generate}
+        />
+      }
       figurePicker={<FigurePicker />}
     />
   )

@@ -29,12 +29,10 @@ function renderPanel(drawing = false) {
         direction: 'a-to-b',
       }}
       drawing={drawing}
-      canGenerate
       canDownload={false}
       onSettingsChange={vi.fn()}
       onAssessmentLineChange={vi.fn()}
       onShowMap={vi.fn()}
-      onGenerate={vi.fn()}
       onDownload={vi.fn()}
       {...callbacks}
     />,

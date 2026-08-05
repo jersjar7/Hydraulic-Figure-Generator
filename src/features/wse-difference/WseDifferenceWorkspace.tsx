@@ -1,7 +1,4 @@
-import {
-  AlertCircle,
-  Map,
-} from 'lucide-react'
+import { Map } from 'lucide-react'
 import {
   useCallback,
   useRef,
@@ -10,6 +7,7 @@ import {
 import '../../App.css'
 import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspaceScaffold'
 import { HydraulicProjectPanel } from '../../components/project-data/HydraulicProjectPanel'
+import { WorkspaceActionBar } from '../../components/settings/WorkspaceActionBar'
 import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { createHydraulicProjectInputActions } from '../project-workspace/hydraulicProjectInputActions'
@@ -412,8 +410,6 @@ export function WseDifferenceWorkspace() {
       mapContent={
           <WseMapCanvas
             scene={scene}
-            ready={ready}
-            busy={busy}
             figureLabel={ACTIVE_FIGURE.label}
             canvasRef={canvasRef}
             canvasFrameRef={canvasFrameRef}
@@ -424,7 +420,6 @@ export function WseDifferenceWorkspace() {
             stationLabelDragging={stationLabelDragging}
             hoveredElement={hoveredElement}
             elementDragging={elementDragging}
-            onGenerate={generation.generateMap}
             onPointerDown={mapInteractions.handlePointerDown}
             onPointerMove={mapInteractions.handlePointerMove}
             onPointerUp={mapInteractions.handlePointerUp}
@@ -465,24 +460,14 @@ export function WseDifferenceWorkspace() {
         />
       }
       settingsFooter={
-        <div className="generate-bar">
-          <button
-            className="button primary full"
-            type="button"
-            disabled={!ready || busy}
-            data-testid="generate-map"
-            onClick={generation.generateMap}
-          >
-            <Map size={18} aria-hidden="true" />
-            {scene ? 'Regenerate map' : 'Generate map'}
-          </button>
-          {!ready ? (
-            <span className="generate-hint">
-              <AlertCircle size={14} aria-hidden="true" />
-              Add Baseline and Comparison scenarios first
-            </span>
-          ) : null}
-        </div>
+        <WorkspaceActionBar
+          icon={<Map size={18} aria-hidden="true" />}
+          label={scene ? 'Regenerate map' : 'Generate map'}
+          disabled={!ready || busy}
+          testId="generate-map"
+          hint={!ready ? 'Add Baseline and Comparison scenarios first' : undefined}
+          onClick={generation.generateMap}
+        />
       }
       figurePicker={<FigurePicker />}
     />

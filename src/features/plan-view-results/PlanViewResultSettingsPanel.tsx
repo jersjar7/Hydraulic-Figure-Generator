@@ -134,7 +134,7 @@ function LegendControls({
                     type="number"
                     min="0.0001"
                     step="any"
-                    placeholder="Class interval"
+                    placeholder="Auto"
                     value={settings.contourInterval ?? ''}
                     onChange={(event) =>
                       onSettingsChange(

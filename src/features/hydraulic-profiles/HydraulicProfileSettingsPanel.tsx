@@ -1,5 +1,6 @@
-import { Download, LineChart } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { ControlSection } from '../../components/ControlSection'
+import { CompactFieldGrid } from '../../components/settings/CompactFieldGrid'
 import type { HydraulicProfileSection } from '../../core/types'
 import { Toggle } from '../wse-difference/components/Toggle'
 import type { HydraulicProfileSettingsSectionKey } from './hydraulicProfileDefinition'
@@ -12,10 +13,8 @@ type Props = {
   section: HydraulicProfileSettingsSectionKey
   settings: HydraulicProfileFigureSettings
   profileSection: HydraulicProfileSection | null
-  canGenerate: boolean
   canDownload: boolean
   onSettingsChange(update: (settings: HydraulicProfileFigureSettings) => HydraulicProfileFigureSettings): void
-  onGenerate(): void
   onDownload(): void
 }
 
@@ -45,10 +44,8 @@ export function HydraulicProfileSettingsPanel({
   section,
   settings,
   profileSection,
-  canGenerate,
   canDownload,
   onSettingsChange,
-  onGenerate,
   onDownload,
 }: Props) {
   const update = <Key extends keyof HydraulicProfileFigureSettings>(key: Key, value: HydraulicProfileFigureSettings[Key]) =>
@@ -82,11 +79,12 @@ export function HydraulicProfileSettingsPanel({
             <Field label="Y minimum"><input aria-label="Y minimum" type="number" step="0.1" placeholder="Auto" value={settings.yMinimum ?? ''} onChange={(event) => update('yMinimum', event.currentTarget.value === '' ? null : Number(event.currentTarget.value))} /></Field>
             <Field label="Y maximum"><input aria-label="Y maximum" type="number" step="0.1" placeholder="Auto" value={settings.yMaximum ?? ''} onChange={(event) => update('yMaximum', event.currentTarget.value === '' ? null : Number(event.currentTarget.value))} /></Field>
           </div>
-          <Field label="Text size"><input type="number" min="12" max="30" value={settings.fontSize} onChange={(event) => update('fontSize', Math.max(12, Number(event.currentTarget.value) || 12))} /></Field>
-          <Field label="Text color"><input className="profile-color-input" type="color" value={settings.textColor} onChange={(event) => update('textColor', event.currentTarget.value)} /></Field>
+          <CompactFieldGrid>
+            <Field label="Text size"><input type="number" min="12" max="30" value={settings.fontSize} onChange={(event) => update('fontSize', Math.max(12, Number(event.currentTarget.value) || 12))} /></Field>
+            <Field label="Text color"><input className="profile-color-input" type="color" value={settings.textColor} onChange={(event) => update('textColor', event.currentTarget.value)} /></Field>
+          </CompactFieldGrid>
         </> : null}
         {section === 'export' ? <>
-          <button className="button primary full" type="button" disabled={!canGenerate} onClick={onGenerate}><LineChart size={17} /> Generate cross section</button>
           <button className="button secondary full" type="button" disabled={!canDownload} onClick={onDownload}><Download size={17} /> Download PNG</button>
         </> : null}
       </div>

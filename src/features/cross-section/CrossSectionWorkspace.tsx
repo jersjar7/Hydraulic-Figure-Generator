@@ -12,6 +12,7 @@ import {
 import '../../App.css'
 import { HydraulicProjectPanel } from '../../components/project-data/HydraulicProjectPanel'
 import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspaceScaffold'
+import { WorkspaceActionBar } from '../../components/settings/WorkspaceActionBar'
 import { createDefaultFigureSettings } from '../../core/defaults'
 import { formatStation } from '../../core/centerlineStationing'
 import type {
@@ -453,7 +454,6 @@ export function CrossSectionWorkspace() {
           selectedAssessmentLineId={selectedAssessmentLineId}
           selectedLine={selectedLine}
           drawing={drawing}
-          canGenerate={ready && Boolean(selectedLine)}
           canDownload={Boolean(chartScene)}
           onSettingsChange={setSettings}
           onAssessmentLineChange={selection.chooseAssessmentLine}
@@ -469,23 +469,18 @@ export function CrossSectionWorkspace() {
           }}
           onClearLine={selection.clearSelectedLine}
           onShowMap={() => selection.setView('map')}
-          onGenerate={generateChart}
           onDownload={downloadChart}
         />
       }
       settingsFooter={
-        <div className="generate-bar">
-          <button
-            className="button primary full"
-            type="button"
-            disabled={!ready || !selectedLine || busy}
-            data-testid="generate-cross-section"
-            onClick={generateChart}
-          >
-            <LineChart size={18} aria-hidden="true" />
-            {chartScene ? 'Regenerate cross section' : 'Generate cross section'}
-          </button>
-        </div>
+        <WorkspaceActionBar
+          icon={<LineChart size={18} aria-hidden="true" />}
+          label={chartScene ? 'Regenerate cross section' : 'Generate cross section'}
+          disabled={!ready || !selectedLine || busy}
+          testId="generate-cross-section"
+          hint={!selectedLine ? 'Select or draw one cross-section line first' : undefined}
+          onClick={generateChart}
+        />
       }
       figurePicker={<FigurePicker />}
     />

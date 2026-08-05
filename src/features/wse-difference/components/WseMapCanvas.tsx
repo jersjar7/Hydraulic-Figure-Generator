@@ -1,4 +1,4 @@
-import { Map, MapPin } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import type {
   PointerEventHandler,
   RefObject,
@@ -7,8 +7,6 @@ import type { WseDifferenceScene } from '../../../core/types'
 
 type WseMapCanvasProps = {
   scene: WseDifferenceScene | null
-  ready: boolean
-  busy: boolean
   figureLabel: string
   canvasRef: RefObject<HTMLCanvasElement | null>
   canvasFrameRef: RefObject<HTMLDivElement | null>
@@ -19,7 +17,6 @@ type WseMapCanvasProps = {
   stationLabelDragging: boolean
   hoveredElement: string | null
   elementDragging: boolean
-  onGenerate: () => void
   onPointerDown: PointerEventHandler<HTMLCanvasElement>
   onPointerMove: PointerEventHandler<HTMLCanvasElement>
   onPointerUp: PointerEventHandler<HTMLCanvasElement>
@@ -29,8 +26,6 @@ type WseMapCanvasProps = {
 
 export function WseMapCanvas({
   scene,
-  ready,
-  busy,
   figureLabel,
   canvasRef,
   canvasFrameRef,
@@ -41,7 +36,6 @@ export function WseMapCanvas({
   stationLabelDragging,
   hoveredElement,
   elementDragging,
-  onGenerate,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -60,16 +54,6 @@ export function WseMapCanvas({
             Add at least two scenario geometry and datasets pairs on the left,
             assign the Baseline and Comparison roles, then generate the map.
           </p>
-          <button
-            className="button primary"
-            type="button"
-            disabled={!ready || busy}
-            data-testid="generate-empty-map"
-            onClick={onGenerate}
-          >
-            <Map size={17} aria-hidden="true" />
-            Generate {figureLabel}
-          </button>
         </div>
       ) : null}
       <div className="map-canvas-frame" ref={canvasFrameRef}>

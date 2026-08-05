@@ -2,7 +2,6 @@ import {
   ArrowLeftRight,
   Download,
   Eye,
-  LineChart,
   Map,
   MousePointer2,
   Trash2,
@@ -27,7 +26,6 @@ type Props = {
   selectedAssessmentLineId: string
   selectedLine: CrossSectionLine | null
   drawing: boolean
-  canGenerate: boolean
   canDownload: boolean
   onSettingsChange(
     update: (settings: CrossSectionFigureSettings) => CrossSectionFigureSettings,
@@ -38,7 +36,6 @@ type Props = {
   onFlipViewSide(): void
   onClearLine(): void
   onShowMap(): void
-  onGenerate(): void
   onDownload(): void
 }
 
@@ -106,7 +103,6 @@ export function CrossSectionSettingsPanel({
   selectedAssessmentLineId,
   selectedLine,
   drawing,
-  canGenerate,
   canDownload,
   onSettingsChange,
   onAssessmentLineChange,
@@ -115,7 +111,6 @@ export function CrossSectionSettingsPanel({
   onFlipViewSide,
   onClearLine,
   onShowMap,
-  onGenerate,
   onDownload,
 }: Props) {
   const update = <Key extends keyof CrossSectionFigureSettings>(
@@ -260,15 +255,6 @@ export function CrossSectionSettingsPanel({
               />
             </Field>
           </div>
-          <button
-            className="button primary full"
-            type="button"
-            disabled={!canGenerate}
-            onClick={onGenerate}
-          >
-            <LineChart size={17} aria-hidden="true" />
-            Generate cross section
-          </button>
         </div>
       ) : null}
 

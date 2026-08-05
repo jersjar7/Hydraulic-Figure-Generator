@@ -36,6 +36,9 @@ test('shared figure workspace exposes scalable project and settings navigation',
   await expect(
     page.getByRole('heading', { name: 'Build a WSE Difference figure' }),
   ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Generate map', exact: true }),
+  ).toHaveCount(1)
 
   await page.getByRole('tab', { name: /layers/i }).click()
   await expect(
@@ -77,6 +80,9 @@ test('SMS profile paste reviews and exports one fitted station cross section', a
   await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
     'hydraulic-profiles-sections',
   )
+  await expect(
+    page.getByRole('button', { name: 'Generate cross section', exact: true }),
+  ).toHaveCount(1)
 
   await page.getByRole('tab', { name: 'Summary', exact: true }).click()
   await page.getByLabel('SMS Summary Table').fill(PROFILE_SUMMARY)
@@ -217,6 +223,9 @@ test('loaded scenarios carry into the cross-section map-to-chart workflow', asyn
   await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
     'fra-cross-section-comparison',
   )
+  await expect(
+    page.getByRole('button', { name: 'Generate cross section', exact: true }),
+  ).toHaveCount(1)
   await expect(page.getByLabel('EX scenario name')).toBeVisible()
   await expect(page.getByLabel('PR scenario name')).toBeVisible()
 
@@ -341,6 +350,9 @@ test('one SMS scenario renders a fitted plan-view scalar result map', async ({
   await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
     'plan-view-hydraulic-results',
   )
+  await expect(
+    page.getByRole('button', { name: 'Generate map', exact: true }),
+  ).toHaveCount(1)
   await page
     .getByTestId('h5-file-drop')
     .locator('input[type="file"]')

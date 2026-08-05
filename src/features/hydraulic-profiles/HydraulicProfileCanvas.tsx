@@ -6,18 +6,14 @@ import { HYDRAULIC_PROFILE_FRAMES } from './hydraulicProfileRenderer'
 
 type Props = {
   scene: HydraulicProfileScene | null
-  ready: boolean
   orientation: 'landscape' | 'portrait'
   canvasRef: RefObject<HTMLCanvasElement | null>
-  onGenerate(): void
 }
 
 export function HydraulicProfileCanvas({
   scene,
-  ready,
   orientation,
   canvasRef,
-  onGenerate,
 }: Props) {
   const frameRef = useRef<HTMLDivElement>(null)
   const frame = HYDRAULIC_PROFILE_FRAMES[orientation]
@@ -33,15 +29,6 @@ export function HydraulicProfileCanvas({
           <div className="empty-symbol"><LineChart size={28} /></div>
           <h2>Build a hydraulic profile</h2>
           <p>Paste the SMS Summary Table and Profile Values, review the detected mapping, then generate the selected station.</p>
-          <button
-            className="button primary"
-            type="button"
-            disabled={!ready}
-            onClick={onGenerate}
-          >
-            <LineChart size={17} aria-hidden="true" />
-            Generate cross section
-          </button>
         </div>
       ) : null}
       <div className="map-canvas-frame" ref={frameRef}>
