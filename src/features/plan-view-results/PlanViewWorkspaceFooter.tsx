@@ -1,4 +1,5 @@
-import { AlertCircle, Download, LayoutGrid, Map, X } from 'lucide-react'
+import { Download, LayoutGrid, Map, X } from 'lucide-react'
+import { WorkspaceActionBar } from '../../components/settings/WorkspaceActionBar'
 import type { PlanViewResultScene } from '../../core/types'
 import type { FigureProductionMode } from '../figure-sets/FigureProductionModeSwitcher'
 import type { usePlanViewFigureSet } from './usePlanViewFigureSet'
@@ -26,66 +27,48 @@ export function PlanViewWorkspaceFooter({
   if (mode === 'document') {
     const { completed, total } = figureDocument.progress
     return (
-      <div className="generate-bar">
-        <button
-          className={`button ${figureDocument.exporting ? 'secondary' : 'primary'} full`}
-          type="button"
-          disabled={!figureDocument.exporting && figureDocument.pages.length === 0}
-          data-testid="export-figure-document"
-          onClick={() => {
-            if (figureDocument.exporting) figureDocument.cancelExport()
-            else void figureDocument.exportWord()
-          }}
-        >
-          {figureDocument.exporting ? (
-            <><X size={17} aria-hidden="true" /> Cancel export ({completed}/{total})</>
-          ) : (
-            <><Download size={17} aria-hidden="true" /> Export Word document</>
-          )}
-        </button>
-      </div>
+      <WorkspaceActionBar
+        icon={figureDocument.exporting
+          ? <X size={17} aria-hidden="true" />
+          : <Download size={17} aria-hidden="true" />}
+        label={figureDocument.exporting
+          ? `Cancel export (${completed}/${total})`
+          : 'Export Word document'}
+        tone={figureDocument.exporting ? 'secondary' : 'primary'}
+        disabled={!figureDocument.exporting && figureDocument.pages.length === 0}
+        testId="export-figure-document"
+        onClick={() => {
+          if (figureDocument.exporting) figureDocument.cancelExport()
+          else void figureDocument.exportWord()
+        }}
+      />
     )
   }
   if (mode === 'set') {
     return (
-      <div className="generate-bar">
-        <button
-          className={`button ${figureSet.generating ? 'secondary' : 'primary'} full`}
-          type="button"
-          disabled={!figureSet.generating && figureSet.draftCount === 0}
-          data-testid="generate-figure-set"
-          onClick={() => {
-            if (figureSet.generating) figureSet.cancel()
-            else void figureSet.generate()
-          }}
-        >
-          {figureSet.generating ? (
-            <><X size={17} aria-hidden="true" /> Cancel generation</>
-          ) : (
-            <><LayoutGrid size={17} aria-hidden="true" /> Generate figure set</>
-          )}
-        </button>
-      </div>
+      <WorkspaceActionBar
+        icon={figureSet.generating
+          ? <X size={17} aria-hidden="true" />
+          : <LayoutGrid size={17} aria-hidden="true" />}
+        label={figureSet.generating ? 'Cancel generation' : 'Generate figure set'}
+        tone={figureSet.generating ? 'secondary' : 'primary'}
+        disabled={!figureSet.generating && figureSet.draftCount === 0}
+        testId="generate-figure-set"
+        onClick={() => {
+          if (figureSet.generating) figureSet.cancel()
+          else void figureSet.generate()
+        }}
+      />
     )
   }
   return (
-    <div className="generate-bar">
-      <button
-        className="button primary full"
-        type="button"
-        disabled={!ready || busy}
-        data-testid="generate-plan-view"
-        onClick={onGenerateFigure}
-      >
-        <Map size={18} aria-hidden="true" />
-        {scene ? 'Regenerate map' : 'Generate map'}
-      </button>
-      {!ready ? (
-        <span className="generate-hint">
-          <AlertCircle size={14} aria-hidden="true" />
-          Add one complete SMS scenario first
-        </span>
-      ) : null}
-    </div>
+    <WorkspaceActionBar
+      icon={<Map size={18} aria-hidden="true" />}
+      label={scene ? 'Regenerate map' : 'Generate map'}
+      disabled={!ready || busy}
+      testId="generate-plan-view"
+      hint={!ready ? 'Add one complete SMS scenario first' : undefined}
+      onClick={onGenerateFigure}
+    />
   )
 }

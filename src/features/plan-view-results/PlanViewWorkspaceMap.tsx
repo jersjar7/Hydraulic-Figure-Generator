@@ -11,14 +11,11 @@ import type { usePlanViewFigureSet } from './usePlanViewFigureSet'
 type Props = {
   mode: FigureProductionMode
   scene: PlanViewResultScene | null
-  ready: boolean
-  busy: boolean
   canvasRef: RefObject<HTMLCanvasElement | null>
   canvasFrameRef: RefObject<HTMLDivElement | null>
   displaySize: CanvasDisplaySize
   figureSet: ReturnType<typeof usePlanViewFigureSet>
   figureDocument: ReturnType<typeof usePlanViewFigureDocument>
-  onGenerate(): void
   onOpenFigure(
     item: ReturnType<typeof usePlanViewFigureSet>['figureSet']['items'][number],
   ): void
@@ -27,14 +24,11 @@ type Props = {
 export function PlanViewWorkspaceMap({
   mode,
   scene,
-  ready,
-  busy,
   canvasRef,
   canvasFrameRef,
   displaySize,
   figureSet,
   figureDocument,
-  onGenerate,
   onOpenFigure,
 }: Props) {
   if (mode === 'document') {
@@ -62,12 +56,9 @@ export function PlanViewWorkspaceMap({
   return (
     <PlanViewResultCanvas
       scene={scene}
-      ready={ready}
-      busy={busy}
       canvasRef={canvasRef}
       canvasFrameRef={canvasFrameRef}
       displaySize={displaySize}
-      onGenerate={onGenerate}
     />
   )
 }

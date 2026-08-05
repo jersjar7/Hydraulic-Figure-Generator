@@ -2,6 +2,8 @@ import { Download, FileJson } from 'lucide-react'
 import type { ComponentProps } from 'react'
 import { ControlSection } from '../../components/ControlSection'
 import { FigureElementsPanel } from '../../components/FigureElementsPanel'
+import { CompactFieldGrid } from '../../components/settings/CompactFieldGrid'
+import { SettingsGroup } from '../../components/settings/SettingsGroup'
 import {
   SCALAR_RAMP_OPTIONS,
   scalarRampGradient,
@@ -58,159 +60,165 @@ function LegendControls({
     <ControlSection>
       {showsSurface ? (
         <>
-          <label className="field">
-            <span>Color ramp</span>
-            <select
-              value={settings.ramp}
-              onChange={(event) =>
-                onSettingsChange('ramp', event.currentTarget.value as ScalarRampKey)
-              }
-            >
-              {SCALAR_RAMP_OPTIONS.map((option) => (
-                <option value={option.key} key={option.key}>{option.label}</option>
-              ))}
-            </select>
-            <span
-              className="ramp-preview"
-              style={{ background: scalarRampGradient(settings.ramp) }}
-              aria-hidden="true"
-            />
-          </label>
-          <div className="field-grid two">
+          <SettingsGroup title="Classification">
             <label className="field">
-              <span>Minimum</span>
-              <input
-                type="number"
-                placeholder="Auto"
-                value={settings.legendMin ?? ''}
+              <span>Color ramp</span>
+              <select
+                value={settings.ramp}
                 onChange={(event) =>
-                  onSettingsChange('legendMin', optionalNumber(event.currentTarget.value))
+                  onSettingsChange('ramp', event.currentTarget.value as ScalarRampKey)
                 }
+              >
+                {SCALAR_RAMP_OPTIONS.map((option) => (
+                  <option value={option.key} key={option.key}>{option.label}</option>
+                ))}
+              </select>
+              <span
+                className="ramp-preview"
+                style={{ background: scalarRampGradient(settings.ramp) }}
+                aria-hidden="true"
               />
             </label>
-            <label className="field">
-              <span>Maximum</span>
-              <input
-                type="number"
-                placeholder="Auto"
-                value={settings.legendMax ?? ''}
-                onChange={(event) =>
-                  onSettingsChange('legendMax', optionalNumber(event.currentTarget.value))
-                }
-              />
-            </label>
-          </div>
-          <label className="field">
-            <span>Class interval</span>
-            <input
-              type="number"
-              min="0.0001"
-              step="any"
-              placeholder="Auto"
-              value={settings.scalarLegendInterval ?? ''}
-              onChange={(event) =>
-                onSettingsChange(
-                  'scalarLegendInterval',
-                  optionalNumber(event.currentTarget.value),
-                )
-              }
+            <CompactFieldGrid columns={3}>
+              <label className="field">
+                <span>Minimum</span>
+                <input
+                  type="number"
+                  placeholder="Auto"
+                  value={settings.legendMin ?? ''}
+                  onChange={(event) =>
+                    onSettingsChange('legendMin', optionalNumber(event.currentTarget.value))
+                  }
+                />
+              </label>
+              <label className="field">
+                <span>Maximum</span>
+                <input
+                  type="number"
+                  placeholder="Auto"
+                  value={settings.legendMax ?? ''}
+                  onChange={(event) =>
+                    onSettingsChange('legendMax', optionalNumber(event.currentTarget.value))
+                  }
+                />
+              </label>
+              <label className="field">
+                <span>Interval</span>
+                <input
+                  type="number"
+                  min="0.0001"
+                  step="any"
+                  placeholder="Auto"
+                  value={settings.scalarLegendInterval ?? ''}
+                  onChange={(event) =>
+                    onSettingsChange(
+                      'scalarLegendInterval',
+                      optionalNumber(event.currentTarget.value),
+                    )
+                  }
+                />
+              </label>
+            </CompactFieldGrid>
+          </SettingsGroup>
+          <SettingsGroup title="Contours">
+            <Toggle
+              label="Contour lines"
+              checked={settings.showContours}
+              onChange={(checked) => onSettingsChange('showContours', checked)}
             />
-          </label>
-          <Toggle
-            label="Contour lines"
-            checked={settings.showContours}
-            onChange={(checked) => onSettingsChange('showContours', checked)}
-          />
+            {settings.showContours ? (
+              <CompactFieldGrid columns={3}>
+                <label className="field">
+                  <span>Interval</span>
+                  <input
+                    type="number"
+                    min="0.0001"
+                    step="any"
+                    placeholder="Class interval"
+                    value={settings.contourInterval ?? ''}
+                    onChange={(event) =>
+                      onSettingsChange(
+                        'contourInterval',
+                        optionalNumber(event.currentTarget.value),
+                      )
+                    }
+                  />
+                </label>
+                <label className="field color-field">
+                  <span>Color</span>
+                  <input
+                    type="color"
+                    value={settings.contourColor}
+                    onChange={(event) =>
+                      onSettingsChange('contourColor', event.currentTarget.value)
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>Width <small>px</small></span>
+                  <input
+                    type="number"
+                    min="0.25"
+                    max="8"
+                    step="0.25"
+                    value={settings.contourWidth}
+                    onChange={(event) =>
+                      onSettingsChange(
+                        'contourWidth',
+                        Math.max(0.25, Number(event.currentTarget.value) || 1),
+                      )
+                    }
+                  />
+                </label>
+              </CompactFieldGrid>
+            ) : null}
+          </SettingsGroup>
         </>
       ) : null}
-      {showsSurface && settings.showContours ? (
-        <div className="field-grid two">
-          <label className="field">
-            <span>Contour interval</span>
-            <input
-              type="number"
-              min="0.0001"
-              step="any"
-              placeholder="Class interval"
-              value={settings.contourInterval ?? ''}
-              onChange={(event) =>
-                onSettingsChange(
-                  'contourInterval',
-                  optionalNumber(event.currentTarget.value),
-                )
-              }
-            />
-          </label>
-          <label className="field color-field">
-            <span>Contour color</span>
-            <input
-              type="color"
-              value={settings.contourColor}
-              onChange={(event) =>
-                onSettingsChange('contourColor', event.currentTarget.value)
-              }
-            />
-          </label>
-          <label className="field">
-            <span>Contour width <small>px</small></span>
-            <input
-              type="number"
-              min="0.25"
-              max="8"
-              step="0.25"
-              value={settings.contourWidth}
-              onChange={(event) =>
-                onSettingsChange(
-                  'contourWidth',
-                  Math.max(0.25, Number(event.currentTarget.value) || 1),
-                )
-              }
-            />
-          </label>
-        </div>
-      ) : null}
       {showsMesh ? (
-        <div className="field-grid two">
-          <label className="field color-field">
-            <span>Mesh line color</span>
-            <input
-              type="color"
-              value={settings.meshLineColor}
-              onChange={(event) =>
-                onSettingsChange('meshLineColor', event.currentTarget.value)
-              }
-            />
-          </label>
-          <label className="field">
-            <span>Line width <small>px</small></span>
-            <input
-              type="number"
-              min="0.25"
-              max="8"
-              step="0.25"
-              value={settings.meshLineWidth}
-              onChange={(event) =>
-                onSettingsChange(
-                  'meshLineWidth',
-                  Math.max(0.25, Number(event.currentTarget.value) || 0.75),
-                )
-              }
-            />
-          </label>
-          <label className="field">
-            <span>Line opacity</span>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={settings.meshLineOpacity}
-              onChange={(event) =>
-                onSettingsChange('meshLineOpacity', Number(event.currentTarget.value))
-              }
-            />
-          </label>
-        </div>
+        <SettingsGroup title="Mesh">
+          <CompactFieldGrid columns={3}>
+            <label className="field color-field">
+              <span>Color</span>
+              <input
+                type="color"
+                value={settings.meshLineColor}
+                onChange={(event) =>
+                  onSettingsChange('meshLineColor', event.currentTarget.value)
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Width <small>px</small></span>
+              <input
+                type="number"
+                min="0.25"
+                max="8"
+                step="0.25"
+                value={settings.meshLineWidth}
+                onChange={(event) =>
+                  onSettingsChange(
+                    'meshLineWidth',
+                    Math.max(0.25, Number(event.currentTarget.value) || 0.75),
+                  )
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Opacity</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={settings.meshLineOpacity}
+                onChange={(event) =>
+                  onSettingsChange('meshLineOpacity', Number(event.currentTarget.value))
+                }
+              />
+            </label>
+          </CompactFieldGrid>
+        </SettingsGroup>
       ) : null}
     </ControlSection>
   )

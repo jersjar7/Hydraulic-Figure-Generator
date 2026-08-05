@@ -417,14 +417,11 @@ export function PlanViewResultWorkspace() {
         <PlanViewWorkspaceMap
           mode={productionMode}
           scene={scene}
-          ready={ready}
-          busy={busy}
           canvasRef={canvasRef}
           canvasFrameRef={canvasFrameRef}
           displaySize={displaySize}
           figureSet={figureSet}
           figureDocument={figureDocument}
-          onGenerate={generate}
           onOpenFigure={openFigureSetItem}
         />
       }

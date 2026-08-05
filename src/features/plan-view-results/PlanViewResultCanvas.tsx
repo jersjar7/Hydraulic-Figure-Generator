@@ -1,25 +1,19 @@
-import { Layers3, Map } from 'lucide-react'
+import { Layers3 } from 'lucide-react'
 import type { RefObject } from 'react'
 import type { PlanViewResultScene } from '../../core/types'
 
 type Props = {
   scene: PlanViewResultScene | null
-  ready: boolean
-  busy: boolean
   canvasRef: RefObject<HTMLCanvasElement | null>
   canvasFrameRef: RefObject<HTMLDivElement | null>
   displaySize: { width: number; height: number }
-  onGenerate(): void
 }
 
 export function PlanViewResultCanvas({
   scene,
-  ready,
-  busy,
   canvasRef,
   canvasFrameRef,
   displaySize,
-  onGenerate,
 }: Props) {
   return (
     <>
@@ -31,16 +25,6 @@ export function PlanViewResultCanvas({
             Add SMS geometry, choose the scenario and map content, then
             generate the map. Hydraulic results also require a datasets file.
           </p>
-          <button
-            className="button primary"
-            type="button"
-            disabled={!ready || busy}
-            data-testid="generate-empty-plan-view"
-            onClick={onGenerate}
-          >
-            <Map size={17} aria-hidden="true" />
-            Generate result map
-          </button>
         </div>
       ) : null}
       <div className="map-canvas-frame" ref={canvasFrameRef}>

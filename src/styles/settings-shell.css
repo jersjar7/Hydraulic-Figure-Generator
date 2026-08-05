@@ -105,3 +105,48 @@
   padding: 3px 14px 15px;
   background: white;
 }
+
+.settings-group {
+  padding: 12px 0 13px;
+  border-bottom: 1px solid #e3e9ef;
+}
+
+.settings-group:first-child {
+  padding-top: 8px;
+}
+
+.settings-group:last-child {
+  padding-bottom: 4px;
+  border-bottom: 0;
+}
+
+.settings-group > h3 {
+  margin: 0 0 9px;
+  color: #4d6177;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.settings-group-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-group-content > .field,
+.compact-field-grid > .field {
+  margin-top: 0;
+}
+
+.compact-field-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.compact-field-grid.columns-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.compact-field-grid.columns-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}

@@ -5,6 +5,21 @@
   border-top: 1px solid var(--border);
 }
 
+.workspace-action-bar {
+  box-shadow: 0 -5px 14px rgba(29, 48, 69, 0.04);
+}
+
+.workspace-primary-action {
+  min-height: 40px;
+}
+
+.workspace-primary-action > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .generate-hint {
   display: flex;
   align-items: center;
