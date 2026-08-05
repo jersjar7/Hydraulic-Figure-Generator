@@ -1,6 +1,7 @@
 import type {
   HydraulicProfileDataset,
-  HydraulicProfileDatasetMapping,
+  HydraulicProfileDatasetConfiguration,
+  HydraulicProfileDatasetDefinition,
   HydraulicProfileLine,
   HydraulicProfileSection,
   SmsProfileSeries,
@@ -9,9 +10,7 @@ import type {
 import { formatHydraulicStation } from './smsClipboard'
 
 type BuildOptions = {
-  conditionLabel: string
-  eventNames: string[]
-  datasetMapping?: HydraulicProfileDatasetMapping | null
+  datasetConfiguration?: HydraulicProfileDatasetConfiguration | null
 }
 
 function validElevations(series: SmsProfileSeries) {
@@ -25,58 +24,73 @@ function minimum(series: SmsProfileSeries) {
   return values.length > 0 ? Math.min(...values) : Number.POSITIVE_INFINITY
 }
 
-function mean(series: SmsProfileSeries) {
-  const values = validElevations(series)
-  return values.length > 0
-    ? values.reduce((sum, value) => sum + value, 0) / values.length
-    : Number.POSITIVE_INFINITY
+export function createHydraulicProfileDatasetConfiguration(
+  datasetsPerSection: number,
+): HydraulicProfileDatasetConfiguration {
+  const count = Math.max(1, Math.floor(datasetsPerSection))
+  return {
+    datasetsPerSection: count,
+    definitions: Array.from({ length: count }, (_, slot) => ({
+      slot,
+      name: `Dataset ${slot + 1}`,
+      kind: 'other' as const,
+    })),
+    stationReferenceSlot: null,
+  }
 }
 
-function isValidMapping(
-  mapping: HydraulicProfileDatasetMapping,
+export function resizeHydraulicProfileDatasetConfiguration(
+  configuration: HydraulicProfileDatasetConfiguration | null,
   datasetsPerSection: number,
 ) {
-  const slots = [mapping.groundSlot, ...mapping.surfaceSlots]
+  const next = createHydraulicProfileDatasetConfiguration(datasetsPerSection)
+  if (!configuration) return next
+  next.definitions = next.definitions.map((definition) => {
+    const existing = configuration.definitions.find(({ slot }) => slot === definition.slot)
+    return existing ? { ...existing } : definition
+  })
+  next.stationReferenceSlot = configuration.stationReferenceSlot != null
+    && configuration.stationReferenceSlot < next.datasetsPerSection
+    ? configuration.stationReferenceSlot
+    : null
+  return next
+}
+
+export function inferHydraulicProfileDatasetCount(
+  seriesCount: number,
+  summaryRowCount: number,
+) {
+  if (seriesCount < 1 || summaryRowCount < 1 || seriesCount % summaryRowCount !== 0) {
+    return null
+  }
+  const count = seriesCount / summaryRowCount
+  return Number.isInteger(count) && count > 0 ? count : null
+}
+
+function validConfiguration(configuration: HydraulicProfileDatasetConfiguration) {
+  const { datasetsPerSection, definitions, stationReferenceSlot } = configuration
+  const slots = definitions.map(({ slot }) => slot)
   return (
-    slots.length === datasetsPerSection &&
+    Number.isInteger(datasetsPerSection) &&
+    datasetsPerSection > 0 &&
+    definitions.length === datasetsPerSection &&
     new Set(slots).size === datasetsPerSection &&
-    slots.every((slot) => Number.isInteger(slot) && slot >= 0 && slot < datasetsPerSection)
+    slots.every((slot) => Number.isInteger(slot) && slot >= 0 && slot < datasetsPerSection) &&
+    definitions.every(({ name, kind }) => typeof name === 'string' && ['ground', 'wse', 'other'].includes(kind)) &&
+    (stationReferenceSlot == null || slots.includes(stationReferenceSlot))
   )
-}
-
-export function suggestHydraulicProfileDatasetMapping(
-  series: SmsProfileSeries[],
-  eventCount: number,
-): HydraulicProfileDatasetMapping | null {
-  const datasetsPerSection = eventCount + 1
-  if (eventCount < 1 || series.length < datasetsPerSection) return null
-  const group = series.slice(0, datasetsPerSection)
-  const groundSlot = group.reduce(
-    (best, candidate, index) =>
-      minimum(candidate) < minimum(group[best]) ? index : best,
-    0,
-  )
-  const surfaceSlots = group
-    .map((item, slot) => ({ item, slot }))
-    .filter(({ slot }) => slot !== groundSlot)
-    .sort((a, b) => mean(a.item) - mean(b.item))
-    .map(({ slot }) => slot)
-  return { groundSlot, surfaceSlots }
-}
-
-function groundLabel(conditionLabel: string) {
-  const condition = conditionLabel
-    .replace(/\s*conditions?\s*/i, ' ')
-    .trim()
-  return `${condition ? `${condition} ` : ''}Ground`
 }
 
 function line(
   series: SmsProfileSeries,
-  name: string,
-  kind: HydraulicProfileLine['kind'],
+  definition: HydraulicProfileDatasetDefinition,
 ): HydraulicProfileLine {
-  return { ...series, name, kind }
+  return {
+    ...series,
+    datasetSlot: definition.slot,
+    name: definition.name.trim() || `Dataset ${definition.slot + 1}`,
+    kind: definition.kind,
+  }
 }
 
 function assignStations(
@@ -88,28 +102,39 @@ function assignStations(
     warnings.push('No Summary Table stations are available; sections use generated names.')
     return
   }
-  const rankedSections = [...sections].sort((a, b) => a.thalweg - b.thalweg)
   const rankedRows = [...summaryRows].sort((a, b) => a.station - b.station)
-  if (rankedSections.length !== rankedRows.length) {
+  const referenceSections = sections.filter((section) => section.stationReferenceLine)
+  if (referenceSections.length === 0) {
+    warnings.push('Choose the dataset used for station matching before assigning Summary Table stations.')
+    return
+  }
+  if (referenceSections.length !== rankedRows.length) {
     warnings.push(
-      `Summary Table lists ${rankedRows.length} station${rankedRows.length === 1 ? '' : 's'}, but ${rankedSections.length} cross section${rankedSections.length === 1 ? '' : 's'} were detected. The overlap was paired by station order.`,
+      `Summary Table lists ${rankedRows.length} station${rankedRows.length === 1 ? '' : 's'}, but ${referenceSections.length} cross section${referenceSections.length === 1 ? '' : 's'} were detected. Only the closest Z-min matches were paired.`,
     )
   }
-  const count = Math.min(rankedSections.length, rankedRows.length)
-  for (let index = 0; index < count; index += 1) {
-    const section = rankedSections[index]
-    const row = rankedRows[index]
+  const candidates = referenceSections.flatMap((section) => rankedRows.flatMap((row) =>
+    row.zMinimum == null
+      ? []
+      : [{ section, row, difference: Math.abs(row.zMinimum - section.thalweg) }],
+  )).sort((a, b) => a.difference - b.difference)
+  const assignedSections = new Set<string>()
+  const assignedRows = new Set<SmsSummaryRow>()
+  for (const { section, row, difference } of candidates) {
+    if (assignedSections.has(section.id) || assignedRows.has(row)) continue
+    assignedSections.add(section.id)
+    assignedRows.add(row)
     section.station = row.station
     section.stationLabel = formatHydraulicStation(row.station)
     section.summaryZMinimum = row.zMinimum
-    if (
-      row.zMinimum != null &&
-      Math.abs(row.zMinimum - section.thalweg) > 2
-    ) {
+    if (difference > 2) {
       warnings.push(
-        `Station ${section.stationLabel}: Summary Z-min ${row.zMinimum.toFixed(2)} ft differs from the profile thalweg ${section.thalweg.toFixed(2)} ft.`,
+        `Station ${section.stationLabel}: Summary Z-min ${row.zMinimum!.toFixed(2)} ft differs from the profile thalweg ${section.thalweg.toFixed(2)} ft.`,
       )
     }
+  }
+  if (assignedSections.size < Math.min(referenceSections.length, rankedRows.length)) {
+    warnings.push('Some Summary Table rows do not include a usable Z-min, so they could not be paired automatically.')
   }
 }
 
@@ -118,60 +143,80 @@ export function buildHydraulicProfileDataset(
   summaryRows: SmsSummaryRow[],
   options: BuildOptions,
 ): HydraulicProfileDataset {
-  const eventNames = options.eventNames.map((name, index) =>
-    name.trim() || `Event ${index + 1}`,
+  const inferredDatasetsPerSection = inferHydraulicProfileDatasetCount(
+    series.length,
+    summaryRows.length,
   )
-  const datasetsPerSection = eventNames.length + 1
+  const requestedConfiguration = options.datasetConfiguration
+  const structureSource = requestedConfiguration
+    ? 'configured' as const
+    : inferredDatasetsPerSection != null
+      ? 'summary' as const
+      : 'unresolved' as const
+  const datasetsPerSection = requestedConfiguration?.datasetsPerSection
+    ?? inferredDatasetsPerSection
+    ?? 0
   const warnings: string[] = []
-  if (eventNames.length === 0) {
+  if (datasetsPerSection < 1) {
     return {
       sections: [],
-      warnings: ['Add at least one WSE event before reviewing the profile.'],
+      warnings: series.length > 0
+        ? ['Enter how many datasets were pasted for each cross section.']
+        : [],
+      seriesCount: series.length,
       datasetsPerSection,
-      eventNames,
-      mapping: null,
+      inferredDatasetsPerSection,
+      structureSource,
+      configuration: null,
     }
+  }
+  const fallbackConfiguration = createHydraulicProfileDatasetConfiguration(datasetsPerSection)
+  const configuration = requestedConfiguration && validConfiguration(requestedConfiguration)
+    ? requestedConfiguration
+    : fallbackConfiguration
+  if (requestedConfiguration && configuration !== requestedConfiguration) {
+    warnings.push('The saved dataset definitions were invalid, so blank definitions were restored.')
   }
   if (series.length % datasetsPerSection !== 0) {
     warnings.push(
-      `The profile paste contains ${series.length} datasets, which is not divisible by ${datasetsPerSection} datasets per section. Check the event list and paste.`,
+      `The profile paste contains ${series.length} series, which is not divisible by ${datasetsPerSection} datasets per section. Check the dataset count and paste.`,
     )
   }
   const sectionCount = Math.floor(series.length / datasetsPerSection)
-  const suggestedMapping = suggestHydraulicProfileDatasetMapping(
-    series,
-    eventNames.length,
-  )
-  const requestedMapping = options.datasetMapping ?? suggestedMapping
-  const mapping = requestedMapping && isValidMapping(requestedMapping, datasetsPerSection)
-    ? requestedMapping
-    : suggestedMapping
-  if (options.datasetMapping && mapping !== options.datasetMapping) {
-    warnings.push('The saved profile dataset mapping was invalid, so a new mapping was suggested.')
-  }
   const sections: HydraulicProfileSection[] = []
   for (let sourceIndex = 0; sourceIndex < sectionCount; sourceIndex += 1) {
     const group = series.slice(
       sourceIndex * datasetsPerSection,
       (sourceIndex + 1) * datasetsPerSection,
     )
-    if (!mapping) continue
-    const groundIndex = mapping.groundSlot
-    const ground = group[groundIndex]
-    const surfaces = mapping.surfaceSlots.map((slot, index) =>
-      line(group[slot], eventNames[index] ?? `Event ${index + 1}`, 'wse'),
-    )
+    const lines = configuration.definitions
+      .slice()
+      .sort((a, b) => a.slot - b.slot)
+      .map((definition) => line(group[definition.slot], definition))
+    const grounds = lines.filter(({ kind }) => kind === 'ground')
+    const surfaces = lines.filter(({ kind }) => kind === 'wse')
+    const otherLines = lines.filter(({ kind }) => kind === 'other')
+    const stationReferenceLine = configuration.stationReferenceSlot == null
+      ? null
+      : lines.find(({ datasetSlot }) => datasetSlot === configuration.stationReferenceSlot) ?? null
+    const primaryGround = stationReferenceLine?.kind === 'ground'
+      ? stationReferenceLine
+      : grounds[0] ?? null
+    const thalwegLine = stationReferenceLine ?? primaryGround ?? lines[0]
     sections.push({
       id: `profile-section-${sourceIndex + 1}`,
       sourceIndex,
       station: null,
       stationLabel: `Section ${sourceIndex + 1}`,
       summaryZMinimum: null,
-      thalweg: minimum(ground),
-      groundSourceIndex: groundIndex,
+      thalweg: minimum(thalwegLine),
       sourceSeries: group,
-      ground: line(ground, groundLabel(options.conditionLabel), 'ground'),
+      lines,
+      grounds,
       surfaces,
+      otherLines,
+      primaryGround,
+      stationReferenceLine,
     })
   }
   assignStations(sections, summaryRows, warnings)
@@ -181,5 +226,13 @@ export function buildHydraulicProfileDataset(
     if (b.station != null) return 1
     return a.sourceIndex - b.sourceIndex
   })
-  return { sections, warnings, datasetsPerSection, eventNames, mapping }
+  return {
+    sections,
+    warnings,
+    seriesCount: series.length,
+    datasetsPerSection,
+    inferredDatasetsPerSection,
+    structureSource,
+    configuration,
+  }
 }

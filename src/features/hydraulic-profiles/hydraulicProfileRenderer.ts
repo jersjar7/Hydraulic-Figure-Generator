@@ -7,6 +7,7 @@ import type {
   HydraulicProfileFigureSettings,
   HydraulicProfileLineStyle,
 } from './hydraulicProfileSettings'
+import { hydraulicProfileLineStyle } from './hydraulicProfileSettings'
 
 export const HYDRAULIC_PROFILE_FRAMES = {
   landscape: { width: 1500, height: 900 },
@@ -158,10 +159,9 @@ function drawLegend(
   plot: PlotFrame,
 ) {
   const entries = [
-    { name: scene.section.ground.name, style: settings.groundStyle },
-    ...scene.section.surfaces.map((surface, index) => ({
-      name: surface.name,
-      style: settings.surfaceStyles[index % settings.surfaceStyles.length],
+    ...scene.section.lines.map((line) => ({
+      name: line.name,
+      style: hydraulicProfileLineStyle(settings, line.datasetSlot),
     })),
   ]
   const fontSize = Math.max(14, settings.fontSize - 2)
@@ -210,7 +210,7 @@ export function renderHydraulicProfileDocument(
     width: canvas.width - (portrait ? 165 : 200),
     height: canvas.height - (portrait ? 315 : 255),
   }
-  const lines = [scene.section.ground, ...scene.section.surfaces]
+  const lines = scene.section.lines
   const points = lines.flatMap(linePoints)
   const rawXMinimum = Math.min(...points.map((point) => point.distance))
   const rawXMaximum = Math.max(...points.map((point) => point.distance))
@@ -265,18 +265,39 @@ export function renderHydraulicProfileDocument(
   context.lineWidth = 1.5
   context.strokeRect(plot.left, plot.top, plot.width, plot.height)
 
-  if (settings.showEarthFill) drawEarthFill(context, scene.section.ground, x, y, plot.top + plot.height)
-  if (settings.showInundation) drawInundation(context, scene.section.ground, scene.section.surfaces[0], x, y)
-  drawLine(context, scene.section.ground, x, y, settings.groundStyle)
-  scene.section.surfaces.forEach((surface, index) =>
-    drawLine(context, surface, x, y, settings.surfaceStyles[index % settings.surfaceStyles.length]),
-  )
+  const earthFillGround = scene.section.grounds.find(
+    ({ datasetSlot }) => datasetSlot === settings.earthFillGroundSlot,
+  ) ?? scene.section.primaryGround
+  const inundationGround = scene.section.grounds.find(
+    ({ datasetSlot }) => datasetSlot === settings.inundationGroundSlot,
+  ) ?? earthFillGround
+  const inundationSurface = scene.section.surfaces.find(
+    ({ datasetSlot }) => datasetSlot === settings.inundationSurfaceSlot,
+  ) ?? scene.section.surfaces[0]
+  if (settings.showEarthFill && earthFillGround) {
+    drawEarthFill(context, earthFillGround, x, y, plot.top + plot.height)
+  }
+  if (settings.showInundation && inundationGround) {
+    drawInundation(context, inundationGround, inundationSurface, x, y)
+  }
+  const drawOrder = [
+    ...scene.section.grounds,
+    ...scene.section.otherLines,
+    ...scene.section.surfaces,
+  ]
+  drawOrder.forEach((profileLine) => drawLine(
+    context,
+    profileLine,
+    x,
+    y,
+    hydraulicProfileLineStyle(settings, profileLine.datasetSlot),
+  ))
 
-  if (settings.showThalweg) {
-    const groundPoints = linePoints(scene.section.ground)
+  if (settings.showThalweg && earthFillGround && linePoints(earthFillGround).length > 0) {
+    const groundPoints = linePoints(earthFillGround)
     const thalweg = groundPoints.reduce((best, point) => point.elevation < best.elevation ? point : best)
     context.save()
-    context.fillStyle = settings.groundStyle.color
+    context.fillStyle = hydraulicProfileLineStyle(settings, earthFillGround.datasetSlot).color
     context.beginPath()
     context.arc(x(thalweg.distance), y(thalweg.elevation), 5, 0, Math.PI * 2)
     context.fill()

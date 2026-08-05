@@ -11,14 +11,24 @@ export type SmsProfileSeries = {
   elevations: Array<number | null>
 }
 
+export type HydraulicProfileLineKind = 'ground' | 'wse' | 'other'
+
 export type HydraulicProfileLine = SmsProfileSeries & {
+  datasetSlot: number
   name: string
-  kind: 'ground' | 'wse'
+  kind: HydraulicProfileLineKind
 }
 
-export type HydraulicProfileDatasetMapping = {
-  groundSlot: number
-  surfaceSlots: number[]
+export type HydraulicProfileDatasetDefinition = {
+  slot: number
+  name: string
+  kind: HydraulicProfileLineKind
+}
+
+export type HydraulicProfileDatasetConfiguration = {
+  datasetsPerSection: number
+  definitions: HydraulicProfileDatasetDefinition[]
+  stationReferenceSlot: number | null
 }
 
 export type HydraulicProfileSection = {
@@ -28,18 +38,23 @@ export type HydraulicProfileSection = {
   stationLabel: string
   summaryZMinimum: number | null
   thalweg: number
-  groundSourceIndex: number
   sourceSeries: SmsProfileSeries[]
-  ground: HydraulicProfileLine
+  lines: HydraulicProfileLine[]
+  grounds: HydraulicProfileLine[]
   surfaces: HydraulicProfileLine[]
+  otherLines: HydraulicProfileLine[]
+  primaryGround: HydraulicProfileLine | null
+  stationReferenceLine: HydraulicProfileLine | null
 }
 
 export type HydraulicProfileDataset = {
   sections: HydraulicProfileSection[]
   warnings: string[]
+  seriesCount: number
   datasetsPerSection: number
-  eventNames: string[]
-  mapping: HydraulicProfileDatasetMapping | null
+  inferredDatasetsPerSection: number | null
+  structureSource: 'configured' | 'summary' | 'unresolved'
+  configuration: HydraulicProfileDatasetConfiguration | null
 }
 
 export type HydraulicProfileScene = {

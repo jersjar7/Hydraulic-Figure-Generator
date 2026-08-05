@@ -16,7 +16,7 @@ import {
   parseSmsSummaryTable,
 } from '../../core/hydraulic-profiles/smsClipboard'
 import type {
-  HydraulicProfileDatasetMapping,
+  HydraulicProfileDatasetConfiguration,
   HydraulicProfileScene,
   IngestNotice,
 } from '../../core/types'
@@ -33,15 +33,12 @@ import { createDefaultHydraulicProfileSettings } from './hydraulicProfileSetting
 import { HYDRAULIC_PROFILE_WORKSPACE_SETTINGS } from './hydraulicProfileSettingsSections'
 import { useHydraulicProfileProjectFiles } from './useHydraulicProfileProjectFiles'
 
-const DEFAULT_EVENTS = ['2-year', '100-year', '500-year', '2080 100-year']
-
 export function HydraulicProfilesWorkspace() {
   const { reportAssembly } = useHydraulicProjectWorkspace()
   const [conditionLabel, setConditionLabel] = useState('Proposed Conditions')
-  const [eventNames, setEventNames] = useState(DEFAULT_EVENTS)
   const [summaryText, setSummaryText] = useState('')
   const [profileText, setProfileText] = useState('')
-  const [datasetMapping, setDatasetMapping] = useState<HydraulicProfileDatasetMapping | null>(null)
+  const [datasetConfiguration, setDatasetConfiguration] = useState<HydraulicProfileDatasetConfiguration | null>(null)
   const [selectedSectionId, setSelectedSectionId] = useState('')
   const [settings, setSettings] = useState(createDefaultHydraulicProfileSettings)
   const [scene, setScene] = useState<HydraulicProfileScene | null>(null)
@@ -58,8 +55,8 @@ export function HydraulicProfilesWorkspace() {
   const dataset = useMemo(() => buildHydraulicProfileDataset(
     parsedProfile.value,
     parsedSummary.value,
-    { conditionLabel, eventNames, datasetMapping },
-  ), [conditionLabel, datasetMapping, eventNames, parsedProfile.value, parsedSummary.value])
+    { datasetConfiguration },
+  ), [datasetConfiguration, parsedProfile.value, parsedSummary.value])
   const selectedSection = dataset.sections.find((section) => section.id === selectedSectionId) ?? null
   const ready = Boolean(selectedSection)
 
@@ -114,11 +111,10 @@ export function HydraulicProfilesWorkspace() {
   const projectFiles = useHydraulicProfileProjectFiles({
     snapshot: {
       conditionLabel,
-      eventNames,
       summaryText,
       profileText,
       selectedSectionId,
-      datasetMapping,
+      datasetConfiguration,
       settings,
     },
     appendNotices,
@@ -131,11 +127,10 @@ export function HydraulicProfilesWorkspace() {
     const payload = await projectFiles.loadProjectFile(file)
     if (!payload) return
     setConditionLabel(payload.conditionLabel)
-    setEventNames(payload.eventNames)
     setSummaryText(payload.summaryText)
     setProfileText(payload.profileText)
     setSelectedSectionId(payload.selectedSectionId)
-    setDatasetMapping(payload.datasetMapping)
+    setDatasetConfiguration(payload.datasetConfiguration)
     setSettings(payload.settings)
     setScene(null)
     appendNotices([{ level: 'success', text: 'Hydraulic profile project loaded.' }])
@@ -143,10 +138,9 @@ export function HydraulicProfilesWorkspace() {
 
   const reset = () => {
     setConditionLabel('Proposed Conditions')
-    setEventNames(DEFAULT_EVENTS)
     setSummaryText('')
     setProfileText('')
-    setDatasetMapping(null)
+    setDatasetConfiguration(null)
     setSelectedSectionId('')
     setSettings(createDefaultHydraulicProfileSettings())
     setScene(null)
@@ -182,20 +176,15 @@ export function HydraulicProfilesWorkspace() {
           mobileOpen={leftOpen}
           collapsed={leftCollapsed}
           conditionLabel={conditionLabel}
-          eventNames={eventNames}
           summaryText={summaryText}
           profileText={profileText}
           dataset={dataset}
           selectedSectionId={selectedSectionId}
           onConditionLabelChange={setConditionLabel}
-          onEventNamesChange={(names) => {
-            if (names.length !== eventNames.length) setDatasetMapping(null)
-            setEventNames(names)
-          }}
           onSummaryTextChange={setSummaryText}
-          onProfileTextChange={(text) => { setProfileText(text); setDatasetMapping(null) }}
+          onProfileTextChange={setProfileText}
           onSelectedSectionChange={setSelectedSectionId}
-          onDatasetMappingChange={setDatasetMapping}
+          onDatasetConfigurationChange={setDatasetConfiguration}
           onCollapse={() => setLeftCollapsed(true)}
           onExpand={() => setLeftCollapsed(false)}
           onMobileClose={() => setLeftOpen(false)}
@@ -209,9 +198,9 @@ export function HydraulicProfilesWorkspace() {
           settings={settings}
           profileSection={selectedSection}
           canDownload={Boolean(scene)}
-          eventNames={eventNames}
+          datasetConfiguration={dataset.configuration}
           onSettingsChange={setSettings}
-          onEventNamesChange={setEventNames}
+          onDatasetConfigurationChange={setDatasetConfiguration}
           onAddToExport={addToExport}
           onDownload={() => { if (scene) downloadHydraulicProfilePng(scene, settings) }}
         />

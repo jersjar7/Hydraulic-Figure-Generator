@@ -106,6 +106,55 @@
   font-size: 10px;
 }
 
+.profile-structure-status {
+  padding: 8px 9px;
+  color: #52677d;
+  background: #f4f7fa;
+  border: 1px solid #d4dde6;
+  border-radius: 5px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.profile-structure-status.summary {
+  color: #176349;
+  background: #edf8f4;
+  border-color: #b8ddcf;
+}
+
+.profile-definition-list {
+  display: grid;
+  gap: 6px;
+}
+
+.profile-definition-row {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr) 72px;
+  gap: 5px;
+  align-items: center;
+  padding: 6px;
+  background: #f7f9fb;
+  border: 1px solid #d4dde6;
+  border-radius: 5px;
+}
+
+.profile-definition-row > span {
+  color: #294058;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.profile-definition-row input,
+.profile-definition-row select {
+  min-width: 0;
+}
+
+.profile-definition-row small {
+  grid-column: 2 / 4;
+  color: #748397;
+  font-size: 9px;
+}
+
 .profile-mapping-list {
   display: grid;
   gap: 4px;

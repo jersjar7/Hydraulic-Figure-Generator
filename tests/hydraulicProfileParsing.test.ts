@@ -36,65 +36,118 @@ describe('SMS hydraulic profile parsing', () => {
     ])
   })
 
-  it('suggests one dataset mapping and applies it consistently across stations', () => {
+  it('infers the datasets-per-section block size independently from line semantics', () => {
+    const pairs = parseSmsProfileValues(profile).value
+    const rows = parseSmsSummaryTable(summary).value
+    const dataset = buildHydraulicProfileDataset(pairs, rows, {})
+    assert.equal(dataset.sections.length, 2)
+    assert.equal(dataset.datasetsPerSection, 4)
+    assert.equal(dataset.inferredDatasetsPerSection, 4)
+    assert.equal(dataset.structureSource, 'summary')
+    assert.deepEqual(
+      dataset.configuration?.definitions.map(({ name, kind }) => [name, kind]),
+      [
+        ['Dataset 1', 'other'],
+        ['Dataset 2', 'other'],
+        ['Dataset 3', 'other'],
+        ['Dataset 4', 'other'],
+      ],
+    )
+    assert.deepEqual(
+      dataset.sections.map((section) => section.stationLabel),
+      ['Section 1', 'Section 2'],
+    )
+    assert.match(dataset.warnings[0], /station matching/)
+  })
+
+  it('applies engineer-defined names and roles consistently across stations', () => {
     const pairs = parseSmsProfileValues(profile).value
     const rows = parseSmsSummaryTable(summary).value
     const dataset = buildHydraulicProfileDataset(pairs, rows, {
-      conditionLabel: 'Proposed Conditions',
-      eventNames: ['2-year', '100-year', '500-year'],
+      datasetConfiguration: {
+        datasetsPerSection: 4,
+        stationReferenceSlot: 0,
+        definitions: [
+          { slot: 0, name: 'Existing Ground', kind: 'ground' },
+          { slot: 1, name: 'Proposed Ground', kind: 'ground' },
+          { slot: 2, name: '2080 100-year', kind: 'wse' },
+          { slot: 3, name: '500-year', kind: 'wse' },
+        ],
+      },
     })
-    assert.equal(dataset.sections.length, 2)
     assert.deepEqual(
       dataset.sections.map((section) => section.stationLabel),
       ['10+47', '12+72'],
     )
-    assert.equal(dataset.sections[0].ground.name, 'Proposed Ground')
+    assert.equal(dataset.sections[0].primaryGround?.name, 'Existing Ground')
     assert.equal(dataset.sections[0].thalweg, 54.78)
+    assert.deepEqual(dataset.sections[0].grounds.map(({ name }) => name), [
+      'Existing Ground',
+      'Proposed Ground',
+    ])
     assert.deepEqual(
       dataset.sections[0].surfaces.map((surface) => surface.name),
-      ['2-year', '100-year', '500-year'],
+      ['2080 100-year', '500-year'],
     )
     assert.deepEqual(
       dataset.sections[0].surfaces.map((surface) => surface.elevations[0]),
-      [56, 58, 60],
+      [56, 58],
     )
-    assert.deepEqual(dataset.mapping, {
-      groundSlot: 0,
-      surfaceSlots: [2, 3, 1],
-    })
     assert.deepEqual(
       dataset.sections[1].surfaces.map((surface) => surface.sourceIndex),
-      [6, 7, 5],
+      [6, 7],
     )
   })
 
-  it('reports mismatched event counts and honors a reviewed global mapping', () => {
+  it('reports a configured block size that does not divide the paste', () => {
     const pairs = parseSmsProfileValues(profile).value.slice(0, 7)
     const rows = parseSmsSummaryTable(summary).value
     const mismatched = buildHydraulicProfileDataset(pairs, rows, {
-      conditionLabel: 'Existing',
-      eventNames: ['2-year', '100-year', '500-year'],
-      datasetMapping: { groundSlot: 2, surfaceSlots: [0, 1, 3] },
+      datasetConfiguration: {
+        datasetsPerSection: 4,
+        stationReferenceSlot: 2,
+        definitions: [
+          { slot: 0, name: 'Line 1', kind: 'wse' },
+          { slot: 1, name: 'Line 2', kind: 'wse' },
+          { slot: 2, name: 'Ground', kind: 'ground' },
+          { slot: 3, name: 'Line 4', kind: 'other' },
+        ],
+      },
     })
     assert.match(mismatched.warnings[0], /not divisible/)
-    assert.equal(mismatched.sections[0].groundSourceIndex, 2)
+    assert.equal(mismatched.sections[0].stationReferenceLine?.datasetSlot, 2)
   })
 
-  it('keeps explicit event identities even when their elevation order crosses', () => {
-    const pairs = parseSmsProfileValues(profile).value
-    const rows = parseSmsSummaryTable(summary).value
-    const dataset = buildHydraulicProfileDataset(pairs, rows, {
-      conditionLabel: 'Proposed',
-      eventNames: ['2080 100-year', '500-year', '2-year'],
-      datasetMapping: { groundSlot: 0, surfaceSlots: [1, 3, 2] },
+  it('recognizes the reported 40-series paste as ten sections with four datasets', () => {
+    const minima = [38.33, 59.41, 60.54, 61.49, 63.08, 64.04, 25.61, 30.08, 24.74, 34.66]
+    const pairs = minima.flatMap((groundMinimum, sectionIndex) => [
+      { id: `wse-a-${sectionIndex}`, sourceIndex: sectionIndex * 4, distances: [0, 10], elevations: [groundMinimum + 2, groundMinimum + 2] },
+      { id: `ground-${sectionIndex}`, sourceIndex: sectionIndex * 4 + 1, distances: [0, 10], elevations: [groundMinimum + 3, groundMinimum] },
+      { id: `wse-b-${sectionIndex}`, sourceIndex: sectionIndex * 4 + 2, distances: [0, 10], elevations: [groundMinimum + 1, groundMinimum + 1] },
+      { id: `wse-c-${sectionIndex}`, sourceIndex: sectionIndex * 4 + 3, distances: [0, 10], elevations: [groundMinimum + 1.5, groundMinimum + 1.5] },
+    ])
+    const rows = [...minima].sort((a, b) => a - b).map((zMinimum, index) => ({
+      reach: 'Site2',
+      station: index * 100,
+      zMinimum,
+    }))
+    const detected = buildHydraulicProfileDataset(pairs, rows, {})
+    assert.equal(detected.datasetsPerSection, 4)
+    assert.equal(detected.sections.length, 10)
+
+    const reviewed = buildHydraulicProfileDataset(pairs, rows, {
+      datasetConfiguration: {
+        datasetsPerSection: 4,
+        stationReferenceSlot: 1,
+        definitions: [
+          { slot: 0, name: '2-year', kind: 'wse' },
+          { slot: 1, name: 'Existing Ground', kind: 'ground' },
+          { slot: 2, name: '100-year', kind: 'wse' },
+          { slot: 3, name: '500-year', kind: 'wse' },
+        ],
+      },
     })
-    assert.deepEqual(
-      dataset.sections[0].surfaces.map((surface) => [surface.name, surface.sourceIndex]),
-      [['2080 100-year', 1], ['500-year', 3], ['2-year', 2]],
-    )
-    assert.deepEqual(
-      dataset.sections[1].surfaces.map((surface) => [surface.name, surface.sourceIndex]),
-      [['2080 100-year', 5], ['500-year', 7], ['2-year', 6]],
-    )
+    assert.equal(reviewed.sections.length, 10)
+    assert.ok(reviewed.sections.every((section) => section.summaryZMinimum === section.thalweg))
   })
 })

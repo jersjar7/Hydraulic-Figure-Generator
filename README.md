@@ -18,6 +18,12 @@ The application currently provides three independently registered workspaces:
   and results into a bounded preview queue for batch review. Its Document view
   assembles included figures into ordered, captioned Letter pages, previews
   portrait or landscape output, and exports a client-side Word document.
+- **Hydraulic Profiles & Sections** converts SMS Summary Table and Profile
+  Values clipboard exports into report-ready cross sections. It detects the
+  datasets-per-section block size independently from line meaning, then lets
+  the engineer classify and name any number of Ground, WSE, and Other lines,
+  select the station-matching reference, and choose ground/WSE relationships
+  for earth fill and inundation shading.
 
 The FRA WSE Difference workspace:
 

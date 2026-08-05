@@ -94,10 +94,15 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
   await expect(page.getByLabel('Profile station')).toHaveValue(
     'profile-section-1',
   )
-  await expect(page.getByLabel('Ground dataset')).toHaveValue('0')
-  await expect(page.getByLabel('Legend name 4')).toHaveValue('2080 100-year')
-  await page.getByLabel('Legend name 4').fill('Future 100-year')
-  await expect(page.getByLabel('Dataset for Future 100-year')).toHaveValue('3')
+  await expect(page.getByLabel('Dataset 5 type')).toBeVisible()
+  await page.getByLabel('Dataset 1 legend name').fill('Proposed Ground')
+  await page.getByLabel('Dataset 1 type').selectOption('ground')
+  for (const [index, name] of ['2-year', '100-year', '500-year', 'Future 100-year'].entries()) {
+    await page.getByLabel(`Dataset ${index + 2} legend name`).fill(name)
+    await page.getByLabel(`Dataset ${index + 2} type`).selectOption('wse')
+  }
+  await page.getByLabel('Station reference dataset').selectOption('0')
+  await expect(page.getByLabel('Profile station')).toContainText('10+47')
 
   await page.getByTestId('generate-hydraulic-profile').click()
   const canvas = page.getByLabel('Generated SMS hydraulic profile')

@@ -27,13 +27,20 @@ const scene: HydraulicProfileScene = {
     stationLabel: '10+47',
     summaryZMinimum: 52,
     thalweg: 52,
-    groundSourceIndex: 0,
     sourceSeries: [ground, low, high],
-    ground: { ...ground, name: 'Proposed Ground', kind: 'ground' },
-    surfaces: [
-      { ...low, name: '2-year', kind: 'wse' },
-      { ...high, name: '100-year', kind: 'wse' },
+    lines: [
+      { ...ground, datasetSlot: 0, name: 'Proposed Ground', kind: 'ground' },
+      { ...low, datasetSlot: 1, name: '2-year', kind: 'wse' },
+      { ...high, datasetSlot: 2, name: '100-year', kind: 'wse' },
     ],
+    grounds: [{ ...ground, datasetSlot: 0, name: 'Proposed Ground', kind: 'ground' }],
+    surfaces: [
+      { ...low, datasetSlot: 1, name: '2-year', kind: 'wse' },
+      { ...high, datasetSlot: 2, name: '100-year', kind: 'wse' },
+    ],
+    otherLines: [],
+    primaryGround: { ...ground, datasetSlot: 0, name: 'Proposed Ground', kind: 'ground' },
+    stationReferenceLine: { ...ground, datasetSlot: 0, name: 'Proposed Ground', kind: 'ground' },
   },
 }
 

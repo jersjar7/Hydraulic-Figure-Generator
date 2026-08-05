@@ -1,12 +1,19 @@
 import { Download, Images } from 'lucide-react'
 import { ControlSection } from '../../components/ControlSection'
 import { CompactFieldGrid } from '../../components/settings/CompactFieldGrid'
-import type { HydraulicProfileSection } from '../../core/types'
+import type {
+  HydraulicProfileDatasetConfiguration,
+  HydraulicProfileSection,
+} from '../../core/types'
 import { Toggle } from '../wse-difference/components/Toggle'
 import type { HydraulicProfileSettingsSectionKey } from './hydraulicProfileDefinition'
 import type {
   HydraulicProfileFigureSettings,
   HydraulicProfileLineStyle,
+} from './hydraulicProfileSettings'
+import {
+  defaultHydraulicProfileLineStyle,
+  hydraulicProfileLineStyle,
 } from './hydraulicProfileSettings'
 
 type Props = {
@@ -14,9 +21,9 @@ type Props = {
   settings: HydraulicProfileFigureSettings
   profileSection: HydraulicProfileSection | null
   canDownload: boolean
-  eventNames: string[]
+  datasetConfiguration: HydraulicProfileDatasetConfiguration | null
   onSettingsChange(update: (settings: HydraulicProfileFigureSettings) => HydraulicProfileFigureSettings): void
-  onEventNamesChange(names: string[]): void
+  onDatasetConfigurationChange(configuration: HydraulicProfileDatasetConfiguration): void
   onAddToExport(): void
   onDownload(): void
 }
@@ -50,14 +57,35 @@ export function HydraulicProfileSettingsPanel({
   settings,
   profileSection,
   canDownload,
-  eventNames,
+  datasetConfiguration,
   onSettingsChange,
-  onEventNamesChange,
+  onDatasetConfigurationChange,
   onAddToExport,
   onDownload,
 }: Props) {
   const update = <Key extends keyof HydraulicProfileFigureSettings>(key: Key, value: HydraulicProfileFigureSettings[Key]) =>
     onSettingsChange((current) => ({ ...current, [key]: value }))
+  const updateLineStyle = (slot: number, style: HydraulicProfileLineStyle) => {
+    onSettingsChange((current) => {
+      const lineStyles = [...current.lineStyles]
+      while (lineStyles.length <= slot) {
+        lineStyles.push(defaultHydraulicProfileLineStyle(lineStyles.length))
+      }
+      lineStyles[slot] = style
+      return { ...current, lineStyles }
+    })
+  }
+  const updateLineName = (slot: number, name: string) => {
+    if (!datasetConfiguration) return
+    onDatasetConfigurationChange({
+      ...datasetConfiguration,
+      definitions: datasetConfiguration.definitions.map((definition) =>
+        definition.slot === slot ? { ...definition, name } : definition,
+      ),
+    })
+  }
+  const grounds = profileSection?.grounds ?? []
+  const surfaces = profileSection?.surfaces ?? []
 
   return (
     <ControlSection>
@@ -69,16 +97,21 @@ export function HydraulicProfileSettingsPanel({
           </div>
           <Field label="Looking direction"><select value={settings.lookingDirection} onChange={(event) => update('lookingDirection', event.currentTarget.value as 'downstream' | 'upstream')}><option value="downstream">Downstream</option><option value="upstream">Upstream</option></select></Field>
           <Toggle label="Earth fill" checked={settings.showEarthFill} onChange={(value) => update('showEarthFill', value)} />
-          <Toggle label="Inundation shading (first WSE)" checked={settings.showInundation} onChange={(value) => update('showInundation', value)} />
+          {settings.showEarthFill && grounds.length > 1 ? <Field label="Earth-fill ground"><select value={settings.earthFillGroundSlot ?? grounds[0].datasetSlot} onChange={(event) => update('earthFillGroundSlot', Number(event.currentTarget.value))}>{grounds.map((line) => <option value={line.datasetSlot} key={line.id}>{line.name}</option>)}</select></Field> : null}
+          <Toggle label="Inundation shading" checked={settings.showInundation} onChange={(value) => update('showInundation', value)} />
+          {settings.showInundation && grounds.length > 1 ? <Field label="Shading ground"><select value={settings.inundationGroundSlot ?? grounds[0].datasetSlot} onChange={(event) => update('inundationGroundSlot', Number(event.currentTarget.value))}>{grounds.map((line) => <option value={line.datasetSlot} key={line.id}>{line.name}</option>)}</select></Field> : null}
+          {settings.showInundation && surfaces.length > 1 ? <Field label="Shading WSE"><select value={settings.inundationSurfaceSlot ?? surfaces[0].datasetSlot} onChange={(event) => update('inundationSurfaceSlot', Number(event.currentTarget.value))}>{surfaces.map((line) => <option value={line.datasetSlot} key={line.id}>{line.name}</option>)}</select></Field> : null}
           <Toggle label="Legend" checked={settings.showLegend} onChange={(value) => update('showLegend', value)} />
           <Toggle label="Thalweg label" checked={settings.showThalweg} onChange={(value) => update('showThalweg', value)} />
         </> : null}
         {section === 'lines' ? <>
-          <LineStyleEditor label={profileSection?.ground.name ?? 'Ground'} style={settings.groundStyle} onChange={(groundStyle) => update('groundStyle', groundStyle)} />
-          {(profileSection?.surfaces ?? []).map((surface, index) => {
-            const style = settings.surfaceStyles[index % settings.surfaceStyles.length]
-            return <LineStyleEditor label={surface.name} style={style} key={surface.id} onLabelChange={(label) => onEventNamesChange(eventNames.map((name, itemIndex) => itemIndex === index ? label : name))} onChange={(nextStyle) => update('surfaceStyles', settings.surfaceStyles.map((item, itemIndex) => itemIndex === index ? nextStyle : item))} />
-          })}
+          {(profileSection?.lines ?? []).map((line) => <LineStyleEditor
+            label={line.name}
+            style={hydraulicProfileLineStyle(settings, line.datasetSlot)}
+            key={line.id}
+            onLabelChange={(label) => updateLineName(line.datasetSlot, label)}
+            onChange={(style) => updateLineStyle(line.datasetSlot, style)}
+          />)}
           {!profileSection ? <div className="profile-empty-review">Select a parsed station to style its lines.</div> : null}
         </> : null}
         {section === 'axes' ? <>

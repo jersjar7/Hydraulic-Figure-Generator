@@ -1,23 +1,23 @@
 import {
-  ArrowDown,
-  ArrowUp,
   CheckSquare,
   ClipboardPaste,
   ListPlus,
   PanelLeftClose,
   PanelLeftOpen,
-  Plus,
   RotateCcw,
   Settings2,
   Table2,
-  Trash2,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
 import type {
   HydraulicProfileDataset,
-  HydraulicProfileDatasetMapping,
+  HydraulicProfileDatasetConfiguration,
+  HydraulicProfileLineKind,
 } from '../../core/types'
+import {
+  resizeHydraulicProfileDatasetConfiguration,
+} from '../../core/hydraulic-profiles/buildHydraulicProfileDataset'
 
 type InputSection = 'scenario' | 'summary' | 'profile' | 'review'
 
@@ -25,17 +25,15 @@ type Props = {
   mobileOpen: boolean
   collapsed: boolean
   conditionLabel: string
-  eventNames: string[]
   summaryText: string
   profileText: string
   dataset: HydraulicProfileDataset
   selectedSectionId: string
   onConditionLabelChange(value: string): void
-  onEventNamesChange(value: string[]): void
   onSummaryTextChange(value: string): void
   onProfileTextChange(value: string): void
   onSelectedSectionChange(id: string): void
-  onDatasetMappingChange(mapping: HydraulicProfileDatasetMapping): void
+  onDatasetConfigurationChange(configuration: HydraulicProfileDatasetConfiguration | null): void
   onCollapse(): void
   onExpand(): void
   onMobileClose(): void
@@ -58,17 +56,15 @@ export function HydraulicProfileInputPanel({
   mobileOpen,
   collapsed,
   conditionLabel,
-  eventNames,
   summaryText,
   profileText,
   dataset,
   selectedSectionId,
   onConditionLabelChange,
-  onEventNamesChange,
   onSummaryTextChange,
   onProfileTextChange,
   onSelectedSectionChange,
-  onDatasetMappingChange,
+  onDatasetConfigurationChange,
   onCollapse,
   onExpand,
   onMobileClose,
@@ -77,13 +73,17 @@ export function HydraulicProfileInputPanel({
   const [active, setActive] = useState<InputSection>('scenario')
   const selected = dataset.sections.find((section) => section.id === selectedSectionId) ?? null
 
-  const assignDataset = (roleIndex: number, nextSlot: number) => {
-    if (!dataset.mapping) return
-    const slots = [dataset.mapping.groundSlot, ...dataset.mapping.surfaceSlots]
-    const previousRole = slots.indexOf(nextSlot)
-    if (previousRole < 0 || previousRole === roleIndex) return
-    ;[slots[roleIndex], slots[previousRole]] = [slots[previousRole], slots[roleIndex]]
-    onDatasetMappingChange({ groundSlot: slots[0], surfaceSlots: slots.slice(1) })
+  const updateDefinition = (
+    slot: number,
+    update: Partial<{ name: string; kind: HydraulicProfileLineKind }>,
+  ) => {
+    if (!dataset.configuration) return
+    onDatasetConfigurationChange({
+      ...dataset.configuration,
+      definitions: dataset.configuration.definitions.map((definition) =>
+        definition.slot === slot ? { ...definition, ...update } : definition,
+      ),
+    })
   }
 
   if (collapsed) {
@@ -101,14 +101,6 @@ export function HydraulicProfileInputPanel({
         </nav>
       </aside>
     )
-  }
-
-  const moveEvent = (index: number, delta: number) => {
-    const target = index + delta
-    if (target < 0 || target >= eventNames.length) return
-    const next = [...eventNames]
-    ;[next[index], next[target]] = [next[target], next[index]]
-    onEventNamesChange(next)
   }
 
   return (
@@ -131,17 +123,17 @@ export function HydraulicProfileInputPanel({
         {active === 'scenario' ? (
           <div className="profile-input-stack">
             <label className="field"><span>Condition label</span><input aria-label="Condition label" value={conditionLabel} onChange={(event) => onConditionLabelChange(event.currentTarget.value)} /></label>
-            <div className="profile-input-header"><strong>WSE events</strong><button className="button secondary compact" type="button" onClick={() => onEventNamesChange([...eventNames, `Event ${eventNames.length + 1}`])}><Plus size={14} /> Add</button></div>
-            <div className="profile-event-list">
-              {eventNames.map((name, index) => (
-                <div className="profile-event-row" key={`${index}-${name}`}>
-                  <span>{index + 1}</span>
-                  <input aria-label={`WSE event ${index + 1}`} value={name} onChange={(event) => onEventNamesChange(eventNames.map((item, itemIndex) => itemIndex === index ? event.currentTarget.value : item))} />
-                  <button className="icon-button" type="button" title="Move event up" aria-label={`Move event ${index + 1} up`} disabled={index === 0} onClick={() => moveEvent(index, -1)}><ArrowUp size={14} /></button>
-                  <button className="icon-button" type="button" title="Move event down" aria-label={`Move event ${index + 1} down`} disabled={index === eventNames.length - 1} onClick={() => moveEvent(index, 1)}><ArrowDown size={14} /></button>
-                  <button className="icon-button danger" type="button" title="Remove event" aria-label={`Remove event ${index + 1}`} disabled={eventNames.length === 1} onClick={() => onEventNamesChange(eventNames.filter((_, itemIndex) => itemIndex !== index))}><Trash2 size={14} /></button>
-                </div>
-              ))}
+            <div className="profile-input-header"><strong>Dataset structure</strong>{dataset.structureSource === 'configured' ? <button className="button ghost compact" type="button" onClick={() => onDatasetConfigurationChange(null)}>Use auto</button> : null}</div>
+            <label className="field"><span>Datasets per cross section</span><input aria-label="Datasets per cross section" type="number" min="1" max="30" placeholder="Auto" value={dataset.datasetsPerSection || ''} onChange={(event) => {
+              const count = Math.max(1, Math.floor(Number(event.currentTarget.value) || 1))
+              onDatasetConfigurationChange(resizeHydraulicProfileDatasetConfiguration(dataset.configuration, count))
+            }} /></label>
+            <div className={`profile-structure-status ${dataset.structureSource}`}>
+              {dataset.structureSource === 'summary'
+                ? `Detected ${dataset.datasetsPerSection} datasets per section from ${dataset.seriesCount} profile series and ${dataset.sections.length} Summary Table stations.`
+                : dataset.structureSource === 'configured'
+                  ? `Using the engineer-specified block size of ${dataset.datasetsPerSection} datasets per section.`
+                  : 'Paste a Summary Table and Profile Values, or enter the dataset count.'}
             </div>
           </div>
         ) : null}
@@ -154,31 +146,26 @@ export function HydraulicProfileInputPanel({
         {active === 'profile' ? (
           <div className="profile-input-stack">
             <label className="field"><span>SMS Profile Values</span><textarea className="profile-paste large" aria-label="SMS Profile Values" spellCheck={false} value={profileText} onChange={(event) => onProfileTextChange(event.currentTarget.value)} /></label>
-            <div className="profile-parse-status"><ListPlus size={16} /><span>{dataset.sections.length} cross sections detected</span></div>
+            <div className="profile-parse-status"><ListPlus size={16} /><span>{dataset.seriesCount} series parsed · {dataset.sections.length} cross sections detected</span></div>
           </div>
         ) : null}
         {active === 'review' ? (
           <div className="profile-input-stack">
             <label className="field"><span>Station</span><select aria-label="Profile station" value={selectedSectionId} onChange={(event) => onSelectedSectionChange(event.currentTarget.value)}><option value="">Choose a station</option>{dataset.sections.map((section) => <option value={section.id} key={section.id}>{section.stationLabel}</option>)}</select></label>
-            {selected ? <>
-              <div className="profile-input-header"><strong>Dataset mapping</strong><small>Applies to every station</small></div>
-              <div className="profile-mapping-editor">
-                <label>
-                  <span>Ground</span>
-                  <select aria-label="Ground dataset" value={dataset.mapping?.groundSlot ?? 0} onChange={(event) => assignDataset(0, Number(event.currentTarget.value))}>
-                    {selected.sourceSeries.map((series, slot) => <option value={slot} key={series.id}>Dataset {series.sourceIndex + 1} (min {seriesMinimum(series.elevations)} ft)</option>)}
-                  </select>
-                </label>
-                {eventNames.map((name, index) => (
-                  <div className="profile-mapping-row" key={`mapping-${index}`}>
-                    <input aria-label={`Legend name ${index + 1}`} value={name} onChange={(event) => onEventNamesChange(eventNames.map((item, itemIndex) => itemIndex === index ? event.currentTarget.value : item))} />
-                    <select aria-label={`Dataset for ${name}`} value={dataset.mapping?.surfaceSlots[index] ?? index + 1} onChange={(event) => assignDataset(index + 1, Number(event.currentTarget.value))}>
-                      {selected.sourceSeries.map((series, slot) => <option value={slot} key={series.id}>Dataset {series.sourceIndex + 1}</option>)}
-                    </select>
+            {selected && dataset.configuration ? <>
+              <div className="profile-input-header"><strong>Dataset definitions</strong><small>Apply to every station</small></div>
+              <label className="field"><span>Match stations using</span><select aria-label="Station reference dataset" value={dataset.configuration.stationReferenceSlot ?? ''} onChange={(event) => onDatasetConfigurationChange({ ...dataset.configuration!, stationReferenceSlot: event.currentTarget.value === '' ? null : Number(event.currentTarget.value) })}><option value="">Choose a dataset</option>{dataset.configuration.definitions.map((definition) => <option value={definition.slot} key={definition.slot}>{definition.name} (min {seriesMinimum(selected.sourceSeries[definition.slot]?.elevations ?? [])} ft)</option>)}</select></label>
+              <div className="profile-definition-list">
+                {dataset.configuration.definitions.map((definition) => (
+                  <div className="profile-definition-row" key={definition.slot}>
+                    <span>Dataset {definition.slot + 1}</span>
+                    <input aria-label={`Dataset ${definition.slot + 1} legend name`} value={definition.name} onChange={(event) => updateDefinition(definition.slot, { name: event.currentTarget.value })} />
+                    <select aria-label={`Dataset ${definition.slot + 1} type`} value={definition.kind} onChange={(event) => updateDefinition(definition.slot, { kind: event.currentTarget.value as HydraulicProfileLineKind })}><option value="ground">Ground</option><option value="wse">WSE</option><option value="other">Other</option></select>
+                    <small>Min {seriesMinimum(selected.sourceSeries[definition.slot]?.elevations ?? [])} ft</small>
                   </div>
                 ))}
               </div>
-            </> : <div className="profile-empty-review">Paste profile values to review the detected lines.</div>}
+            </> : <div className="profile-empty-review">Paste profile values and define the datasets per section to review the lines.</div>}
           </div>
         ) : null}
       </div>
