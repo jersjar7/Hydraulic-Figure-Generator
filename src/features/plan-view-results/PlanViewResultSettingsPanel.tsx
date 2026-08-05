@@ -1,4 +1,4 @@
-import { Download, FileJson } from 'lucide-react'
+import { Download, FileJson, Images } from 'lucide-react'
 import type { ComponentProps } from 'react'
 import { ControlSection } from '../../components/ControlSection'
 import { FigureElementsPanel } from '../../components/FigureElementsPanel'
@@ -35,6 +35,7 @@ type Props = {
   ): void
   onResultParameterChange(paramName: string): void
   onActiveElementChange(element: FigureElementPanelKey): void
+  onAddToExport(): void
   onDownload(): void
 }
 
@@ -236,6 +237,7 @@ export function PlanViewResultSettingsPanel(props: Props) {
     onSettingsChange,
     onResultParameterChange,
     onActiveElementChange,
+    onAddToExport,
     onDownload,
   } = props
   const selectedOutput = resultOptions.find(
@@ -329,6 +331,15 @@ export function PlanViewResultSettingsPanel(props: Props) {
           and must be re-added.
         </span>
       </div>
+      <button
+        className="button primary full"
+        type="button"
+        disabled={!canDownload}
+        onClick={onAddToExport}
+      >
+        <Images size={17} aria-hidden="true" />
+        Add to export
+      </button>
       <button
         className="button secondary full"
         type="button"

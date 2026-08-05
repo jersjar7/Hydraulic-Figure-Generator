@@ -31,6 +31,7 @@ import {
   type CrossSectionSettingsSectionKey,
 } from './crossSectionDefinition'
 import { crossSectionFigure } from './crossSectionFigure'
+import { createCrossSectionReportFigure } from './crossSectionReportAdapter'
 import { CrossSectionCanvas } from './CrossSectionCanvas'
 import { CrossSectionSettingsPanel } from './CrossSectionSettingsPanel'
 import {
@@ -43,7 +44,7 @@ import { CROSS_SECTION_WORKSPACE_SETTINGS } from './crossSectionSettingsSections
 import { downloadCrossSectionPng } from './exportCrossSection'
 
 export function CrossSectionWorkspace() {
-  const { projectSession, projectDocument } = useHydraulicProjectWorkspace()
+  const { projectSession, projectDocument, reportAssembly } = useHydraulicProjectWorkspace()
   const {
     engine,
     scenarios,
@@ -327,6 +328,12 @@ export function CrossSectionWorkspace() {
     downloadCrossSectionPng(chartScene, settings)
   }
 
+  const addToExport = () => {
+    if (!chartScene || !canvasRef.current) return
+    const figure = reportAssembly.addFigure(createCrossSectionReportFigure(canvasRef.current, chartScene, baselineLabel, comparisonLabel))
+    appendNotices([{ level: 'success', text: `${figure.title} was added to the Export Collection.` }])
+  }
+
   const resetProject = () => {
     projectSession.reset()
     projectDocument.resetDocument()
@@ -469,6 +476,7 @@ export function CrossSectionWorkspace() {
           }}
           onClearLine={selection.clearSelectedLine}
           onShowMap={() => selection.setView('map')}
+          onAddToExport={addToExport}
           onDownload={downloadChart}
         />
       }

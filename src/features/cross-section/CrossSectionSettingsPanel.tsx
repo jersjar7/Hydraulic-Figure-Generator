@@ -2,6 +2,7 @@ import {
   ArrowLeftRight,
   Download,
   Eye,
+  Images,
   Map,
   MousePointer2,
   Trash2,
@@ -36,6 +37,7 @@ type Props = {
   onFlipViewSide(): void
   onClearLine(): void
   onShowMap(): void
+  onAddToExport(): void
   onDownload(): void
 }
 
@@ -111,6 +113,7 @@ export function CrossSectionSettingsPanel({
   onFlipViewSide,
   onClearLine,
   onShowMap,
+  onAddToExport,
   onDownload,
 }: Props) {
   const update = <Key extends keyof CrossSectionFigureSettings>(
@@ -371,6 +374,15 @@ export function CrossSectionSettingsPanel({
         <div className="cross-settings-stack">
           <button
             className="button primary full"
+            type="button"
+            disabled={!canDownload}
+            onClick={onAddToExport}
+          >
+            <Images size={17} aria-hidden="true" />
+            Add to export
+          </button>
+          <button
+            className="button secondary full"
             type="button"
             disabled={!canDownload}
             onClick={onDownload}

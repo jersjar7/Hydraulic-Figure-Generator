@@ -42,6 +42,7 @@ export type WseSettingsSectionContext = {
   annotations: ComponentProps<typeof AnnotationSettingsPanel>
   export: {
     canDownload: boolean
+    onAddToExport: () => void
     onDownload: () => void | Promise<void>
   }
 }

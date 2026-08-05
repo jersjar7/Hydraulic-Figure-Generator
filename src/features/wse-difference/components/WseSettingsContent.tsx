@@ -40,6 +40,7 @@ type Props = {
   onCenterlineDirectionChange(direction: CenterlineDirection): void
   onStartStationChange(station: number): void
   onDryDepthChange(dryDepth: number): void
+  onAddToExport(): void
   onDownload(): void | Promise<void>
 }
 
@@ -65,6 +66,7 @@ export function WseSettingsContent({
   onCenterlineDirectionChange,
   onStartStationChange,
   onDryDepthChange,
+  onAddToExport,
   onDownload,
 }: Props) {
   const context: WseSettingsSectionContext = {
@@ -120,6 +122,7 @@ export function WseSettingsContent({
     },
     export: {
       canDownload: sceneReady,
+      onAddToExport,
       onDownload,
     },
   }

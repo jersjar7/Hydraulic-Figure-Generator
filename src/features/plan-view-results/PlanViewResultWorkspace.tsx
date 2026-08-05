@@ -17,6 +17,7 @@ import type {
   PlanViewResultSettings,
 } from '../../core/types'
 import { FigurePicker } from '../figures/FigurePicker'
+import { createCanvasReportFigure } from '../figures/canvasReportFigure'
 import {
   FigureProductionModeSwitcher,
   type FigureProductionMode,
@@ -60,7 +61,7 @@ type WorkspaceSettingsSectionKey =
   | PlanViewFigureDocumentSettingsSectionKey
 
 export function PlanViewResultWorkspace() {
-  const { projectSession, projectDocument } = useHydraulicProjectWorkspace()
+  const { projectSession, projectDocument, reportAssembly } = useHydraulicProjectWorkspace()
   const { engine, scenarios, baselineId, runByScenario } = projectSession
   const { overlays, setOverlays, loadDocument, resetDocument } = projectDocument
   const runIndex = runByScenario[baselineId] ?? 0
@@ -336,6 +337,19 @@ export function PlanViewResultWorkspace() {
     })
   }
 
+  const addToExport = () => {
+    if (!scene || !canvasRef.current) return
+    const title = `${scene.condition.label} - ${scene.result.label}`
+    const run = scene.selection ? ` for ${scene.selection.run.name}` : ''
+    reportAssembly.addFigure(createCanvasReportFigure(canvasRef.current, {
+      workspaceId: planViewResultFigure.id,
+      workspaceLabel: planViewResultFigure.label,
+      title,
+      caption: `${scene.result.label}${run}, ${scene.condition.label}.`,
+    }))
+    appendNotices([{ level: 'success', text: `${title} was added to the Export Collection.` }])
+  }
+
   return (
     <FigureWorkspaceScaffold<WorkspaceSettingsSectionKey>
       figureLabel={productionMode === 'figure'
@@ -438,6 +452,7 @@ export function PlanViewResultWorkspace() {
             onSettingsChange={updateSettings}
             onResultParameterChange={changeResult}
             onActiveElementChange={setActiveElement}
+            onAddToExport={addToExport}
             onDownload={download}
           />
         ) : productionMode === 'set' ? (

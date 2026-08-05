@@ -12,6 +12,7 @@ import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { createHydraulicProjectInputActions } from '../project-workspace/hydraulicProjectInputActions'
 import { FigurePicker } from '../figures/FigurePicker'
+import { createCanvasReportFigure } from '../figures/canvasReportFigure'
 import { useAssessmentMapLayers } from './useAssessmentMapLayers'
 import { wseDifferenceFigure } from './wseDifferenceFigure'
 import type {
@@ -39,7 +40,7 @@ import { createWseStationingSourceActions } from './wseStationingSourceActions'
 const ACTIVE_FIGURE = wseDifferenceFigure
 
 export function WseDifferenceWorkspace() {
-  const { projectSession, projectDocument } = useHydraulicProjectWorkspace()
+  const { projectSession, projectDocument, reportAssembly } = useHydraulicProjectWorkspace()
   const figureDocument = useWseFigureDocument()
   const editorUi = useWseEditorUi()
   const {
@@ -323,6 +324,17 @@ export function WseDifferenceWorkspace() {
     setBusy,
     appendNotices,
   })
+  const addToExport = () => {
+    if (!scene || !canvasRef.current) return
+    const title = `WSE Difference - ${scene.existing.condition.label} vs ${scene.proposed.condition.label}`
+    reportAssembly.addFigure(createCanvasReportFigure(canvasRef.current, {
+      workspaceId: ACTIVE_FIGURE.id,
+      workspaceLabel: ACTIVE_FIGURE.label,
+      title,
+      caption: `${title}, ${scene.proposed.run.name} minus ${scene.existing.run.name}.`,
+    }))
+    appendNotices([{ level: 'success', text: `${title} was added to the Export Collection.` }])
+  }
 
   const persistence = createWseProjectPersistenceController({
     projectSession,
@@ -456,6 +468,7 @@ export function WseDifferenceWorkspace() {
             setScene(null)
             assessmentWorkflow.clear(settings.assessmentLineInterval)
           }}
+          onAddToExport={addToExport}
           onDownload={downloadMap}
         />
       }
