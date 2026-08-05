@@ -8,6 +8,16 @@ import { REPORT_ASSEMBLY_WORKSPACE_ID } from '../report-assembly/reportAssemblyW
 export function FigurePicker() {
   const { activeFigureId, setActiveFigureId, reportAssembly } =
     useHydraulicProjectWorkspace()
+  const options = [
+    ...FIGURE_WORKSPACES.map((workspace) => ({
+      id: workspace.id,
+      label: workspace.figure.label,
+    })),
+    {
+      id: REPORT_ASSEMBLY_WORKSPACE_ID,
+      label: `Export Collection (${reportAssembly.figureCount})`,
+    },
+  ].sort((left, right) => left.label.localeCompare(right.label))
   return (
     <label className="figure-picker">
       <span className="visually-hidden">Workspace</span>
@@ -18,14 +28,11 @@ export function FigurePicker() {
           setActiveFigureId(event.currentTarget.value as AppWorkspaceId)
         }
       >
-        {FIGURE_WORKSPACES.map((workspace) => (
-          <option value={workspace.id} key={workspace.id}>
-            {workspace.figure.label}
+        {options.map((option) => (
+          <option value={option.id} key={option.id}>
+            {option.label}
           </option>
         ))}
-        <option value={REPORT_ASSEMBLY_WORKSPACE_ID}>
-          Export Collection ({reportAssembly.figureCount})
-        </option>
       </select>
     </label>
   )

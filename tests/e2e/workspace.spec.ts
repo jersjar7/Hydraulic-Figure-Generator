@@ -26,6 +26,13 @@ test('shared figure workspace exposes scalable project and settings navigation',
 }) => {
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto('.')
+  await expect(page.getByLabel('Workspace', { exact: true }).locator('option')).toHaveText([
+    'Cross-Section Comparison',
+    'Export Collection (0)',
+    'Hydraulic Profiles & Sections',
+    'Plan-View Hydraulic Results',
+    'WSE Difference',
+  ])
 
   await expect(
     page.getByRole('heading', { name: 'Hydraulic Figure Generator' }),
