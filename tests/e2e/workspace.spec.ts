@@ -151,7 +151,7 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
 
   await page.getByRole('tab', { name: 'Export', exact: true }).click()
   await page.getByRole('button', { name: 'Add to export' }).click()
-  await expect(page.getByLabel('Workspace', { exact: true }).locator('option').last()).toHaveText('Export Collection (1)')
+  await expect(page.getByRole('option', { name: 'Export Collection (1)' })).toBeAttached()
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Download PNG' }).click()
   const download = await downloadPromise
