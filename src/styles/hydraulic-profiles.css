@@ -199,6 +199,87 @@
   font-size: 9px;
 }
 
+.profile-reference-suggestion {
+  display: grid;
+  gap: 6px;
+  padding: 7px;
+  color: #744b0c;
+  background: #fff8e8;
+  border: 1px solid #e8c77f;
+  border-radius: 5px;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.profile-reference-suggestion .button {
+  justify-content: center;
+}
+
+.profile-station-navigator {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  right: 10px;
+  left: 10px;
+  height: 38px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto 30px;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 5px;
+  background: rgba(249, 251, 252, 0.96);
+  border: 1px solid #bdc9d4;
+  border-radius: 6px;
+  box-shadow: 0 1px 5px rgba(25, 44, 66, 0.1);
+}
+
+.profile-station-navigator .icon-button {
+  width: 30px;
+  height: 30px;
+}
+
+.profile-station-tabs {
+  min-width: 0;
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.profile-station-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.profile-station-tabs button {
+  min-width: 54px;
+  height: 28px;
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  color: #38516a;
+  background: #ffffff;
+  border: 1px solid #cbd5df;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.profile-station-tabs button.active {
+  color: #ffffff;
+  background: #1769aa;
+  border-color: #1769aa;
+}
+
+.profile-station-count {
+  color: #64788d;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.map-canvas-frame.profile-canvas-with-stations {
+  top: 54px;
+}
+
 .profile-mapping-list {
   display: grid;
   gap: 4px;

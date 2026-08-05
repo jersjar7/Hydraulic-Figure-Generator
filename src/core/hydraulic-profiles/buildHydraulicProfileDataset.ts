@@ -8,6 +8,7 @@ import type {
   SmsSummaryRow,
 } from '../contracts/hydraulicProfile'
 import { formatHydraulicStation } from './smsClipboard'
+import { analyzeHydraulicProfileStationReferences } from './analyzeStationReferences'
 
 type BuildOptions = {
   datasetConfiguration?: HydraulicProfileDatasetConfiguration | null
@@ -105,7 +106,7 @@ function assignStations(
   const rankedRows = [...summaryRows].sort((a, b) => a.station - b.station)
   const referenceSections = sections.filter((section) => section.stationReferenceLine)
   if (referenceSections.length === 0) {
-    warnings.push('Choose the dataset used for station matching before assigning Summary Table stations.')
+    warnings.push('Choose the ground dataset used to assign Summary Table station labels.')
     return
   }
   if (referenceSections.length !== rankedRows.length) {
@@ -180,6 +181,25 @@ export function buildHydraulicProfileDataset(
   if (series.length % datasetsPerSection !== 0) {
     warnings.push(
       `The profile paste contains ${series.length} series, which is not divisible by ${datasetsPerSection} datasets per section. Check the dataset count and paste.`,
+    )
+  }
+  const referenceScores = analyzeHydraulicProfileStationReferences(
+    series,
+    summaryRows,
+    datasetsPerSection,
+  )
+  const selectedReferenceScore = referenceScores.find(
+    ({ slot }) => slot === configuration.stationReferenceSlot,
+  )
+  const bestReferenceScore = referenceScores[0]
+  if (
+    selectedReferenceScore
+    && bestReferenceScore
+    && selectedReferenceScore.slot !== bestReferenceScore.slot
+    && bestReferenceScore.meanAbsoluteDifference + 0.25 < selectedReferenceScore.meanAbsoluteDifference
+  ) {
+    warnings.push(
+      `Dataset ${bestReferenceScore.slot + 1} is the closest Summary Z-min match (average difference ${bestReferenceScore.meanAbsoluteDifference.toFixed(2)} ft); the selected ground used for station assignment, Dataset ${selectedReferenceScore.slot + 1}, averages ${selectedReferenceScore.meanAbsoluteDifference.toFixed(2)} ft. Review the ground assignment.`,
     )
   }
   const sectionCount = Math.floor(series.length / datasetsPerSection)

@@ -25,6 +25,8 @@ type Props = {
   onSettingsChange(update: (settings: HydraulicProfileFigureSettings) => HydraulicProfileFigureSettings): void
   onDatasetConfigurationChange(configuration: HydraulicProfileDatasetConfiguration): void
   onAddToExport(): void
+  generatedCount: number
+  onAddAllToExport(): void
   onDownload(): void
 }
 
@@ -61,6 +63,8 @@ export function HydraulicProfileSettingsPanel({
   onSettingsChange,
   onDatasetConfigurationChange,
   onAddToExport,
+  generatedCount,
+  onAddAllToExport,
   onDownload,
 }: Props) {
   const update = <Key extends keyof HydraulicProfileFigureSettings>(key: Key, value: HydraulicProfileFigureSettings[Key]) =>
@@ -86,6 +90,7 @@ export function HydraulicProfileSettingsPanel({
   }
   const grounds = profileSection?.grounds ?? []
   const surfaces = profileSection?.surfaces ?? []
+  const primaryGroundSlot = profileSection?.primaryGround?.datasetSlot ?? grounds[0]?.datasetSlot ?? null
 
   return (
     <ControlSection>
@@ -97,11 +102,11 @@ export function HydraulicProfileSettingsPanel({
           </div>
           <Field label="Looking direction"><select value={settings.lookingDirection} onChange={(event) => update('lookingDirection', event.currentTarget.value as 'downstream' | 'upstream')}><option value="downstream">Downstream</option><option value="upstream">Upstream</option></select></Field>
           <Field label="WSE extent"><select value={settings.clipWseAtGround ? 'clip' : 'raw'} onChange={(event) => update('clipWseAtGround', event.currentTarget.value === 'clip')}><option value="clip">Clip at ground</option><option value="raw">Raw SMS</option></select></Field>
-          {settings.clipWseAtGround && grounds.length > 1 ? <Field label="WSE clipping ground"><select value={settings.wseClippingGroundSlot ?? grounds[0].datasetSlot} onChange={(event) => update('wseClippingGroundSlot', Number(event.currentTarget.value))}>{grounds.map((line) => <option value={line.datasetSlot} key={line.id}>{line.name}</option>)}</select></Field> : null}
+          {settings.clipWseAtGround && grounds.length > 1 ? <Field label="WSE clipping ground"><select value={settings.wseClippingGroundSlot ?? primaryGroundSlot ?? ''} onChange={(event) => update('wseClippingGroundSlot', Number(event.currentTarget.value))}>{grounds.map((line) => <option value={line.datasetSlot} key={line.id}>{line.name}</option>)}</select></Field> : null}
           <Toggle label="Earth fill" checked={settings.showEarthFill} onChange={(value) => update('showEarthFill', value)} />
-          {settings.showEarthFill && grounds.length > 1 ? <Field label="Earth-fill ground"><select value={settings.earthFillGroundSlot ?? grounds[0].datasetSlot} onChange={(event) => update('earthFillGroundSlot', Number(event.currentTarget.value))}>{grounds.map((line) => <option value={line.datasetSlot} key={line.id}>{line.name}</option>)}</select></Field> : null}
+          {settings.showEarthFill && grounds.length > 1 ? <Field label="Earth-fill ground"><select value={settings.earthFillGroundSlot ?? primaryGroundSlot ?? ''} onChange={(event) => update('earthFillGroundSlot', Number(event.currentTarget.value))}>{grounds.map((line) => <option value={line.datasetSlot} key={line.id}>{line.name}</option>)}</select></Field> : null}
           <Toggle label="Inundation shading" checked={settings.showInundation} onChange={(value) => update('showInundation', value)} />
-          {settings.showInundation && grounds.length > 1 ? <Field label="Shading ground"><select value={settings.inundationGroundSlot ?? grounds[0].datasetSlot} onChange={(event) => update('inundationGroundSlot', Number(event.currentTarget.value))}>{grounds.map((line) => <option value={line.datasetSlot} key={line.id}>{line.name}</option>)}</select></Field> : null}
+          {settings.showInundation && grounds.length > 1 ? <Field label="Shading ground"><select value={settings.inundationGroundSlot ?? primaryGroundSlot ?? ''} onChange={(event) => update('inundationGroundSlot', Number(event.currentTarget.value))}>{grounds.map((line) => <option value={line.datasetSlot} key={line.id}>{line.name}</option>)}</select></Field> : null}
           {settings.showInundation && surfaces.length > 1 ? <Field label="Shading WSE"><select value={settings.inundationSurfaceSlot ?? surfaces[0].datasetSlot} onChange={(event) => update('inundationSurfaceSlot', Number(event.currentTarget.value))}>{surfaces.map((line) => <option value={line.datasetSlot} key={line.id}>{line.name}</option>)}</select></Field> : null}
           <Toggle label="Legend" checked={settings.showLegend} onChange={(value) => update('showLegend', value)} />
           <Toggle label="Thalweg label" checked={settings.showThalweg} onChange={(value) => update('showThalweg', value)} />
@@ -128,7 +133,8 @@ export function HydraulicProfileSettingsPanel({
           </CompactFieldGrid>
         </> : null}
         {section === 'export' ? <>
-          <button className="button primary full" type="button" disabled={!canDownload} onClick={onAddToExport}><Images size={17} /> Add to export</button>
+          {generatedCount > 1 ? <button className="button primary full" type="button" disabled={!canDownload} onClick={onAddAllToExport}><Images size={17} /> Add all {generatedCount} stations to export</button> : null}
+          <button className={`button ${generatedCount > 1 ? 'secondary' : 'primary'} full`} type="button" disabled={!canDownload} onClick={onAddToExport}><Images size={17} /> Add current station to export</button>
           <button className="button secondary full" type="button" disabled={!canDownload} onClick={onDownload}><Download size={17} /> Download PNG</button>
         </> : null}
       </div>

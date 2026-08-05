@@ -57,6 +57,8 @@ function Panel() {
     onSettingsChange={setSettings}
     onDatasetConfigurationChange={vi.fn()}
     onAddToExport={vi.fn()}
+    generatedCount={2}
+    onAddAllToExport={vi.fn()}
     onDownload={vi.fn()}
   />
 }

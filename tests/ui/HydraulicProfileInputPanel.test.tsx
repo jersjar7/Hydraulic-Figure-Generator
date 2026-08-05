@@ -31,6 +31,7 @@ describe('HydraulicProfileInputPanel', () => {
         summaryText="summary"
         profileText="profile"
         dataset={dataset}
+        summaryRows={[{ reach: 'Site2', station: 44, zMinimum: 25 }]}
         selectedSectionId="profile-section-1"
         onConditionLabelChange={onConditionLabelChange}
         onSummaryTextChange={vi.fn()}
@@ -82,6 +83,7 @@ describe('HydraulicProfileInputPanel', () => {
         summaryText="summary"
         profileText="profile"
         dataset={dataset}
+        summaryRows={[{ reach: 'Site2', station: 44, zMinimum: 28 }]}
         selectedSectionId="profile-section-1"
         onConditionLabelChange={vi.fn()}
         onSummaryTextChange={vi.fn()}
@@ -100,6 +102,50 @@ describe('HydraulicProfileInputPanel', () => {
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Dataset 2 type' }), 'ground')
     expect(onDatasetConfigurationChange).toHaveBeenLastCalledWith(expect.objectContaining({
+      definitions: expect.arrayContaining([
+        expect.objectContaining({ slot: 1, kind: 'ground' }),
+      ]),
+    }))
+  })
+
+  it('offers the best Summary Z-min match as an explicit station ground correction', async () => {
+    const user = userEvent.setup()
+    const configuration = createHydraulicProfilePresetConfiguration('existing')
+    const summaryRows = [{ reach: 'Site2', station: 44, zMinimum: 25 }]
+    const dataset = buildHydraulicProfileDataset(series, summaryRows, {
+      datasetConfiguration: configuration,
+    })
+    const onDatasetConfigurationChange = vi.fn()
+    render(
+      <HydraulicProfileInputPanel
+        mobileOpen={false}
+        collapsed={false}
+        conditionLabel="Existing Conditions"
+        summaryText="summary"
+        profileText="profile"
+        dataset={dataset}
+        summaryRows={summaryRows}
+        selectedSectionId="profile-section-1"
+        onConditionLabelChange={vi.fn()}
+        onSummaryTextChange={vi.fn()}
+        onProfileTextChange={vi.fn()}
+        onSelectedSectionChange={vi.fn()}
+        onDatasetConfigurationChange={onDatasetConfigurationChange}
+        onCollapse={vi.fn()}
+        onExpand={vi.fn()}
+        onMobileClose={vi.fn()}
+        onReset={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('tab', { name: 'Review' }))
+    expect(screen.getByLabelText('Ground used to assign station labels')).toHaveTextContent(
+      'Dataset 2: 2-year · avg Z-min difference 0.00 ft',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Use Dataset 2 as ground' }))
+    expect(onDatasetConfigurationChange).toHaveBeenLastCalledWith(expect.objectContaining({
+      stationReferenceSlot: 1,
       definitions: expect.arrayContaining([
         expect.objectContaining({ slot: 1, kind: 'ground' }),
       ]),

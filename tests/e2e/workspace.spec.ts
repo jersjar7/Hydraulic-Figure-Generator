@@ -21,6 +21,19 @@ const PROFILE_VALUES = [
   '5\t40\t58\t40\t57\t40\t56\t40\t60\t40\t59',
 ].join('\n')
 
+const TWO_SECTION_PROFILE_SUMMARY = [
+  'Reach\tStation\tMin',
+  'Site\t100\t20',
+  'Site\t200\t30',
+].join('\n')
+
+const TWO_SECTION_PROFILE_VALUES = [
+  Array.from({ length: 10 }, () => ['Distance', 'Value']).flat().join('\t'),
+  [1, 0, 30, 0, 21, 0, 22, 0, 23, 0, 24, 0, 40, 0, 31, 0, 32, 0, 33, 0, 34].join('\t'),
+  [2, 10, 20, 10, 21, 10, 22, 10, 23, 10, 24, 10, 30, 10, 31, 10, 32, 10, 33, 10, 34].join('\t'),
+  [3, 20, 30, 20, 21, 20, 22, 20, 23, 20, 24, 20, 40, 20, 31, 20, 32, 20, 33, 20, 34].join('\t'),
+].join('\n')
+
 test('shared figure workspace exposes scalable project and settings navigation', async ({
   page,
 }) => {
@@ -88,7 +101,7 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
     'hydraulic-profiles-sections',
   )
   await expect(
-    page.getByRole('button', { name: 'Generate cross section', exact: true }),
+    page.getByRole('button', { name: 'Generate cross sections', exact: true }),
   ).toHaveCount(1)
   await expect(page.getByRole('button', { name: 'Proposed', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByPlaceholder('Auto')).toHaveCount(0)
@@ -111,12 +124,14 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
     await page.getByLabel(`Dataset ${index + 2} legend name`).fill(name)
     await page.getByLabel(`Dataset ${index + 2} type`).selectOption('wse')
   }
-  await page.getByLabel('Station reference dataset').selectOption('0')
+  await page.getByLabel('Ground used to assign station labels').selectOption('0')
   await expect(page.getByLabel('Profile station')).toContainText('10+47')
 
   await page.getByTestId('generate-hydraulic-profile').click()
   const canvas = page.getByLabel('Generated SMS hydraulic profile')
   await expect(canvas).toHaveClass(/is-visible/)
+  await expect(page.getByRole('navigation', { name: 'Generated cross sections' })).toBeVisible()
+  await expect(page.getByText('1 of 1')).toBeVisible()
   const fit = await canvas.evaluate((element) => {
     const chart = element.getBoundingClientRect()
     const frame = element.parentElement!.getBoundingClientRect()
@@ -151,7 +166,7 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
   })).toBeGreaterThan(100)
 
   await page.getByRole('tab', { name: 'Export', exact: true }).click()
-  await page.getByRole('button', { name: 'Add to export' }).click()
+  await page.getByRole('button', { name: 'Add current station to export' }).click()
   await expect(page.getByRole('option', { name: 'Export Collection (1)' })).toBeAttached()
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Download PNG' }).click()
@@ -167,6 +182,31 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
   const wordPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export Word' }).click()
   expect((await wordPromise).suggestedFilename()).toBe('Hydraulic_Figure_Report.docx')
+})
+
+test('one profile generation exposes every detected station and batch export', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto('.')
+  await page.getByLabel('Workspace', { exact: true }).selectOption('hydraulic-profiles-sections')
+
+  await page.getByRole('tab', { name: 'Summary', exact: true }).click()
+  await page.getByLabel('SMS Summary Table').fill(TWO_SECTION_PROFILE_SUMMARY)
+  await page.getByRole('tab', { name: 'Profile', exact: true }).click()
+  await page.getByLabel('SMS Profile Values').fill(TWO_SECTION_PROFILE_VALUES)
+  await expect(page.getByTestId('generate-hydraulic-profile')).toHaveText('Generate 2 cross sections')
+
+  await page.getByTestId('generate-hydraulic-profile').click()
+  await expect(page.getByRole('tab', { name: '1+00' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByText('1 of 2')).toBeVisible()
+
+  await page.getByRole('tab', { name: '2+00' }).click()
+  await expect(page.getByRole('tab', { name: '2+00' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByText('2 of 2')).toBeVisible()
+  await expect(page.getByTestId('generate-hydraulic-profile')).toHaveText('Regenerate 2 cross sections')
+
+  await page.getByRole('tab', { name: 'Export', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Add all 2 stations to export' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Add current station to export' })).toBeVisible()
 })
 
 test('synthetic SMS files upload and render a nonblank figure', async ({

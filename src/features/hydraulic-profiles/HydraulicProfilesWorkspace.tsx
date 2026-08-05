@@ -44,7 +44,7 @@ export function HydraulicProfilesWorkspace() {
   )
   const [selectedSectionId, setSelectedSectionId] = useState('')
   const [settings, setSettings] = useState(createDefaultHydraulicProfileSettings)
-  const [scene, setScene] = useState<HydraulicProfileScene | null>(null)
+  const [scenes, setScenes] = useState<HydraulicProfileScene[]>([])
   const [runtimeNotices, setRuntimeNotices] = useState<IngestNotice[]>([])
   const [leftOpen, setLeftOpen] = useState(false)
   const [leftCollapsed, setLeftCollapsed] = useState(false)
@@ -61,7 +61,11 @@ export function HydraulicProfilesWorkspace() {
     { datasetConfiguration },
   ), [datasetConfiguration, parsedProfile.value, parsedSummary.value])
   const selectedSection = dataset.sections.find((section) => section.id === selectedSectionId) ?? null
-  const ready = Boolean(selectedSection)
+  const scene = scenes.find(({ section }) => section.id === selectedSectionId) ?? scenes[0] ?? null
+  const ready = dataset.sections.length > 0
+  const generationLabel = dataset.sections.length > 0
+    ? `${scenes.length > 0 ? 'Regenerate' : 'Generate'} ${dataset.sections.length} cross section${dataset.sections.length === 1 ? '' : 's'}`
+    : 'Generate cross sections'
 
   useEffect(() => {
     if (!dataset.sections.some((section) => section.id === selectedSectionId)) {
@@ -69,7 +73,7 @@ export function HydraulicProfilesWorkspace() {
     }
   }, [dataset.sections, selectedSectionId])
 
-  useEffect(() => setScene(null), [dataset, selectedSectionId])
+  useEffect(() => setScenes([]), [conditionLabel, dataset])
 
   useEffect(() => {
     if (!scene || !canvasRef.current) return
@@ -92,9 +96,17 @@ export function HydraulicProfilesWorkspace() {
 
   const generate = () => {
     try {
-      const nextScene = hydraulicProfileFigure.buildScene({ conditionLabel, section: selectedSection })
-      setScene(nextScene)
-      appendNotices([{ level: 'success', text: `Generated hydraulic profile at station ${nextScene.section.stationLabel}.` }])
+      const nextScenes = dataset.sections.map((section) =>
+        hydraulicProfileFigure.buildScene({ conditionLabel, section }),
+      )
+      setScenes(nextScenes)
+      if (!nextScenes.some(({ section }) => section.id === selectedSectionId)) {
+        setSelectedSectionId(nextScenes[0]?.section.id ?? '')
+      }
+      appendNotices([{
+        level: 'success',
+        text: `Generated ${nextScenes.length} hydraulic cross section${nextScenes.length === 1 ? '' : 's'}.`,
+      }])
     } catch (error) {
       appendNotices([{ level: 'error', text: error instanceof Error ? error.message : String(error) }])
     }
@@ -108,6 +120,19 @@ export function HydraulicProfilesWorkspace() {
     appendNotices([{
       level: 'success',
       text: `${figure.title} was added to the Export Collection.`,
+    }])
+  }
+
+  const addAllToExport = () => {
+    if (scenes.length === 0) return
+    scenes.forEach((generatedScene) => {
+      reportAssembly.addFigure(
+        createHydraulicProfileReportFigure({ scene: generatedScene, settings }),
+      )
+    })
+    appendNotices([{
+      level: 'success',
+      text: `${scenes.length} hydraulic cross sections were added to the Export Collection.`,
     }])
   }
 
@@ -137,7 +162,7 @@ export function HydraulicProfilesWorkspace() {
       payload.datasetConfiguration ?? createHydraulicProfilePresetConfiguration('proposed'),
     )
     setSettings(payload.settings)
-    setScene(null)
+    setScenes([])
     appendNotices([{ level: 'success', text: 'Hydraulic profile project loaded.' }])
   }
 
@@ -148,7 +173,7 @@ export function HydraulicProfilesWorkspace() {
     setDatasetConfiguration(createHydraulicProfilePresetConfiguration('proposed'))
     setSelectedSectionId('')
     setSettings(createDefaultHydraulicProfileSettings())
-    setScene(null)
+    setScenes([])
     setRuntimeNotices([])
     setLeftCollapsed(false)
   }
@@ -184,6 +209,7 @@ export function HydraulicProfilesWorkspace() {
           summaryText={summaryText}
           profileText={profileText}
           dataset={dataset}
+          summaryRows={parsedSummary.value}
           selectedSectionId={selectedSectionId}
           onConditionLabelChange={setConditionLabel}
           onSummaryTextChange={setSummaryText}
@@ -196,7 +222,7 @@ export function HydraulicProfilesWorkspace() {
           onReset={reset}
         />
       }
-      mapContent={<HydraulicProfileCanvas scene={scene} orientation={settings.orientation} canvasRef={canvasRef} />}
+      mapContent={<HydraulicProfileCanvas scene={scene} scenes={scenes} selectedSectionId={scene?.section.id ?? selectedSectionId} orientation={settings.orientation} canvasRef={canvasRef} onStationSelect={setSelectedSectionId} />}
       settingsContent={
         <HydraulicProfileSettingsPanel
           section={activeSection}
@@ -207,13 +233,15 @@ export function HydraulicProfilesWorkspace() {
           onSettingsChange={setSettings}
           onDatasetConfigurationChange={setDatasetConfiguration}
           onAddToExport={addToExport}
+          generatedCount={scenes.length}
+          onAddAllToExport={addAllToExport}
           onDownload={() => { if (scene) downloadHydraulicProfilePng(scene, settings) }}
         />
       }
       settingsFooter={
         <WorkspaceActionBar
           icon={<LineChart size={18} aria-hidden="true" />}
-          label={scene ? 'Regenerate cross section' : 'Generate cross section'}
+          label={generationLabel}
           disabled={!ready}
           testId="generate-hydraulic-profile"
           hint={!ready ? 'Paste and review one complete SMS profile first' : undefined}

@@ -57,7 +57,7 @@ describe('SMS hydraulic profile parsing', () => {
       dataset.sections.map((section) => section.stationLabel),
       ['Section 1', 'Section 2'],
     )
-    assert.match(dataset.warnings[0], /station matching/)
+    assert.match(dataset.warnings[0], /ground dataset used to assign Summary Table station labels/)
   })
 
   it('applies engineer-defined names and roles consistently across stations', () => {
