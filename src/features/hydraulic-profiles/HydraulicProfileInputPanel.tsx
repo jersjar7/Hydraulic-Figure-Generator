@@ -4,9 +4,11 @@ import {
   ListPlus,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
   RotateCcw,
   Settings2,
   Table2,
+  Trash2,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -18,6 +20,11 @@ import type {
 import {
   resizeHydraulicProfileDatasetConfiguration,
 } from '../../core/hydraulic-profiles/buildHydraulicProfileDataset'
+import {
+  createHydraulicProfilePresetConfiguration,
+  HYDRAULIC_PROFILE_PRESETS,
+  matchesHydraulicProfilePreset,
+} from './hydraulicProfilePresets'
 
 type InputSection = 'scenario' | 'summary' | 'profile' | 'review'
 
@@ -86,6 +93,37 @@ export function HydraulicProfileInputPanel({
     })
   }
 
+  const addDataset = () => {
+    const count = (dataset.configuration?.datasetsPerSection ?? dataset.datasetsPerSection) + 1
+    onDatasetConfigurationChange(
+      resizeHydraulicProfileDatasetConfiguration(dataset.configuration, Math.max(1, count)),
+    )
+  }
+
+  const removeDataset = (slot: number) => {
+    const configuration = dataset.configuration
+    if (!configuration || configuration.datasetsPerSection <= 1) return
+    const definitions = configuration.definitions
+      .filter((definition) => definition.slot !== slot)
+      .map((definition, nextSlot) => ({ ...definition, slot: nextSlot }))
+    const reference = configuration.stationReferenceSlot
+    onDatasetConfigurationChange({
+      datasetsPerSection: definitions.length,
+      definitions,
+      stationReferenceSlot: reference == null || reference === slot
+        ? null
+        : reference > slot
+          ? reference - 1
+          : reference,
+    })
+  }
+
+  const applyPreset = (presetId: 'existing' | 'proposed') => {
+    const preset = HYDRAULIC_PROFILE_PRESETS.find(({ id }) => id === presetId)!
+    onConditionLabelChange(preset.conditionLabel)
+    onDatasetConfigurationChange(createHydraulicProfilePresetConfiguration(presetId))
+  }
+
   if (collapsed) {
     return (
       <aside className="sidebar left-sidebar is-collapsed">
@@ -123,17 +161,40 @@ export function HydraulicProfileInputPanel({
         {active === 'scenario' ? (
           <div className="profile-input-stack">
             <label className="field"><span>Condition label</span><input aria-label="Condition label" value={conditionLabel} onChange={(event) => onConditionLabelChange(event.currentTarget.value)} /></label>
-            <div className="profile-input-header"><strong>Dataset structure</strong>{dataset.structureSource === 'configured' ? <button className="button ghost compact" type="button" onClick={() => onDatasetConfigurationChange(null)}>Use auto</button> : null}</div>
-            <label className="field"><span>Datasets per cross section</span><input aria-label="Datasets per cross section" type="number" min="1" max="30" placeholder="Auto" value={dataset.datasetsPerSection || ''} onChange={(event) => {
-              const count = Math.max(1, Math.floor(Number(event.currentTarget.value) || 1))
-              onDatasetConfigurationChange(resizeHydraulicProfileDatasetConfiguration(dataset.configuration, count))
-            }} /></label>
+            <div className="profile-input-header"><strong>Dataset preset</strong><small>Starting point</small></div>
+            <div className="profile-preset-buttons" role="group" aria-label="Dataset preset">
+              {HYDRAULIC_PROFILE_PRESETS.map((preset) => (
+                <button
+                  className={`button compact${matchesHydraulicProfilePreset(dataset.configuration, preset.id) ? ' active' : ' secondary'}`}
+                  type="button"
+                  aria-pressed={matchesHydraulicProfilePreset(dataset.configuration, preset.id)}
+                  key={preset.id}
+                  onClick={() => applyPreset(preset.id)}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+            <div className="profile-input-header">
+              <strong>Datasets per cross section</strong>
+              <button className="button secondary compact" type="button" onClick={addDataset}><Plus size={14} /> Add dataset</button>
+            </div>
+            <div className="profile-scenario-dataset-list">
+              {dataset.configuration?.definitions.map((definition) => (
+                <div className="profile-scenario-dataset-row" key={definition.slot}>
+                  <span>{definition.slot + 1}</span>
+                  <input aria-label={`Scenario dataset ${definition.slot + 1} legend name`} value={definition.name} onChange={(event) => updateDefinition(definition.slot, { name: event.currentTarget.value })} />
+                  <select aria-label={`Scenario dataset ${definition.slot + 1} type`} value={definition.kind} onChange={(event) => updateDefinition(definition.slot, { kind: event.currentTarget.value as HydraulicProfileLineKind })}><option value="ground">Ground</option><option value="wse">WSE</option><option value="other">Other</option></select>
+                  <button className="icon-button danger" type="button" title="Remove dataset" aria-label={`Remove dataset ${definition.slot + 1}`} disabled={dataset.configuration!.datasetsPerSection <= 1} onClick={() => removeDataset(definition.slot)}><Trash2 size={14} /></button>
+                </div>
+              ))}
+            </div>
             <div className={`profile-structure-status ${dataset.structureSource}`}>
-              {dataset.structureSource === 'summary'
-                ? `Detected ${dataset.datasetsPerSection} datasets per section from ${dataset.seriesCount} profile series and ${dataset.sections.length} Summary Table stations.`
-                : dataset.structureSource === 'configured'
-                  ? `Using the engineer-specified block size of ${dataset.datasetsPerSection} datasets per section.`
-                  : 'Paste a Summary Table and Profile Values, or enter the dataset count.'}
+              {dataset.inferredDatasetsPerSection != null && dataset.inferredDatasetsPerSection !== dataset.datasetsPerSection
+                ? `The pasted data indicates ${dataset.inferredDatasetsPerSection} datasets per section, but ${dataset.datasetsPerSection} are configured. Add or remove datasets to match the paste.`
+                : dataset.seriesCount > 0
+                  ? `${dataset.seriesCount} profile series produce ${dataset.sections.length} cross sections with ${dataset.datasetsPerSection} datasets each.`
+                  : `${dataset.datasetsPerSection} datasets are configured. Paste the Summary Table and Profile Values next.`}
             </div>
           </div>
         ) : null}

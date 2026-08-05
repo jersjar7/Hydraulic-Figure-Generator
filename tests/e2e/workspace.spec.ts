@@ -83,6 +83,8 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
   await expect(
     page.getByRole('button', { name: 'Generate cross section', exact: true }),
   ).toHaveCount(1)
+  await expect(page.getByRole('button', { name: 'Proposed', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByPlaceholder('Auto')).toHaveCount(0)
 
   await page.getByRole('tab', { name: 'Summary', exact: true }).click()
   await page.getByLabel('SMS Summary Table').fill(PROFILE_SUMMARY)

@@ -122,6 +122,50 @@
   border-color: #b8ddcf;
 }
 
+.profile-preset-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.profile-preset-buttons .button {
+  justify-content: center;
+}
+
+.profile-preset-buttons .button.active {
+  color: #ffffff;
+  background: #1769aa;
+  border-color: #1769aa;
+}
+
+.profile-scenario-dataset-list {
+  display: grid;
+  gap: 5px;
+}
+
+.profile-scenario-dataset-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 84px 29px;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-scenario-dataset-row > span {
+  color: #748397;
+  text-align: center;
+  font-size: 10px;
+}
+
+.profile-scenario-dataset-row input,
+.profile-scenario-dataset-row select {
+  min-width: 0;
+}
+
+.profile-scenario-dataset-row .icon-button {
+  width: 29px;
+  height: 29px;
+}
+
 .profile-definition-list {
   display: grid;
   gap: 6px;

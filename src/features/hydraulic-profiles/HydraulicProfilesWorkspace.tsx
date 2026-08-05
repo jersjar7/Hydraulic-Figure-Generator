@@ -30,6 +30,7 @@ import { createHydraulicProfileReportFigure } from './hydraulicProfileReportAdap
 import { HydraulicProfileInputPanel } from './HydraulicProfileInputPanel'
 import { HydraulicProfileSettingsPanel } from './HydraulicProfileSettingsPanel'
 import { createDefaultHydraulicProfileSettings } from './hydraulicProfileSettings'
+import { createHydraulicProfilePresetConfiguration } from './hydraulicProfilePresets'
 import { HYDRAULIC_PROFILE_WORKSPACE_SETTINGS } from './hydraulicProfileSettingsSections'
 import { useHydraulicProfileProjectFiles } from './useHydraulicProfileProjectFiles'
 
@@ -38,7 +39,9 @@ export function HydraulicProfilesWorkspace() {
   const [conditionLabel, setConditionLabel] = useState('Proposed Conditions')
   const [summaryText, setSummaryText] = useState('')
   const [profileText, setProfileText] = useState('')
-  const [datasetConfiguration, setDatasetConfiguration] = useState<HydraulicProfileDatasetConfiguration | null>(null)
+  const [datasetConfiguration, setDatasetConfiguration] = useState<HydraulicProfileDatasetConfiguration | null>(
+    () => createHydraulicProfilePresetConfiguration('proposed'),
+  )
   const [selectedSectionId, setSelectedSectionId] = useState('')
   const [settings, setSettings] = useState(createDefaultHydraulicProfileSettings)
   const [scene, setScene] = useState<HydraulicProfileScene | null>(null)
@@ -130,7 +133,9 @@ export function HydraulicProfilesWorkspace() {
     setSummaryText(payload.summaryText)
     setProfileText(payload.profileText)
     setSelectedSectionId(payload.selectedSectionId)
-    setDatasetConfiguration(payload.datasetConfiguration)
+    setDatasetConfiguration(
+      payload.datasetConfiguration ?? createHydraulicProfilePresetConfiguration('proposed'),
+    )
     setSettings(payload.settings)
     setScene(null)
     appendNotices([{ level: 'success', text: 'Hydraulic profile project loaded.' }])
@@ -140,7 +145,7 @@ export function HydraulicProfilesWorkspace() {
     setConditionLabel('Proposed Conditions')
     setSummaryText('')
     setProfileText('')
-    setDatasetConfiguration(null)
+    setDatasetConfiguration(createHydraulicProfilePresetConfiguration('proposed'))
     setSelectedSectionId('')
     setSettings(createDefaultHydraulicProfileSettings())
     setScene(null)

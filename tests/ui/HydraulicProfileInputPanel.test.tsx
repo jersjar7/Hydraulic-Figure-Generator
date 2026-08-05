@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { buildHydraulicProfileDataset } from '../../src/core/hydraulic-profiles/buildHydraulicProfileDataset'
 import { HydraulicProfileInputPanel } from '../../src/features/hydraulic-profiles/HydraulicProfileInputPanel'
+import { createHydraulicProfilePresetConfiguration } from '../../src/features/hydraulic-profiles/hydraulicProfilePresets'
 
 const series = [
   { id: 'line-1', sourceIndex: 0, distances: [0, 10], elevations: [28, 28] },
@@ -12,19 +13,72 @@ const series = [
 ]
 
 describe('HydraulicProfileInputPanel', () => {
-  it('shows inferred structure, then lets the engineer define every line', async () => {
+  it('applies condition presets and lets the engineer add datasets', async () => {
     const user = userEvent.setup()
+    const configuration = createHydraulicProfilePresetConfiguration('existing')
     const dataset = buildHydraulicProfileDataset(
       series,
       [{ reach: 'Site2', station: 44, zMinimum: 25 }],
-      {},
+      { datasetConfiguration: configuration },
+    )
+    const onDatasetConfigurationChange = vi.fn()
+    const onConditionLabelChange = vi.fn()
+    render(
+      <HydraulicProfileInputPanel
+        mobileOpen={false}
+        collapsed={false}
+        conditionLabel="Proposed"
+        summaryText="summary"
+        profileText="profile"
+        dataset={dataset}
+        selectedSectionId="profile-section-1"
+        onConditionLabelChange={onConditionLabelChange}
+        onSummaryTextChange={vi.fn()}
+        onProfileTextChange={vi.fn()}
+        onSelectedSectionChange={vi.fn()}
+        onDatasetConfigurationChange={onDatasetConfigurationChange}
+        onCollapse={vi.fn()}
+        onExpand={vi.fn()}
+        onMobileClose={vi.fn()}
+        onReset={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByPlaceholderText('Auto')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Existing' })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'Add dataset' }))
+    expect(onDatasetConfigurationChange).toHaveBeenLastCalledWith(expect.objectContaining({
+      datasetsPerSection: 5,
+      definitions: expect.arrayContaining([
+        expect.objectContaining({ slot: 4, name: 'Dataset 5', kind: 'other' }),
+      ]),
+    }))
+
+    await user.click(screen.getByRole('button', { name: 'Proposed' }))
+    expect(onConditionLabelChange).toHaveBeenLastCalledWith('Proposed Conditions')
+    expect(onDatasetConfigurationChange).toHaveBeenLastCalledWith(expect.objectContaining({
+      datasetsPerSection: 5,
+      definitions: expect.arrayContaining([
+        expect.objectContaining({ name: '2080 100-year', kind: 'wse' }),
+      ]),
+    }))
+  })
+
+  it('lets the engineer review and redefine every preset line', async () => {
+    const user = userEvent.setup()
+    const configuration = createHydraulicProfilePresetConfiguration('existing')
+    const dataset = buildHydraulicProfileDataset(
+      series,
+      [{ reach: 'Site2', station: 44, zMinimum: 28 }],
+      { datasetConfiguration: configuration },
     )
     const onDatasetConfigurationChange = vi.fn()
     render(
       <HydraulicProfileInputPanel
         mobileOpen={false}
         collapsed={false}
-        conditionLabel="Proposed"
+        conditionLabel="Existing Conditions"
         summaryText="summary"
         profileText="profile"
         dataset={dataset}
@@ -41,7 +95,6 @@ describe('HydraulicProfileInputPanel', () => {
       />,
     )
 
-    expect(screen.getByText(/Detected 4 datasets per section/)).toBeVisible()
     await user.click(screen.getByRole('tab', { name: 'Review' }))
     expect(screen.getAllByRole('combobox', { name: /Dataset \d type/ })).toHaveLength(4)
 
