@@ -21,10 +21,12 @@ import type {
   IngestNotice,
 } from '../../core/types'
 import { FigurePicker } from '../figures/FigurePicker'
+import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { downloadHydraulicProfilePng } from './exportHydraulicProfile'
 import { HydraulicProfileCanvas } from './HydraulicProfileCanvas'
 import type { HydraulicProfileSettingsSectionKey } from './hydraulicProfileDefinition'
 import { hydraulicProfileFigure } from './hydraulicProfileFigure'
+import { createHydraulicProfileReportFigure } from './hydraulicProfileReportAdapter'
 import { HydraulicProfileInputPanel } from './HydraulicProfileInputPanel'
 import { HydraulicProfileSettingsPanel } from './HydraulicProfileSettingsPanel'
 import { createDefaultHydraulicProfileSettings } from './hydraulicProfileSettings'
@@ -34,6 +36,7 @@ import { useHydraulicProfileProjectFiles } from './useHydraulicProfileProjectFil
 const DEFAULT_EVENTS = ['2-year', '100-year', '500-year', '2080 100-year']
 
 export function HydraulicProfilesWorkspace() {
+  const { reportAssembly } = useHydraulicProjectWorkspace()
   const [conditionLabel, setConditionLabel] = useState('Proposed Conditions')
   const [eventNames, setEventNames] = useState(DEFAULT_EVENTS)
   const [summaryText, setSummaryText] = useState('')
@@ -95,6 +98,17 @@ export function HydraulicProfilesWorkspace() {
     } catch (error) {
       appendNotices([{ level: 'error', text: error instanceof Error ? error.message : String(error) }])
     }
+  }
+
+  const addToExport = () => {
+    if (!scene) return
+    const figure = reportAssembly.addFigure(
+      createHydraulicProfileReportFigure({ scene, settings }),
+    )
+    appendNotices([{
+      level: 'success',
+      text: `${figure.title} was added to the Export Collection.`,
+    }])
   }
 
   const projectFiles = useHydraulicProfileProjectFiles({
@@ -198,6 +212,7 @@ export function HydraulicProfilesWorkspace() {
           eventNames={eventNames}
           onSettingsChange={setSettings}
           onEventNamesChange={setEventNames}
+          onAddToExport={addToExport}
           onDownload={() => { if (scene) downloadHydraulicProfilePng(scene, settings) }}
         />
       }

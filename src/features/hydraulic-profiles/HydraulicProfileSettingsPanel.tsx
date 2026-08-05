@@ -1,4 +1,4 @@
-import { Download } from 'lucide-react'
+import { Download, Images } from 'lucide-react'
 import { ControlSection } from '../../components/ControlSection'
 import { CompactFieldGrid } from '../../components/settings/CompactFieldGrid'
 import type { HydraulicProfileSection } from '../../core/types'
@@ -17,6 +17,7 @@ type Props = {
   eventNames: string[]
   onSettingsChange(update: (settings: HydraulicProfileFigureSettings) => HydraulicProfileFigureSettings): void
   onEventNamesChange(names: string[]): void
+  onAddToExport(): void
   onDownload(): void
 }
 
@@ -52,6 +53,7 @@ export function HydraulicProfileSettingsPanel({
   eventNames,
   onSettingsChange,
   onEventNamesChange,
+  onAddToExport,
   onDownload,
 }: Props) {
   const update = <Key extends keyof HydraulicProfileFigureSettings>(key: Key, value: HydraulicProfileFigureSettings[Key]) =>
@@ -91,6 +93,7 @@ export function HydraulicProfileSettingsPanel({
           </CompactFieldGrid>
         </> : null}
         {section === 'export' ? <>
+          <button className="button primary full" type="button" disabled={!canDownload} onClick={onAddToExport}><Images size={17} /> Add to export</button>
           <button className="button secondary full" type="button" disabled={!canDownload} onClick={onDownload}><Download size={17} /> Download PNG</button>
         </> : null}
       </div>

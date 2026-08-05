@@ -18,6 +18,8 @@ type Props = {
   onCloseMobilePanels(): void
   loadInput?: ReactNode
   figurePicker?: ReactNode
+  workspaceClassName?: string
+  showPanelButtons?: boolean
   children: ReactNode
 }
 
@@ -32,6 +34,8 @@ export function FigureEditorShell({
   onCloseMobilePanels,
   loadInput,
   figurePicker,
+  workspaceClassName = '',
+  showPanelButtons = true,
   children,
 }: Props) {
   return (
@@ -63,7 +67,7 @@ export function FigureEditorShell({
             <FolderOpen size={16} aria-hidden="true" />
             <span>Load</span>
           </button>
-          <button
+          {showPanelButtons ? <button
             className="icon-button mobile-panel-button"
             type="button"
             title="Open project data"
@@ -71,8 +75,8 @@ export function FigureEditorShell({
             onClick={onOpenLeftPanel}
           >
             <PanelLeft size={19} />
-          </button>
-          <button
+          </button> : null}
+          {showPanelButtons ? <button
             className="icon-button mobile-panel-button"
             type="button"
             title="Open figure settings"
@@ -80,13 +84,13 @@ export function FigureEditorShell({
             onClick={onOpenRightPanel}
           >
             <PanelRight size={19} />
-          </button>
+          </button> : null}
           {loadInput}
         </div>
       </header>
 
       <main
-        className={`workspace${inputsCollapsed ? ' inputs-collapsed' : ''}`}
+        className={`workspace${inputsCollapsed ? ' inputs-collapsed' : ''}${workspaceClassName ? ` ${workspaceClassName}` : ''}`}
       >
         {children}
       </main>
