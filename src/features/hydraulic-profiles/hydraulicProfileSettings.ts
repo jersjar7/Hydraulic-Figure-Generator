@@ -18,6 +18,8 @@ export type HydraulicProfileFigureSettings = {
   fontSize: number
   textColor: string
   earthFillGroundSlot: number | null
+  clipWseAtGround: boolean
+  wseClippingGroundSlot: number | null
   inundationGroundSlot: number | null
   inundationSurfaceSlot: number | null
   lineStyles: HydraulicProfileLineStyle[]
@@ -69,6 +71,8 @@ export function createDefaultHydraulicProfileSettings(): HydraulicProfileFigureS
     fontSize: 18,
     textColor: '#263746',
     earthFillGroundSlot: null,
+    clipWseAtGround: true,
+    wseClippingGroundSlot: null,
     inundationGroundSlot: null,
     inundationSurfaceSlot: null,
     lineStyles: LINE_COLORS.map((_, slot) => defaultHydraulicProfileLineStyle(slot)),

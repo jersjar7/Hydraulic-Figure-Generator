@@ -3,6 +3,12 @@ import type {
   HydraulicProfileScene,
   MapElementBounds,
 } from '../../core/types'
+import {
+  clipHydraulicProfileLineAtGround,
+  hydraulicProfileLineSegments,
+  interpolateHydraulicProfileLine,
+  type HydraulicProfileSegment,
+} from '../../core/hydraulic-profiles/clipHydraulicProfileLine'
 import type {
   HydraulicProfileFigureSettings,
   HydraulicProfileLineStyle,
@@ -30,35 +36,12 @@ function niceStep(span: number, targetTicks: number) {
 }
 
 function linePoints(line: HydraulicProfileLine) {
-  return line.distances.flatMap((distance, index) => {
-    const elevation = line.elevations[index]
-    return elevation == null ? [] : [{ distance, elevation }]
-  })
+  return hydraulicProfileLineSegments(line).flat()
 }
 
-function interpolate(line: HydraulicProfileLine, distance: number) {
-  for (let index = 1; index < line.distances.length; index += 1) {
-    const leftDistance = line.distances[index - 1]
-    const rightDistance = line.distances[index]
-    const leftElevation = line.elevations[index - 1]
-    const rightElevation = line.elevations[index]
-    if (
-      distance < Math.min(leftDistance, rightDistance) ||
-      distance > Math.max(leftDistance, rightDistance) ||
-      leftElevation == null ||
-      rightElevation == null
-    ) continue
-    const fraction = rightDistance === leftDistance
-      ? 0
-      : (distance - leftDistance) / (rightDistance - leftDistance)
-    return leftElevation + (rightElevation - leftElevation) * fraction
-  }
-  return null
-}
-
-function drawLine(
+function drawLineSegments(
   context: CanvasRenderingContext2D,
-  line: HydraulicProfileLine,
+  segments: HydraulicProfileSegment[],
   x: (value: number) => number,
   y: (value: number) => number,
   style: HydraulicProfileLineStyle,
@@ -70,16 +53,11 @@ function drawLine(
   context.lineJoin = 'round'
   context.lineCap = 'round'
   context.beginPath()
-  let drawing = false
-  line.distances.forEach((distance, index) => {
-    const elevation = line.elevations[index]
-    if (elevation == null) {
-      drawing = false
-      return
-    }
-    if (drawing) context.lineTo(x(distance), y(elevation))
-    else context.moveTo(x(distance), y(elevation))
-    drawing = true
+  segments.forEach((segment) => {
+    segment.forEach((point, index) => {
+      if (index === 0) context.moveTo(x(point.distance), y(point.elevation))
+      else context.lineTo(x(point.distance), y(point.elevation))
+    })
   })
   context.stroke()
   context.restore()
@@ -92,16 +70,17 @@ function drawEarthFill(
   y: (value: number) => number,
   bottom: number,
 ) {
-  const points = linePoints(ground)
-  if (points.length < 2) return
   context.save()
   context.fillStyle = '#eee6da'
-  context.beginPath()
-  context.moveTo(x(points[0].distance), bottom)
-  points.forEach((point) => context.lineTo(x(point.distance), y(point.elevation)))
-  context.lineTo(x(points.at(-1)!.distance), bottom)
-  context.closePath()
-  context.fill()
+  hydraulicProfileLineSegments(ground).forEach((points) => {
+    if (points.length < 2) return
+    context.beginPath()
+    context.moveTo(x(points[0].distance), bottom)
+    points.forEach((point) => context.lineTo(x(point.distance), y(point.elevation)))
+    context.lineTo(x(points.at(-1)!.distance), bottom)
+    context.closePath()
+    context.fill()
+  })
   context.restore()
 }
 
@@ -113,26 +92,25 @@ function drawInundation(
   y: (value: number) => number,
 ) {
   if (!surface) return
-  const wet = linePoints(surface).flatMap((point) => {
-    const groundElevation = interpolate(ground, point.distance)
-    return groundElevation != null && point.elevation > groundElevation
-      ? [{ ...point, groundElevation }]
-      : []
-  })
-  if (wet.length < 2) return
   context.save()
   context.fillStyle = 'rgba(54, 145, 209, 0.22)'
-  context.beginPath()
-  wet.forEach((point, index) => {
-    if (index === 0) context.moveTo(x(point.distance), y(point.elevation))
-    else context.lineTo(x(point.distance), y(point.elevation))
+  clipHydraulicProfileLineAtGround(surface, ground).forEach((wet) => {
+    if (wet.length < 2) return
+    const groundElevations = wet.map(({ distance }) =>
+      interpolateHydraulicProfileLine(ground, distance),
+    )
+    if (groundElevations.some((elevation) => elevation == null)) return
+    context.beginPath()
+    wet.forEach((point, index) => {
+      if (index === 0) context.moveTo(x(point.distance), y(point.elevation))
+      else context.lineTo(x(point.distance), y(point.elevation))
+    })
+    for (let index = wet.length - 1; index >= 0; index -= 1) {
+      context.lineTo(x(wet[index].distance), y(groundElevations[index]!))
+    }
+    context.closePath()
+    context.fill()
   })
-  for (let index = wet.length - 1; index >= 0; index -= 1) {
-    const point = wet[index]
-    context.lineTo(x(point.distance), y(point.groundElevation))
-  }
-  context.closePath()
-  context.fill()
   context.restore()
 }
 
@@ -274,6 +252,9 @@ export function renderHydraulicProfileDocument(
   const inundationSurface = scene.section.surfaces.find(
     ({ datasetSlot }) => datasetSlot === settings.inundationSurfaceSlot,
   ) ?? scene.section.surfaces[0]
+  const wseClippingGround = scene.section.grounds.find(
+    ({ datasetSlot }) => datasetSlot === settings.wseClippingGroundSlot,
+  ) ?? earthFillGround ?? scene.section.primaryGround
   if (settings.showEarthFill && earthFillGround) {
     drawEarthFill(context, earthFillGround, x, y, plot.top + plot.height)
   }
@@ -285,9 +266,11 @@ export function renderHydraulicProfileDocument(
     ...scene.section.otherLines,
     ...scene.section.surfaces,
   ]
-  drawOrder.forEach((profileLine) => drawLine(
+  drawOrder.forEach((profileLine) => drawLineSegments(
     context,
-    profileLine,
+    settings.clipWseAtGround && profileLine.kind === 'wse' && wseClippingGround
+      ? clipHydraulicProfileLineAtGround(profileLine, wseClippingGround)
+      : hydraulicProfileLineSegments(profileLine),
     x,
     y,
     hydraulicProfileLineStyle(settings, profileLine.datasetSlot),

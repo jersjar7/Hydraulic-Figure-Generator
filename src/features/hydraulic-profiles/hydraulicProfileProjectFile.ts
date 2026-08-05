@@ -146,6 +146,12 @@ function hydrateSettings(
     earthFillGroundSlot: Number.isInteger(incoming.earthFillGroundSlot)
       ? Number(incoming.earthFillGroundSlot)
       : null,
+    clipWseAtGround: typeof incoming.clipWseAtGround === 'boolean'
+      ? incoming.clipWseAtGround
+      : defaults.clipWseAtGround,
+    wseClippingGroundSlot: Number.isInteger(incoming.wseClippingGroundSlot)
+      ? Number(incoming.wseClippingGroundSlot)
+      : null,
     inundationGroundSlot: Number.isInteger(incoming.inundationGroundSlot)
       ? Number(incoming.inundationGroundSlot)
       : null,

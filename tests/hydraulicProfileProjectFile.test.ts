@@ -22,7 +22,11 @@ function state(): HydraulicProfileProjectState {
         { slot: 2, name: '100-year WSE', kind: 'wse' },
       ],
     },
-    settings: createDefaultHydraulicProfileSettings(),
+    settings: {
+      ...createDefaultHydraulicProfileSettings(),
+      clipWseAtGround: false,
+      wseClippingGroundSlot: 1,
+    },
   }
 }
 
@@ -48,6 +52,17 @@ describe('hydraulic profile project files', () => {
       () => parseHydraulicProfileProject(JSON.stringify(malformed)),
       /invalid numeric values/,
     )
+  })
+
+  it('defaults older project files to clipped WSE extents', () => {
+    const older = JSON.parse(serializeHydraulicProfileProject(state()))
+    delete older.settings.clipWseAtGround
+    delete older.settings.wseClippingGroundSlot
+
+    const parsed = parseHydraulicProfileProject(JSON.stringify(older))
+
+    assert.equal(parsed.settings.clipWseAtGround, true)
+    assert.equal(parsed.settings.wseClippingGroundSlot, null)
   })
 
   it('migrates the legacy one-ground event mapping without changing its labels', () => {

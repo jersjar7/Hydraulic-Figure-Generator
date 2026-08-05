@@ -92,6 +92,7 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
   ).toHaveCount(1)
   await expect(page.getByRole('button', { name: 'Proposed', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByPlaceholder('Auto')).toHaveCount(0)
+  await expect(page.getByLabel('WSE extent')).toHaveValue('clip')
 
   await page.getByRole('tab', { name: 'Summary', exact: true }).click()
   await page.getByLabel('SMS Summary Table').fill(PROFILE_SUMMARY)
