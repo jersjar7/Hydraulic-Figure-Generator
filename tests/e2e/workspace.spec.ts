@@ -69,7 +69,7 @@ test('mobile controls keep both sidebars reachable', async ({ page }) => {
   ).toBeVisible()
 })
 
-test('SMS profile paste reviews and exports one fitted station cross section', async ({
+test('SMS profile paste maps, renders, and assembles one fitted station cross section', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1600, height: 1000 })
@@ -94,8 +94,10 @@ test('SMS profile paste reviews and exports one fitted station cross section', a
   await expect(page.getByLabel('Profile station')).toHaveValue(
     'profile-section-1',
   )
-  await expect(page.getByText('Proposed Ground', { exact: true })).toBeVisible()
-  await expect(page.getByText('2080 100-year', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Ground dataset')).toHaveValue('0')
+  await expect(page.getByLabel('Legend name 4')).toHaveValue('2080 100-year')
+  await page.getByLabel('Legend name 4').fill('Future 100-year')
+  await expect(page.getByLabel('Dataset for Future 100-year')).toHaveValue('3')
 
   await page.getByTestId('generate-hydraulic-profile').click()
   const canvas = page.getByLabel('Generated SMS hydraulic profile')
@@ -134,10 +136,22 @@ test('SMS profile paste reviews and exports one fitted station cross section', a
   })).toBeGreaterThan(100)
 
   await page.getByRole('tab', { name: 'Export', exact: true }).click()
+  await page.getByRole('button', { name: 'Add to export' }).click()
+  await expect(page.getByLabel('Workspace', { exact: true }).locator('option').last()).toHaveText('Export Collection (1)')
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Download PNG' }).click()
   const download = await downloadPromise
   expect(download.suggestedFilename()).toMatch(/Hydraulic_Profile_10_47\.png/)
+
+  await page.getByLabel('Workspace', { exact: true }).selectOption('report-assembly')
+  await expect(page.getByRole('heading', { name: 'Hydraulic Profiles & Sections' })).toBeVisible()
+  await page.getByRole('button', { name: /Preview Hydraulic Cross Section/ }).click()
+  await page.getByLabel('Caption').fill('Reviewed profile caption.')
+  await expect(page.getByLabel('Caption')).toHaveValue('Reviewed profile caption.')
+  await page.getByRole('button', { name: 'Close preview' }).click()
+  const wordPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export Word' }).click()
+  expect((await wordPromise).suggestedFilename()).toBe('Hydraulic_Figure_Report.docx')
 })
 
 test('synthetic SMS files upload and render a nonblank figure', async ({
