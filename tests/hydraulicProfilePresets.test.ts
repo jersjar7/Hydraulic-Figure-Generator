@@ -18,7 +18,7 @@ test('existing and proposed profile presets remain explicit and independently ed
   ])
   assert.equal(proposed.datasetsPerSection, 5)
   assert.equal(proposed.definitions[4].name, '2080 100-year')
-  assert.equal(proposed.stationReferenceSlot, 0)
+  assert.equal(proposed.stationReferenceSlot, null)
   assert.equal(matchesHydraulicProfilePreset(proposed, 'proposed'), true)
 
   proposed.definitions[0].name = 'Design Ground'

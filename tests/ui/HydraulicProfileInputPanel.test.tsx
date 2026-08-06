@@ -108,7 +108,7 @@ describe('HydraulicProfileInputPanel', () => {
     }))
   })
 
-  it('offers the best Summary Z-min match as an explicit station ground correction', async () => {
+  it('offers the detected lowest profile as an explicit station-ground correction', async () => {
     const user = userEvent.setup()
     const configuration = createHydraulicProfilePresetConfiguration('existing')
     const summaryRows = [{ reach: 'Site2', station: 44, zMinimum: 25 }]
@@ -139,16 +139,20 @@ describe('HydraulicProfileInputPanel', () => {
     )
 
     await user.click(screen.getByRole('tab', { name: 'Review' }))
-    expect(screen.getByLabelText('Ground used to assign station labels')).toHaveTextContent(
-      'Dataset 2: 2-year · avg Z-min difference 0.00 ft',
+    expect(screen.getByLabelText('Station-order ground')).toHaveTextContent(
+      'Dataset 2: 2-year · lowest in 1/1',
     )
+    expect(screen.getByLabelText('Station-order ground')).toHaveValue('')
 
-    await user.click(screen.getByRole('button', { name: 'Use Dataset 2 as ground' }))
+    await user.click(screen.getByRole('button', { name: 'Apply Dataset 2 mapping' }))
     expect(onDatasetConfigurationChange).toHaveBeenLastCalledWith(expect.objectContaining({
       stationReferenceSlot: 1,
-      definitions: expect.arrayContaining([
-        expect.objectContaining({ slot: 1, kind: 'ground' }),
-      ]),
+      definitions: [
+        expect.objectContaining({ slot: 0, name: '2-year', kind: 'wse' }),
+        expect.objectContaining({ slot: 1, name: 'Existing Ground', kind: 'ground' }),
+        expect.objectContaining({ slot: 2, name: '100-year', kind: 'wse' }),
+        expect.objectContaining({ slot: 3, name: '500-year', kind: 'wse' }),
+      ],
     }))
   })
 })

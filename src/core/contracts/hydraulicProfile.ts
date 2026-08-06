@@ -31,6 +31,14 @@ export type HydraulicProfileDatasetConfiguration = {
   stationReferenceSlot: number | null
 }
 
+export type HydraulicProfileMappingStatus = {
+  ready: boolean
+  referenceSlot: number | null
+  recommendedSlot: number | null
+  source: 'configured' | 'detected' | 'unresolved'
+  message: string | null
+}
+
 export type HydraulicProfileSection = {
   id: string
   sourceIndex: number
@@ -55,6 +63,7 @@ export type HydraulicProfileDataset = {
   inferredDatasetsPerSection: number | null
   structureSource: 'configured' | 'summary' | 'unresolved'
   configuration: HydraulicProfileDatasetConfiguration | null
+  mappingStatus: HydraulicProfileMappingStatus
 }
 
 export type HydraulicProfileScene = {

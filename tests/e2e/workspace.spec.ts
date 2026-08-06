@@ -21,6 +21,13 @@ const PROFILE_VALUES = [
   '5\t40\t58\t40\t57\t40\t56\t40\t60\t40\t59',
 ].join('\n')
 
+const SHUFFLED_GROUND_PROFILE_VALUES = [
+  'Distance\tValue\tDistance\tValue\tDistance\tValue\tDistance\tValue',
+  '1\t0\t30\t0\t29\t0\t27\t0\t28',
+  '2\t10\t30\t10\t25\t10\t27\t10\t28',
+  '3\t20\t30\t20\t29\t20\t27\t20\t28',
+].join('\n')
+
 const TWO_SECTION_PROFILE_SUMMARY = [
   'Reach\tStation\tMin',
   'Site\t100\t20',
@@ -124,7 +131,7 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
     await page.getByLabel(`Dataset ${index + 2} legend name`).fill(name)
     await page.getByLabel(`Dataset ${index + 2} type`).selectOption('wse')
   }
-  await page.getByLabel('Ground used to assign station labels').selectOption('0')
+  await page.getByLabel('Station-order ground').selectOption('0')
   await expect(page.getByLabel('Profile station')).toContainText('10+47')
 
   await page.getByTestId('generate-hydraulic-profile').click()
@@ -207,6 +214,38 @@ test('one profile generation exposes every detected station and batch export', a
   await page.getByRole('tab', { name: 'Export', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Add all 2 stations to export' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Add current station to export' })).toBeVisible()
+})
+
+test('profile generation waits for review when the detected ground is in another dataset slot', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto('.')
+  await page.getByLabel('Workspace', { exact: true }).selectOption('hydraulic-profiles-sections')
+  await page.getByRole('button', { name: 'Existing', exact: true }).click()
+
+  await page.getByRole('tab', { name: 'Summary', exact: true }).click()
+  await page.getByLabel('SMS Summary Table').fill('Reach\tStation\tMin\nSite\t100\t25')
+  await page.getByRole('tab', { name: 'Profile', exact: true }).click()
+  await page.getByLabel('SMS Profile Values').fill(SHUFFLED_GROUND_PROFILE_VALUES)
+
+  const generate = page.getByTestId('generate-hydraulic-profile')
+  await expect(generate).toBeDisabled()
+  await expect(page.getByText('Review the dataset mapping before generating')).toBeVisible()
+
+  await page.getByRole('tab', { name: 'Review', exact: true }).click()
+  await expect(page.getByText(/Dataset 2 is lowest in/)).toBeVisible()
+  await expect(page.getByLabel('Station-order ground')).toHaveValue('')
+  await page.getByRole('button', { name: 'Apply Dataset 2 mapping' }).click()
+  await expect(page.getByLabel('Station-order ground')).toHaveValue('1')
+  await expect(page.getByLabel('Dataset 1 legend name')).toHaveValue('500-year')
+  await expect(page.getByLabel('Dataset 1 type')).toHaveValue('wse')
+  await expect(page.getByLabel('Dataset 2 legend name')).toHaveValue('Existing Ground')
+  await expect(page.getByLabel('Dataset 2 type')).toHaveValue('ground')
+  await expect(page.getByLabel('Dataset 3 legend name')).toHaveValue('2-year')
+  await expect(page.getByLabel('Dataset 4 legend name')).toHaveValue('100-year')
+  await expect(generate).toBeEnabled()
+
+  await generate.click()
+  await expect(page.getByLabel('Generated SMS hydraulic profile')).toHaveClass(/is-visible/)
 })
 
 test('synthetic SMS files upload and render a nonblank figure', async ({

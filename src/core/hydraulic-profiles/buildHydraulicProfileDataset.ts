@@ -1,28 +1,17 @@
 import type {
   HydraulicProfileDataset,
   HydraulicProfileDatasetConfiguration,
-  HydraulicProfileDatasetDefinition,
-  HydraulicProfileLine,
-  HydraulicProfileSection,
   SmsProfileSeries,
   SmsSummaryRow,
 } from '../contracts/hydraulicProfile'
-import { formatHydraulicStation } from './smsClipboard'
 import { analyzeHydraulicProfileStationReferences } from './analyzeStationReferences'
+import { assignHydraulicProfileStations } from './assignHydraulicProfileStations'
+import { buildHydraulicProfileSection } from './buildHydraulicProfileSection'
+import { groupHydraulicProfileSeries } from './groupHydraulicProfileSeries'
+import { resolveHydraulicProfileMapping } from './resolveHydraulicProfileMapping'
 
 type BuildOptions = {
   datasetConfiguration?: HydraulicProfileDatasetConfiguration | null
-}
-
-function validElevations(series: SmsProfileSeries) {
-  return series.elevations.filter(
-    (value): value is number => value != null && Number.isFinite(value),
-  )
-}
-
-function minimum(series: SmsProfileSeries) {
-  const values = validElevations(series)
-  return values.length > 0 ? Math.min(...values) : Number.POSITIVE_INFINITY
 }
 
 export function createHydraulicProfileDatasetConfiguration(
@@ -82,63 +71,6 @@ function validConfiguration(configuration: HydraulicProfileDatasetConfiguration)
   )
 }
 
-function line(
-  series: SmsProfileSeries,
-  definition: HydraulicProfileDatasetDefinition,
-): HydraulicProfileLine {
-  return {
-    ...series,
-    datasetSlot: definition.slot,
-    name: definition.name.trim() || `Dataset ${definition.slot + 1}`,
-    kind: definition.kind,
-  }
-}
-
-function assignStations(
-  sections: HydraulicProfileSection[],
-  summaryRows: SmsSummaryRow[],
-  warnings: string[],
-) {
-  if (summaryRows.length === 0) {
-    warnings.push('No Summary Table stations are available; sections use generated names.')
-    return
-  }
-  const rankedRows = [...summaryRows].sort((a, b) => a.station - b.station)
-  const referenceSections = sections.filter((section) => section.stationReferenceLine)
-  if (referenceSections.length === 0) {
-    warnings.push('Choose the ground dataset used to assign Summary Table station labels.')
-    return
-  }
-  if (referenceSections.length !== rankedRows.length) {
-    warnings.push(
-      `Summary Table lists ${rankedRows.length} station${rankedRows.length === 1 ? '' : 's'}, but ${referenceSections.length} cross section${referenceSections.length === 1 ? '' : 's'} were detected. Only the closest Z-min matches were paired.`,
-    )
-  }
-  const candidates = referenceSections.flatMap((section) => rankedRows.flatMap((row) =>
-    row.zMinimum == null
-      ? []
-      : [{ section, row, difference: Math.abs(row.zMinimum - section.thalweg) }],
-  )).sort((a, b) => a.difference - b.difference)
-  const assignedSections = new Set<string>()
-  const assignedRows = new Set<SmsSummaryRow>()
-  for (const { section, row, difference } of candidates) {
-    if (assignedSections.has(section.id) || assignedRows.has(row)) continue
-    assignedSections.add(section.id)
-    assignedRows.add(row)
-    section.station = row.station
-    section.stationLabel = formatHydraulicStation(row.station)
-    section.summaryZMinimum = row.zMinimum
-    if (difference > 2) {
-      warnings.push(
-        `Station ${section.stationLabel}: Summary Z-min ${row.zMinimum!.toFixed(2)} ft differs from the profile thalweg ${section.thalweg.toFixed(2)} ft.`,
-      )
-    }
-  }
-  if (assignedSections.size < Math.min(referenceSections.length, rankedRows.length)) {
-    warnings.push('Some Summary Table rows do not include a usable Z-min, so they could not be paired automatically.')
-  }
-}
-
 export function buildHydraulicProfileDataset(
   series: SmsProfileSeries[],
   summaryRows: SmsSummaryRow[],
@@ -169,6 +101,13 @@ export function buildHydraulicProfileDataset(
       inferredDatasetsPerSection,
       structureSource,
       configuration: null,
+      mappingStatus: {
+        ready: false,
+        referenceSlot: null,
+        recommendedSlot: null,
+        source: 'unresolved',
+        message: 'Enter how many datasets were pasted for each cross section.',
+      },
     }
   }
   const fallbackConfiguration = createHydraulicProfileDatasetConfiguration(datasetsPerSection)
@@ -188,71 +127,39 @@ export function buildHydraulicProfileDataset(
     summaryRows,
     datasetsPerSection,
   )
-  const selectedReferenceScore = referenceScores.find(
-    ({ slot }) => slot === configuration.stationReferenceSlot,
+  const mappingStatus = resolveHydraulicProfileMapping(configuration, referenceScores)
+  const bestReferenceScore = referenceScores.find(
+    ({ slot }) => slot === mappingStatus.recommendedSlot,
   )
-  const bestReferenceScore = referenceScores[0]
   if (
-    selectedReferenceScore
+    configuration.stationReferenceSlot != null
     && bestReferenceScore
-    && selectedReferenceScore.slot !== bestReferenceScore.slot
-    && bestReferenceScore.meanAbsoluteDifference + 0.25 < selectedReferenceScore.meanAbsoluteDifference
+    && configuration.stationReferenceSlot !== bestReferenceScore.slot
   ) {
     warnings.push(
-      `Dataset ${bestReferenceScore.slot + 1} is the closest Summary Z-min match (average difference ${bestReferenceScore.meanAbsoluteDifference.toFixed(2)} ft); the selected ground used for station assignment, Dataset ${selectedReferenceScore.slot + 1}, averages ${selectedReferenceScore.meanAbsoluteDifference.toFixed(2)} ft. Review the ground assignment.`,
+      `Dataset ${bestReferenceScore.slot + 1} is the lowest profile in ${bestReferenceScore.lowestSectionCount} of ${bestReferenceScore.sectionCount} sections, but Dataset ${configuration.stationReferenceSlot + 1} was explicitly selected for station ordering.`,
     )
   }
-  const sectionCount = Math.floor(series.length / datasetsPerSection)
-  const sections: HydraulicProfileSection[] = []
-  for (let sourceIndex = 0; sourceIndex < sectionCount; sourceIndex += 1) {
-    const group = series.slice(
-      sourceIndex * datasetsPerSection,
-      (sourceIndex + 1) * datasetsPerSection,
-    )
-    const lines = configuration.definitions
-      .slice()
-      .sort((a, b) => a.slot - b.slot)
-      .map((definition) => line(group[definition.slot], definition))
-    const grounds = lines.filter(({ kind }) => kind === 'ground')
-    const surfaces = lines.filter(({ kind }) => kind === 'wse')
-    const otherLines = lines.filter(({ kind }) => kind === 'other')
-    const stationReferenceLine = configuration.stationReferenceSlot == null
-      ? null
-      : lines.find(({ datasetSlot }) => datasetSlot === configuration.stationReferenceSlot) ?? null
-    const primaryGround = stationReferenceLine?.kind === 'ground'
-      ? stationReferenceLine
-      : grounds[0] ?? null
-    const thalwegLine = stationReferenceLine ?? primaryGround ?? lines[0]
-    sections.push({
-      id: `profile-section-${sourceIndex + 1}`,
+  if (mappingStatus.message) warnings.push(mappingStatus.message)
+  const groupedSeries = groupHydraulicProfileSeries(series, datasetsPerSection)
+  const builtSections = groupedSeries.map((group, sourceIndex) =>
+    buildHydraulicProfileSection({
+      group,
+      definitions: configuration.definitions,
       sourceIndex,
-      station: null,
-      stationLabel: `Section ${sourceIndex + 1}`,
-      summaryZMinimum: null,
-      thalweg: minimum(thalwegLine),
-      sourceSeries: group,
-      lines,
-      grounds,
-      surfaces,
-      otherLines,
-      primaryGround,
-      stationReferenceLine,
-    })
-  }
-  assignStations(sections, summaryRows, warnings)
-  sections.sort((a, b) => {
-    if (a.station != null && b.station != null) return a.station - b.station
-    if (a.station != null) return -1
-    if (b.station != null) return 1
-    return a.sourceIndex - b.sourceIndex
-  })
+      stationReferenceSlot: mappingStatus.referenceSlot,
+    }),
+  )
+  const assignment = assignHydraulicProfileStations(builtSections, summaryRows)
+  warnings.push(...assignment.warnings)
   return {
-    sections,
+    sections: assignment.sections,
     warnings,
     seriesCount: series.length,
     datasetsPerSection,
     inferredDatasetsPerSection,
     structureSource,
     configuration,
+    mappingStatus,
   }
 }

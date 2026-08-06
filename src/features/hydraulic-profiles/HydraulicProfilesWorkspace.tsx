@@ -62,7 +62,7 @@ export function HydraulicProfilesWorkspace() {
   ), [datasetConfiguration, parsedProfile.value, parsedSummary.value])
   const selectedSection = dataset.sections.find((section) => section.id === selectedSectionId) ?? null
   const scene = scenes.find(({ section }) => section.id === selectedSectionId) ?? scenes[0] ?? null
-  const ready = dataset.sections.length > 0
+  const ready = dataset.sections.length > 0 && dataset.mappingStatus.ready
   const generationLabel = dataset.sections.length > 0
     ? `${scenes.length > 0 ? 'Regenerate' : 'Generate'} ${dataset.sections.length} cross section${dataset.sections.length === 1 ? '' : 's'}`
     : 'Generate cross sections'
@@ -244,7 +244,11 @@ export function HydraulicProfilesWorkspace() {
           label={generationLabel}
           disabled={!ready}
           testId="generate-hydraulic-profile"
-          hint={!ready ? 'Paste and review one complete SMS profile first' : undefined}
+          hint={!ready
+            ? dataset.sections.length > 0
+              ? 'Review the dataset mapping before generating'
+              : 'Paste and review one complete SMS profile first'
+            : undefined}
           onClick={generate}
         />
       }

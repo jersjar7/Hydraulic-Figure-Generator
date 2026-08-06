@@ -19,6 +19,7 @@ import type {
   SmsSummaryRow,
 } from '../../core/types'
 import { analyzeHydraulicProfileStationReferences } from '../../core/hydraulic-profiles/analyzeStationReferences'
+import { applyHydraulicProfileStationGround } from '../../core/hydraulic-profiles/applyHydraulicProfileMapping'
 import {
   resizeHydraulicProfileDatasetConfiguration,
 } from '../../core/hydraulic-profiles/buildHydraulicProfileDataset'
@@ -89,9 +90,6 @@ export function HydraulicProfileInputPanel({
     dataset.datasetsPerSection,
   )
   const bestReference = referenceScores[0] ?? null
-  const selectedReference = referenceScores.find(
-    ({ slot }) => slot === dataset.configuration?.stationReferenceSlot,
-  ) ?? null
 
   const updateDefinition = (
     slot: number,
@@ -116,13 +114,11 @@ export function HydraulicProfileInputPanel({
 
   const assignStationGround = (slot: number) => {
     if (!dataset.configuration) return
-    onDatasetConfigurationChange({
-      ...dataset.configuration,
-      stationReferenceSlot: slot,
-      definitions: dataset.configuration.definitions.map((definition) =>
-        definition.slot === slot ? { ...definition, kind: 'ground' } : definition,
-      ),
-    })
+    onDatasetConfigurationChange(applyHydraulicProfileStationGround(
+      dataset.configuration,
+      dataset.sections.flatMap(({ sourceSeries }) => sourceSeries),
+      slot,
+    ))
   }
 
   const addDataset = () => {
@@ -247,14 +243,14 @@ export function HydraulicProfileInputPanel({
             <label className="field"><span>Station</span><select aria-label="Profile station" value={selectedSectionId} onChange={(event) => onSelectedSectionChange(event.currentTarget.value)}><option value="">Choose a station</option>{dataset.sections.map((section) => <option value={section.id} key={section.id}>{section.stationLabel}</option>)}</select></label>
             {selected && dataset.configuration ? <>
               <div className="profile-input-header"><strong>Dataset definitions</strong><small>Apply to every station</small></div>
-              <label className="field"><span title="The app compares this ground profile's minimum elevation with each Summary Table Z-min to assign station labels.">Ground used to assign station labels</span><select aria-label="Ground used to assign station labels" value={dataset.configuration.stationReferenceSlot ?? ''} onChange={(event) => event.currentTarget.value === '' ? onDatasetConfigurationChange({ ...dataset.configuration!, stationReferenceSlot: null }) : assignStationGround(Number(event.currentTarget.value))}><option value="">Choose a dataset</option>{dataset.configuration.definitions.map((definition) => {
+              <label className="field"><span title="Sections are sorted by this ground profile's thalweg and paired with Summary Table stations in station order.">Station-order ground</span><select aria-label="Station-order ground" value={dataset.configuration.stationReferenceSlot ?? ''} onChange={(event) => event.currentTarget.value === '' ? onDatasetConfigurationChange({ ...dataset.configuration!, stationReferenceSlot: null }) : assignStationGround(Number(event.currentTarget.value))}><option value="">{dataset.mappingStatus.recommendedSlot == null ? 'Detect from profile minima' : `Detected Dataset ${dataset.mappingStatus.recommendedSlot + 1}`}</option>{dataset.configuration.definitions.map((definition) => {
                 const score = referenceScores.find(({ slot }) => slot === definition.slot)
-                return <option value={definition.slot} key={definition.slot}>{`Dataset ${definition.slot + 1}: ${definition.name}${score && Number.isFinite(score.meanAbsoluteDifference) ? ` · avg Z-min difference ${score.meanAbsoluteDifference.toFixed(2)} ft` : ''}`}</option>
+                return <option value={definition.slot} key={definition.slot}>{`Dataset ${definition.slot + 1}: ${definition.name}${score ? ` · lowest in ${score.lowestSectionCount}/${score.sectionCount}` : ''}`}</option>
               })}</select></label>
-              {bestReference && selectedReference && bestReference.slot !== selectedReference.slot && bestReference.meanAbsoluteDifference + 0.25 < selectedReference.meanAbsoluteDifference ? (
+              {!dataset.mappingStatus.ready && bestReference && dataset.mappingStatus.referenceSlot === bestReference.slot ? (
                 <div className="profile-reference-suggestion">
-                  <span>Best Summary Z-min match: Dataset {bestReference.slot + 1} ({bestReference.meanAbsoluteDifference.toFixed(2)} ft average difference)</span>
-                  <button className="button secondary compact" type="button" onClick={() => assignStationGround(bestReference.slot)}>Use Dataset {bestReference.slot + 1} as ground</button>
+                  <span>Dataset {bestReference.slot + 1} is lowest in {bestReference.lowestSectionCount} of {bestReference.sectionCount} sections and is the detected station ground.</span>
+                  <button className="button secondary compact" type="button" onClick={() => assignStationGround(bestReference.slot)}>Apply Dataset {bestReference.slot + 1} mapping</button>
                 </div>
               ) : null}
               <div className="profile-definition-list">
@@ -263,7 +259,7 @@ export function HydraulicProfileInputPanel({
                     <span>Dataset {definition.slot + 1}</span>
                     <input aria-label={`Dataset ${definition.slot + 1} legend name`} value={definition.name} onChange={(event) => updateDefinition(definition.slot, { name: event.currentTarget.value })} />
                     <select aria-label={`Dataset ${definition.slot + 1} type`} value={definition.kind} onChange={(event) => updateDefinition(definition.slot, { kind: event.currentTarget.value as HydraulicProfileLineKind })}><option value="ground">Ground</option><option value="wse">WSE</option><option value="other">Other</option></select>
-                    <small>Min {seriesMinimum(selected.sourceSeries[definition.slot]?.elevations ?? [])} ft{bestReference?.slot === definition.slot ? ' · Best Summary Z-min match' : ''}</small>
+                    <small>Min {seriesMinimum(selected.sourceSeries[definition.slot]?.elevations ?? [])} ft{bestReference?.slot === definition.slot ? ' · Detected station ground' : ''}</small>
                   </div>
                 ))}
               </div>

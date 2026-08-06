@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { analyzeHydraulicProfileStationReferences } from '../src/core/hydraulic-profiles/analyzeStationReferences'
 import { buildHydraulicProfileDataset } from '../src/core/hydraulic-profiles/buildHydraulicProfileDataset'
+import { applyHydraulicProfileStationGround } from '../src/core/hydraulic-profiles/applyHydraulicProfileMapping'
+import { createHydraulicProfilePresetConfiguration } from '../src/features/hydraulic-profiles/hydraulicProfilePresets'
 import {
   SITE2_EXPECTED_SOURCE_ORDER,
   SITE2_PROFILE_SERIES,
@@ -53,5 +55,29 @@ describe('Site 2 hydraulic profile regression baseline', () => {
       assert.equal(section.surfaces.length, 3)
       assert.equal(section.lines.length, 4)
     })
+  })
+
+  it('maps the Existing preset onto the detected ground and elevation-ranked WSEs', () => {
+    const configuration = applyHydraulicProfileStationGround(
+      createHydraulicProfilePresetConfiguration('existing'),
+      SITE2_PROFILE_SERIES,
+      1,
+    )
+
+    assert.deepEqual(configuration.definitions, [
+      { slot: 0, name: '500-year', kind: 'wse' },
+      { slot: 1, name: 'Existing Ground', kind: 'ground' },
+      { slot: 2, name: '2-year', kind: 'wse' },
+      { slot: 3, name: '100-year', kind: 'wse' },
+    ])
+    const dataset = buildHydraulicProfileDataset(
+      SITE2_PROFILE_SERIES,
+      SITE2_SUMMARY_ROWS,
+      { datasetConfiguration: configuration },
+    )
+    assert.equal(dataset.mappingStatus.ready, true)
+    assert.ok(dataset.sections.every(({ primaryGround, surfaces }) => (
+      primaryGround?.datasetSlot === 1 && surfaces.length === 3
+    )))
   })
 })

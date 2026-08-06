@@ -9,8 +9,9 @@ import {
   type HydraulicProfileFigureSettings,
   type HydraulicProfileLineStyle,
 } from './hydraulicProfileSettings'
+import { HYDRAULIC_PROFILE_PRESETS } from './hydraulicProfilePresets'
 
-export const HYDRAULIC_PROFILE_PROJECT_VERSION = 3
+export const HYDRAULIC_PROFILE_PROJECT_VERSION = 4
 
 export type HydraulicProfileProjectState = {
   conditionLabel: string
@@ -66,6 +67,23 @@ function isConfiguration(value: unknown): value is HydraulicProfileDatasetConfig
 function conditionGroundLabel(conditionLabel: string) {
   const condition = conditionLabel.replace(/\s*conditions?\s*/i, ' ').trim()
   return `${condition ? `${condition} ` : ''}Ground`
+}
+
+function migratePresetStationReference(
+  configuration: HydraulicProfileDatasetConfiguration,
+) {
+  if (configuration.stationReferenceSlot !== 0) return configuration
+  const matchesLegacyPreset = HYDRAULIC_PROFILE_PRESETS.some((preset) =>
+    preset.definitions.length === configuration.definitions.length
+    && configuration.definitions.every((definition, slot) => (
+      definition.slot === slot
+      && definition.name === preset.definitions[slot].name
+      && definition.kind === preset.definitions[slot].kind
+    )),
+  )
+  return matchesLegacyPreset
+    ? { ...configuration, stationReferenceSlot: null }
+    : configuration
 }
 
 function legacyConfiguration(parsed: Record<string, unknown>) {
@@ -181,7 +199,7 @@ export function serializeHydraulicProfileProject(state: HydraulicProfileProjectS
 export function parseHydraulicProfileProject(text: string): HydraulicProfileProjectState {
   const parsed = JSON.parse(text) as Partial<Envelope> & Record<string, unknown>
   if (parsed.figureId !== HYDRAULIC_PROFILES_FIGURE_ID) throw new Error('This is not a Hydraulic Profiles & Sections project file.')
-  if (![1, 2, HYDRAULIC_PROFILE_PROJECT_VERSION].includes(Number(parsed.version))) {
+  if (![1, 2, 3, HYDRAULIC_PROFILE_PROJECT_VERSION].includes(Number(parsed.version))) {
     throw new Error(`Hydraulic profile project version ${String(parsed.version)} is not supported.`)
   }
   if (
@@ -203,7 +221,9 @@ export function parseHydraulicProfileProject(text: string): HydraulicProfileProj
   const datasetConfiguration = parsed.datasetConfiguration == null
     ? null
     : isConfiguration(parsed.datasetConfiguration)
-      ? parsed.datasetConfiguration
+      ? Number(parsed.version) === 3
+        ? migratePresetStationReference(parsed.datasetConfiguration)
+        : parsed.datasetConfiguration
       : (() => { throw new Error('The saved dataset definitions are malformed.') })()
   return {
     conditionLabel: parsed.conditionLabel,

@@ -32,7 +32,7 @@ describe('hydraulic profile station-reference analysis', () => {
     assert.equal(scores[2].slot, 0)
   })
 
-  it('warns when a configured station ground is substantially worse than another dataset', () => {
+  it('warns when an explicit station ground differs from the detected lowest profile', () => {
     const dataset = buildHydraulicProfileDataset(profileSeries, summaryRows, {
       datasetConfiguration: {
         datasetsPerSection: 3,
@@ -46,8 +46,56 @@ describe('hydraulic profile station-reference analysis', () => {
     })
 
     assert.ok(dataset.warnings.some((warning) => (
-      warning.includes('Dataset 2 is the closest Summary Z-min match')
-      && warning.includes('selected ground used for station assignment, Dataset 1')
+      warning.includes('Dataset 2 is the lowest profile in 2 of 2 sections')
+      && warning.includes('Dataset 1 was explicitly selected')
     )))
+  })
+
+  it('detects a station ground without silently changing its engineer-defined role', () => {
+    const dataset = buildHydraulicProfileDataset(profileSeries, summaryRows, {
+      datasetConfiguration: {
+        datasetsPerSection: 3,
+        stationReferenceSlot: null,
+        definitions: [
+          { slot: 0, name: 'Event A', kind: 'wse' },
+          { slot: 1, name: 'Event B', kind: 'wse' },
+          { slot: 2, name: 'Event C', kind: 'wse' },
+        ],
+      },
+    })
+
+    assert.deepEqual(dataset.mappingStatus, {
+      ready: false,
+      referenceSlot: 1,
+      recommendedSlot: 1,
+      source: 'detected',
+      message: 'Dataset 2 appears to be the station ground but is currently classified as WSE. Review its dataset role before generating.',
+    })
+    assert.equal(dataset.sections[0].stationReferenceLine?.datasetSlot, 1)
+    assert.equal(dataset.sections[0].primaryGround, null)
+  })
+
+  it('pairs sections and stations by order while treating Summary Z-min as diagnostic', () => {
+    const misleadingRows = [
+      { reach: 'Site', station: 100, zMinimum: 100 },
+      { reach: 'Site', station: 200, zMinimum: 0 },
+    ]
+    const dataset = buildHydraulicProfileDataset(profileSeries, misleadingRows, {
+      datasetConfiguration: {
+        datasetsPerSection: 3,
+        stationReferenceSlot: 1,
+        definitions: [
+          { slot: 0, name: 'High WSE', kind: 'wse' },
+          { slot: 1, name: 'Ground', kind: 'ground' },
+          { slot: 2, name: 'Low WSE', kind: 'wse' },
+        ],
+      },
+    })
+
+    assert.deepEqual(
+      dataset.sections.map(({ sourceIndex, station }) => [sourceIndex, station]),
+      [[1, 100], [0, 200]],
+    )
+    assert.ok(dataset.warnings.some((warning) => warning.includes('Station assignment is by thalweg order')))
   })
 })

@@ -65,6 +65,25 @@ describe('hydraulic profile project files', () => {
     assert.equal(parsed.settings.wseClippingGroundSlot, null)
   })
 
+  it('migrates version 3 preset defaults to detected station-ground selection', () => {
+    const older = JSON.parse(serializeHydraulicProfileProject(state()))
+    older.version = 3
+    older.datasetConfiguration = {
+      datasetsPerSection: 4,
+      stationReferenceSlot: 0,
+      definitions: [
+        { slot: 0, name: 'Existing Ground', kind: 'ground' },
+        { slot: 1, name: '2-year', kind: 'wse' },
+        { slot: 2, name: '100-year', kind: 'wse' },
+        { slot: 3, name: '500-year', kind: 'wse' },
+      ],
+    }
+
+    const parsed = parseHydraulicProfileProject(JSON.stringify(older))
+
+    assert.equal(parsed.datasetConfiguration?.stationReferenceSlot, null)
+  })
+
   it('migrates the legacy one-ground event mapping without changing its labels', () => {
     const legacy = {
       version: 2,

@@ -49,7 +49,7 @@ export function createHydraulicProfilePresetConfiguration(
       slot,
       ...definition,
     })),
-    stationReferenceSlot: 0,
+    stationReferenceSlot: null,
   }
 }
 
@@ -60,8 +60,7 @@ export function matchesHydraulicProfilePreset(
   if (!configuration) return false
   const preset = HYDRAULIC_PROFILE_PRESETS.find(({ id }) => id === presetId)
   if (!preset || configuration.definitions.length !== preset.definitions.length) return false
-  return configuration.stationReferenceSlot === 0
-    && configuration.definitions.every((definition, slot) => (
+  return configuration.definitions.every((definition, slot) => (
       definition.slot === slot
       && definition.name === preset.definitions[slot].name
       && definition.kind === preset.definitions[slot].kind

@@ -55,9 +55,11 @@ describe('SMS hydraulic profile parsing', () => {
     )
     assert.deepEqual(
       dataset.sections.map((section) => section.stationLabel),
-      ['Section 1', 'Section 2'],
+      ['10+47', '12+72'],
     )
-    assert.match(dataset.warnings[0], /ground dataset used to assign Summary Table station labels/)
+    assert.equal(dataset.mappingStatus.source, 'detected')
+    assert.equal(dataset.mappingStatus.ready, false)
+    assert.match(dataset.mappingStatus.message ?? '', /currently classified as OTHER/)
   })
 
   it('applies engineer-defined names and roles consistently across stations', () => {
