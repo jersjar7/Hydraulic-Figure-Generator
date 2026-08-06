@@ -52,6 +52,9 @@ project data. They cover:
 - Modular map-tool ownership and WSE extrema callout reconciliation.
 - Architecture dependency direction, React isolation, and the source-file
   composition ceiling.
+- Appendix H-compatible hydraulic-profile grouping and station-order pairing,
+  including the Site 2 regression where Dataset 2 is ground and all 11 sections
+  must retain three WSE surfaces.
 
 Add a focused test for every bug fixed in a core module. Prefer small synthetic
 geometry where the expected engineering result can be calculated by hand.

@@ -38,6 +38,12 @@ infrastructure directly.
   ephemeral preview status. `application/figure-sets/` owns the reusable
   recipe contract and bounded, cancellable generation queue without React.
 - `meshMatching.ts` owns spatial-index and comparison-point rules.
+- `core/hydraulic-profiles/` owns the clipboard-profile domain pipeline.
+  Parsing yields neutral series; focused services group complete station
+  blocks, analyze candidate station grounds, validate the engineer-reviewed
+  mapping, build classified section lines, and pair sections with Summary Table
+  rows by thalweg/station order. React panels do not infer or mutate hydraulic
+  line roles during rendering.
 - `assessmentLines.ts` turns the selected assessment-source WSE surface into reusable,
   level-aware map polylines. It does not own their UI or cartographic style.
 - `centerlineStationing.ts` is the stable facade for focused services under
@@ -86,6 +92,14 @@ infrastructure directly.
 
 New figure modules should consume these contracts rather than read H5 files or
 draw shared map elements independently.
+
+Hydraulic profile presets are editable starting points, not trusted data
+descriptions. Generation remains blocked when the detected station-order ground
+is classified as another line type. Applying the detected mapping is explicit;
+standard one-ground presets may rank the remaining WSE names by elevation,
+while custom multi-ground mappings preserve the engineer's classifications.
+Summary Z-min values diagnose the resulting order and never directly join one
+section to one station.
 
 `tests/support/extensionContracts.ts` is the executable extension contract.
 Every registered figure, tool set, settings registry, project workflow, and

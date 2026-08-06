@@ -22,8 +22,10 @@ The application currently provides three independently registered workspaces:
   Values clipboard exports into report-ready cross sections. Existing and
   Proposed presets provide an editable starting point; engineers can add,
   remove, classify, and name any number of Ground, WSE, and Other lines, select
-  the station-matching reference, and choose ground/WSE relationships for earth
-  fill and inundation shading.
+  and review the station-order ground, generate every detected station in one
+  action, and choose ground/WSE relationships for earth fill and inundation
+  shading. Station labels are paired by thalweg order; Summary Z-min values are
+  retained as an independent diagnostic rather than used as a greedy join key.
 
 The FRA WSE Difference workspace:
 
@@ -59,6 +61,7 @@ src/
   core/
     contracts/         Hydraulic, overlay, annotation, stationing, and figure types
     hydraulics/        SMS H5 readers, projection, scenario, scalar, WSE, and extrema services
+    hydraulic-profiles/ SMS clipboard grouping, mapping, section, and station services
     map/               Reusable render layers, elements, transforms, and interactions
     projectFiles/      Versioned schema, migration, validation, and serialization
     stationing/        Centerline extraction, ticks, and assessment stationing
