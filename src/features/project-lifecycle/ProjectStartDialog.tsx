@@ -1,4 +1,4 @@
-import { FolderOpen, FolderPlus, X } from 'lucide-react'
+import { FolderOpen, FolderPlus } from 'lucide-react'
 import { useState } from 'react'
 import type { ProjectLifecycleDialog } from './useHydraulicProjectLifecycle'
 
@@ -43,41 +43,41 @@ export function ProjectStartDialog({
               {mode === 'new' ? 'Create project' : 'Start a project'}
             </h2>
           </div>
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Close project start"
-            title="Close project start"
-            onClick={onContinue}
-          >
-            <X size={18} />
-          </button>
         </header>
 
         {mode === 'welcome' ? (
-          <div className="project-start-actions">
-            <button
-              type="button"
-              className="project-start-action"
-              disabled={!supported || busy}
-              onClick={() => {
-                setProjectName('')
-                onNew()
-              }}
-            >
-              <FolderPlus size={22} aria-hidden="true" />
-              <span>New project</span>
-            </button>
-            <button
-              type="button"
-              className="project-start-action"
-              disabled={!supported || busy}
-              onClick={() => void onOpen()}
-            >
-              <FolderOpen size={22} aria-hidden="true" />
-              <span>Open project</span>
-            </button>
-          </div>
+          <>
+            <p className="project-start-intro">
+              Choose a local project folder before adding inputs or building figures.
+            </p>
+            <div className="project-start-actions">
+              <button
+                type="button"
+                className="project-start-action"
+                aria-label="New project"
+                disabled={!supported || busy}
+                onClick={() => {
+                  setProjectName('')
+                  onNew()
+                }}
+              >
+                <FolderPlus size={22} aria-hidden="true" />
+                <span>New project</span>
+                <small>Create a named folder</small>
+              </button>
+              <button
+                type="button"
+                className="project-start-action"
+                aria-label="Open project"
+                disabled={!supported || busy}
+                onClick={() => void onOpen()}
+              >
+                <FolderOpen size={22} aria-hidden="true" />
+                <span>Open project</span>
+                <small>Resume saved work</small>
+              </button>
+            </div>
+          </>
         ) : (
           <form
             className="project-create-form"

@@ -6,7 +6,6 @@ import { FigureEditorShell } from '../../components/editor/FigureEditorShell'
 import type { ReportFigureArtifact } from '../../core/types'
 import { FigurePicker } from '../figures/FigurePicker'
 import { ProjectSaveStatus } from '../project-lifecycle/ProjectSaveStatus'
-import { ProjectStartDialog } from '../project-lifecycle/ProjectStartDialog'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { exportReportAssembly } from './exportReportAssembly'
 import { ReportFigurePreview } from './ReportFigurePreview'
@@ -110,17 +109,6 @@ export function ReportAssemblyWorkspace() {
         </div>
         {selected ? <ReportFigurePreview figure={selected as ReportFigureArtifact} onChange={(update) => reportAssembly.updateFigure(selected.id, update)} onRemove={() => remove(selected.id)} onClose={() => setSelectedId(null)} /> : null}
       </FigureEditorShell>
-      <ProjectStartDialog
-        mode={projectLifecycle.dialog}
-        supported={projectLifecycle.isSupported}
-        busy={projectLifecycle.busy}
-        error={projectLifecycle.error}
-        onNew={projectLifecycle.requestNewProject}
-        onCreate={projectLifecycle.createProject}
-        onOpen={projectLifecycle.openProject}
-        onContinue={projectLifecycle.dismissDialog}
-        onBack={projectLifecycle.backToWelcome}
-      />
     </>
   )
 }

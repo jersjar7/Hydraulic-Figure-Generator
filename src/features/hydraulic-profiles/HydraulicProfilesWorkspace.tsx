@@ -21,7 +21,6 @@ import type {
 import { FigurePicker } from '../figures/FigurePicker'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { ProjectSaveStatus } from '../project-lifecycle/ProjectSaveStatus'
-import { ProjectStartDialog } from '../project-lifecycle/ProjectStartDialog'
 import { downloadHydraulicProfilePng } from './exportHydraulicProfile'
 import { HydraulicProfileCanvas } from './HydraulicProfileCanvas'
 import type { HydraulicProfileSettingsSectionKey } from './hydraulicProfileDefinition'
@@ -259,17 +258,6 @@ export function HydraulicProfilesWorkspace() {
         />
       }
         figurePicker={<FigurePicker />}
-      />
-      <ProjectStartDialog
-        mode={projectLifecycle.dialog}
-        supported={projectLifecycle.isSupported}
-        busy={projectLifecycle.busy}
-        error={projectLifecycle.error}
-        onNew={projectLifecycle.requestNewProject}
-        onCreate={projectLifecycle.createProject}
-        onOpen={projectLifecycle.openProject}
-        onContinue={projectLifecycle.dismissDialog}
-        onBack={projectLifecycle.backToWelcome}
       />
     </>
   )

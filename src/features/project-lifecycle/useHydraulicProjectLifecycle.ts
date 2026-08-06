@@ -95,6 +95,7 @@ export function useHydraulicProjectLifecycle({
       })
       setProject(opened)
       setSavedFingerprint(fingerprint)
+      setActiveWorkspace(persistedWorkspaceId as AppWorkspaceId)
       setDialog(null)
       return true
     } catch (caught) {
@@ -103,7 +104,7 @@ export function useHydraulicProjectLifecycle({
     } finally {
       setBusy(false)
     }
-  }, [activeWorkspaceId, fingerprint, now, storage, workspaces])
+  }, [activeWorkspaceId, fingerprint, now, setActiveWorkspace, storage, workspaces])
 
   const openProject = useCallback(async () => {
     if (!confirmDiscard()) return false

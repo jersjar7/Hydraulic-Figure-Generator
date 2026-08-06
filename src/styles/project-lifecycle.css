@@ -56,12 +56,17 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(8, 24, 40, 0.48);
+  background: #edf2f6;
+}
+
+.project-start-surface {
+  min-height: 100vh;
+  background: #edf2f6;
 }
 
 .project-start-dialog {
-  width: min(430px, 100%);
-  padding: 18px;
+  width: min(500px, 100%);
+  padding: 22px;
   color: #14283d;
   background: #ffffff;
   border: 1px solid #bac8d5;
@@ -74,7 +79,14 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
+}
+
+.project-start-intro {
+  margin: 0 0 18px;
+  color: #53687d;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .project-start-dialog h2 {
@@ -90,7 +102,7 @@
 }
 
 .project-start-action {
-  min-height: 80px;
+  min-height: 96px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -102,6 +114,12 @@
   border-radius: 7px;
   font: 700 13px Arial, sans-serif;
   cursor: pointer;
+}
+
+.project-start-action small {
+  color: #65798d;
+  font-size: 10px;
+  font-weight: 400;
 }
 
 .project-start-action:hover:not(:disabled) {

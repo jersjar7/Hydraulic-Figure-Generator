@@ -1,8 +1,10 @@
 import { lazy, Suspense } from 'react'
+import './App.css'
 import { FIGURE_WORKSPACES } from './features/figures/workspaceRegistry'
 import {
   HydraulicProjectWorkspaceProvider,
 } from './features/project-workspace/HydraulicProjectWorkspaceProvider'
+import { ProjectLifecycleGate } from './features/project-workspace/ProjectLifecycleGate'
 import { useHydraulicProjectWorkspace } from './features/project-workspace/useHydraulicProjectWorkspace'
 import { REPORT_ASSEMBLY_WORKSPACE_ID } from './features/report-assembly/reportAssemblyWorkspaceId'
 
@@ -38,10 +40,22 @@ function ActiveWorkspace() {
   )
 }
 
+function ProjectApplication() {
+  const { projectLifecycle } = useHydraulicProjectWorkspace()
+  return (
+    <>
+      {projectLifecycle.dialog
+        ? <div className="project-start-surface" aria-hidden="true" />
+        : <ActiveWorkspace />}
+      <ProjectLifecycleGate />
+    </>
+  )
+}
+
 function App() {
   return (
     <HydraulicProjectWorkspaceProvider>
-      <ActiveWorkspace />
+      <ProjectApplication />
     </HydraulicProjectWorkspaceProvider>
   )
 }

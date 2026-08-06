@@ -41,11 +41,15 @@ const TWO_SECTION_PROFILE_VALUES = [
   [3, 20, 30, 20, 21, 20, 22, 20, 23, 20, 24, 20, 40, 20, 31, 20, 32, 20, 33, 20, 34].join('\t'),
 ].join('\n')
 
+async function continueWithoutProject(page: Page) {
+  await page.getByRole('button', { name: 'Continue without a project' }).click()
+}
+
 async function openHydraulicProfiles(page: Page) {
+  await continueWithoutProject(page)
   await page.getByLabel('Workspace', { exact: true }).selectOption(
     'hydraulic-profiles-sections',
   )
-  await page.getByRole('button', { name: 'Continue without a project' }).last().click()
 }
 
 test('shared figure workspace exposes scalable project and settings navigation', async ({
@@ -53,6 +57,9 @@ test('shared figure workspace exposes scalable project and settings navigation',
 }) => {
   await page.setViewportSize({ width: 1920, height: 1080 })
   await page.goto('.')
+  await expect(page.getByRole('heading', { name: 'Start a project' })).toBeVisible()
+  await expect(page.getByLabel('Workspace', { exact: true })).toHaveCount(0)
+  await continueWithoutProject(page)
   await expect(page.getByLabel('Workspace', { exact: true }).locator('option')).toHaveText([
     'Cross-Section Comparison',
     'Export Collection (0)',
@@ -90,6 +97,7 @@ test('shared figure workspace exposes scalable project and settings navigation',
 test('mobile controls keep both sidebars reachable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('.')
+  await continueWithoutProject(page)
 
   await page.getByRole('button', { name: 'Open project data' }).click()
   await expect(
@@ -163,13 +171,13 @@ test('folder project saves and restores profiles with the Export Collection', as
 
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.goto('.')
-  await page.getByLabel('Workspace', { exact: true }).selectOption(
-    'hydraulic-profiles-sections',
-  )
   await expect(page.getByRole('heading', { name: 'Start a project' })).toBeVisible()
   await page.getByRole('button', { name: 'New project' }).click()
   await page.getByLabel('Project name').fill('Site 6 FRA')
   await page.getByRole('button', { name: 'Choose location' }).click()
+  await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
+    'hydraulic-profiles-sections',
+  )
   await expect(page.getByLabel('Site 6 FRA: Saved')).toBeVisible()
 
   await page.getByRole('tab', { name: 'Summary', exact: true }).click()
@@ -390,6 +398,7 @@ test('synthetic SMS files upload and render a nonblank figure', async ({
 }) => {
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.goto('.')
+  await continueWithoutProject(page)
 
   await page
     .getByTestId('h5-file-drop')
@@ -479,6 +488,7 @@ test('loaded scenarios carry into the cross-section map-to-chart workflow', asyn
 }) => {
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.goto('.')
+  await continueWithoutProject(page)
 
   await page
     .getByTestId('h5-file-drop')
@@ -617,6 +627,7 @@ test('one SMS scenario renders a fitted plan-view scalar result map', async ({
 }) => {
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.goto('.')
+  await continueWithoutProject(page)
   await page.getByLabel('Workspace', { exact: true }).selectOption(
     'plan-view-hydraulic-results',
   )
@@ -698,6 +709,7 @@ test('Plan-View loads a zipped centerline and renders station ticks', async ({
 }) => {
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.goto('.')
+  await continueWithoutProject(page)
   await page.getByLabel('Workspace', { exact: true }).selectOption(
     'plan-view-hydraulic-results',
   )
@@ -772,6 +784,7 @@ test('Plan-View renders topography, mesh, and combined geometry outputs', async 
 }) => {
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.goto('.')
+  await continueWithoutProject(page)
   await page.getByLabel('Workspace', { exact: true }).selectOption(
     'plan-view-hydraulic-results',
   )
@@ -810,6 +823,7 @@ test('Plan-View renders topography, mesh, and combined geometry outputs', async 
 test('Plan-View builds and reviews a multi-result figure set', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.goto('.')
+  await continueWithoutProject(page)
   await page.getByLabel('Workspace', { exact: true }).selectOption(
     'plan-view-hydraulic-results',
   )
