@@ -212,7 +212,7 @@ export function PlanViewResultWorkspace() {
     engine,
     settings,
     overlays,
-    centerlineStationing: stationing.layer,
+    centerlineStationing: stationing.layers,
     setBusy,
     appendNotices,
   })
@@ -332,7 +332,7 @@ export function PlanViewResultWorkspace() {
       engine,
       settings,
       overlays,
-      centerlineStationing: stationing.layer,
+      centerlineStationing: stationing.layers,
       appendNotices,
     })
   }

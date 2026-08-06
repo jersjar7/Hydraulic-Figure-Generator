@@ -17,7 +17,7 @@ import {
 import { isPlanViewGeometryOutput } from '../../core/hydraulics/planViewGeometryResults'
 import type { PersistedCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 
-export const PLAN_VIEW_RESULT_PROJECT_VERSION = 5
+export const PLAN_VIEW_RESULT_PROJECT_VERSION = 6
 
 export type PlanViewResultProjectState = {
   settings: PlanViewResultSettings
@@ -199,28 +199,40 @@ function hydrateStationingSource(
   }
   const source = value as PersistedCenterlineStationingSource
   if (
-    source.centerlineId !== undefined &&
-    typeof source.centerlineId !== 'string'
+    source.activeCenterlineId !== undefined &&
+    typeof source.activeCenterlineId !== 'string'
   ) {
     throw new Error('The saved centerline stationing source is malformed.')
   }
-  if (
-    source.direction !== undefined &&
-    source.direction !== 'a-to-b' &&
-    source.direction !== 'b-to-a'
-  ) {
-    throw new Error('The saved centerline stationing direction is malformed.')
+  if (source.centerlines !== undefined && !Array.isArray(source.centerlines)) {
+    throw new Error('The saved centerline stationing source is malformed.')
   }
-  if (
-    source.startStation !== undefined &&
-    !Number.isFinite(source.startStation)
-  ) {
-    throw new Error('The saved centerline starting station is malformed.')
+  const centerlines = (source.centerlines ?? []).map((entry) => {
+    if (
+      !entry ||
+      typeof entry !== 'object' ||
+      typeof entry.centerlineId !== 'string' ||
+      (entry.direction !== 'a-to-b' && entry.direction !== 'b-to-a') ||
+      !Number.isFinite(entry.startStation)
+    ) {
+      throw new Error('A saved centerline stationing entry is malformed.')
+    }
+    return {
+      centerlineId: entry.centerlineId,
+      direction: entry.direction,
+      startStation: entry.startStation,
+    }
+  })
+  if (new Set(centerlines.map((entry) => entry.centerlineId)).size !== centerlines.length) {
+    throw new Error('Saved centerline stationing entries must be unique.')
   }
   return {
-    centerlineId: source.centerlineId,
-    direction: source.direction,
-    startStation: source.startStation,
+    activeCenterlineId: centerlines.some(
+      (entry) => entry.centerlineId === source.activeCenterlineId,
+    )
+      ? source.activeCenterlineId
+      : centerlines[0]?.centerlineId,
+    centerlines,
   }
 }
 
@@ -236,6 +248,7 @@ export function parsePlanViewResultProject(
     parsed.version !== 2 &&
     parsed.version !== 3 &&
     parsed.version !== 4 &&
+    parsed.version !== 5 &&
     parsed.version !== PLAN_VIEW_RESULT_PROJECT_VERSION
   ) {
     throw new Error(

@@ -72,23 +72,23 @@ describe('Plan-View Hydraulic Results production baseline', () => {
       scene: scene(),
       settings: createDefaultPlanViewResultSettings(),
       overlays: [],
-      centerlineStationing,
+      centerlineStationing: [centerlineStationing],
     })
     const published = createPlanViewResultRenderDocument({
       engine,
       scene: scene(),
       settings: createDefaultPlanViewResultSettings(),
       overlays: [],
-      centerlineStationing,
+      centerlineStationing: [centerlineStationing],
       mode: 'published',
     })
 
     assert.equal(editor.view.bounds, bounds)
     assert.equal(
-      editor.layers.centerlineStationing?.selectedLabelId,
+      editor.layers.centerlineStationing[0]?.selectedLabelId,
       'station-40',
     )
-    assert.equal(published.layers.centerlineStationing?.selectedLabelId, null)
+    assert.equal(published.layers.centerlineStationing[0]?.selectedLabelId, null)
   })
 
   it('keeps scalar result and contour defaults explicit', () => {
@@ -188,7 +188,7 @@ describe('Plan-View Hydraulic Results production baseline', () => {
         },
         layers: {
           overlays: [],
-          centerlineStationing: {
+          centerlineStationing: [{
             centerline,
             direction: 'a-to-b',
             ticks: generateCenterlineStationTicks(
@@ -197,7 +197,7 @@ describe('Plan-View Hydraulic Results production baseline', () => {
               0,
               settings.centerlineStationing,
             ),
-          },
+          }],
         },
         selection: {},
       },

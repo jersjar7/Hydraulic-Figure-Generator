@@ -14,7 +14,7 @@ type Options = {
   scene: PlanViewResultScene
   settings: PlanViewResultSettings
   overlays: MapOverlay[]
-  centerlineStationing?: CenterlineStationLayer
+  centerlineStationing?: CenterlineStationLayer[]
   mode?: RenderMode
 }
 
@@ -34,15 +34,13 @@ export function createPlanViewResultRenderDocument({
     },
     layers: {
       overlays,
-      centerlineStationing: centerlineStationing
-        ? {
-            ...centerlineStationing,
-            selectedLabelId:
-              mode === 'published'
-                ? null
-                : centerlineStationing.selectedLabelId,
-          }
-        : undefined,
+      centerlineStationing: (centerlineStationing ?? []).map((layer) => ({
+        ...layer,
+        selectedLabelId:
+          mode === 'published'
+            ? null
+            : layer.selectedLabelId,
+      })),
     },
     selection: {},
   }

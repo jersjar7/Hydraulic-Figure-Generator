@@ -11,7 +11,7 @@ import {
 } from './planViewFigureSet'
 import type { PlanViewResultSettings } from '../../core/types'
 import {
-  buildCenterlineStationingLayer,
+  buildCenterlineStationingLayers,
   type CenterlineStationingSource,
 } from '../stationing/centerlineStationingSource'
 import { createPlanViewResultRenderDocument } from './planViewResultRenderDocument'
@@ -49,7 +49,7 @@ export async function renderPlanViewFigureSetCanvas(
       scene,
       settings: item.settings,
       overlays,
-      centerlineStationing: buildCenterlineStationingLayer(
+      centerlineStationing: buildCenterlineStationingLayers(
         stationingSource,
         item.settings.centerlineStationing,
       ),

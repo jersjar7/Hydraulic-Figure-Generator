@@ -34,7 +34,7 @@ export type PlanViewResultRenderDocument = FigureRenderDocument<
   Bounds,
   {
     overlays: MapOverlay[]
-    centerlineStationing?: CenterlineStationLayer
+    centerlineStationing: CenterlineStationLayer[]
   },
   Record<string, never>
 >
@@ -140,13 +140,9 @@ export async function renderPlanViewResultDocument(
   }
   context.restore()
 
-  drawCenterlineStationing(
-    context,
-    document.layers.centerlineStationing,
-    view,
-    settings,
-    frame,
-  )
+  for (const layer of document.layers.centerlineStationing ?? []) {
+    drawCenterlineStationing(context, layer, view, settings, frame)
+  }
 
   if (settings.showTitle) {
     elementBounds.push(

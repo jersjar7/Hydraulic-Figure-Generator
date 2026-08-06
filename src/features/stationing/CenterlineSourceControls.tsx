@@ -6,9 +6,11 @@ import type {
 export type CenterlineSourceControlsProps = {
   candidates: CenterlineCandidate[]
   centerlineId: string
+  selectedCenterlineIds?: string[]
   direction: CenterlineDirection
   startStation: number
   onCenterlineChange(id: string): void
+  onCenterlineToggle?(id: string, selected: boolean): void
   onDirectionChange(direction: CenterlineDirection): void
   onStartStationChange(station: number): void
 }
@@ -28,29 +30,70 @@ function candidateName(
 export function CenterlineSourceControls({
   candidates,
   centerlineId,
+  selectedCenterlineIds,
   direction,
   startStation,
   onCenterlineChange,
+  onCenterlineToggle,
   onDirectionChange,
   onStartStationChange,
 }: CenterlineSourceControlsProps) {
+  const multiple = Boolean(onCenterlineToggle && selectedCenterlineIds)
+  const selectedCandidates = candidates.filter((candidate) =>
+    selectedCenterlineIds?.includes(candidate.id),
+  )
   return (
     <div className="assessment-stationing-controls">
-      <label className="field">
-        <span>Centerline feature</span>
-        <select
-          value={centerlineId}
-          disabled={candidates.length === 0}
-          onChange={(event) => onCenterlineChange(event.target.value)}
-        >
-          <option value="">Select a line overlay</option>
-          {candidates.map((candidate) => (
-            <option value={candidate.id} key={candidate.id}>
-              {candidateName(candidate, candidates)}
-            </option>
-          ))}
-        </select>
-      </label>
+      {multiple ? (
+        <>
+          <fieldset className="centerline-selection-list">
+            <legend>Centerlines on figure</legend>
+            {candidates.map((candidate) => (
+              <label key={candidate.id}>
+                <input
+                  type="checkbox"
+                  checked={selectedCenterlineIds!.includes(candidate.id)}
+                  onChange={(event) =>
+                    onCenterlineToggle!(candidate.id, event.target.checked)
+                  }
+                />
+                <span>{candidateName(candidate, candidates)}</span>
+              </label>
+            ))}
+          </fieldset>
+          <label className="field">
+            <span>Edit stationing for</span>
+            <select
+              value={centerlineId}
+              disabled={selectedCandidates.length === 0}
+              onChange={(event) => onCenterlineChange(event.target.value)}
+            >
+              <option value="">Select a stationed centerline</option>
+              {selectedCandidates.map((candidate) => (
+                <option value={candidate.id} key={candidate.id}>
+                  {candidateName(candidate, candidates)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </>
+      ) : (
+        <label className="field">
+          <span>Centerline feature</span>
+          <select
+            value={centerlineId}
+            disabled={candidates.length === 0}
+            onChange={(event) => onCenterlineChange(event.target.value)}
+          >
+            <option value="">Select a line overlay</option>
+            {candidates.map((candidate) => (
+              <option value={candidate.id} key={candidate.id}>
+                {candidateName(candidate, candidates)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {candidates.length === 0 ? (
         <p className="assessment-guidance">
           Add a zipped line shapefile in Layers.
@@ -66,6 +109,7 @@ export function CenterlineSourceControls({
           type="number"
           step="1"
           value={startStation}
+          disabled={!centerlineId}
           onChange={(event) => {
             const station = Number(event.target.value)
             if (Number.isFinite(station)) onStartStationChange(station)
@@ -79,6 +123,7 @@ export function CenterlineSourceControls({
           <button
             type="button"
             className={direction === 'a-to-b' ? 'active' : ''}
+            disabled={!centerlineId}
             onClick={() => onDirectionChange('a-to-b')}
           >
             A downstream
@@ -86,6 +131,7 @@ export function CenterlineSourceControls({
           <button
             type="button"
             className={direction === 'b-to-a' ? 'active' : ''}
+            disabled={!centerlineId}
             onClick={() => onDirectionChange('b-to-a')}
           >
             B downstream

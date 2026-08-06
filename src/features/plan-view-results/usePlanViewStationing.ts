@@ -1,11 +1,12 @@
 import { useState, type Dispatch, type SetStateAction } from 'react'
 import type { HydraulicEngine } from '../../core/hydraulicEngine'
 import type {
+  CenterlineDirection,
   MapOverlay,
   PlanViewResultSettings,
 } from '../../core/types'
 import { useCenterlineStationingController } from '../stationing/useCenterlineStationingController'
-import { useCenterlineStationingLayer } from '../stationing/useCenterlineStationingLayer'
+import { useCenterlineStationingLayers } from '../stationing/useCenterlineStationingLayers'
 import type { useCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 
 type Options = {
@@ -27,21 +28,19 @@ export function usePlanViewStationing({
 }: Options) {
   const [selectedLabelId, setSelectedLabelId] = useState<string | null>(null)
   const state = sourceController.state
-  const stationing = useCenterlineStationingLayer({
+  const stationing = useCenterlineStationingLayers({
     modelWkt: engine.condition(scenarioId)?.geometry?.wkt,
     overlays,
     settings: settings.centerlineStationing,
-    centerlineId: state.centerlineId,
-    direction: state.direction,
-    startStation: state.startStation,
+    source: state,
     selectedLabelId,
-    setCenterline: sourceController.setCenterline,
+    toggleCenterline: sourceController.toggleCenterline,
     setSelectedLabelId,
   })
   const controller = useCenterlineStationingController({
     bounds: engine.commonBounds([scenarioId]),
     settings,
-    stationingLayer: stationing.layer,
+    stationingLayer: stationing.activeLayer,
     selectedLabelId,
     setSettings,
     setSelectedLabelId,
@@ -55,18 +54,18 @@ export function usePlanViewStationing({
     ...stationing,
     selectedLabelId,
     controller,
-    source: stationing.selectedCenterline
-      ? {
-          centerline: stationing.selectedCenterline,
-          direction: state.direction,
-          startStation: state.startStation,
-        }
+    source: stationing.source.centerlines.length > 0
+      ? stationing.source
       : undefined,
-    changeCenterline: (id: string) => {
-      sourceController.setCenterline(id)
+    changeActiveCenterline: (id: string) => {
+      sourceController.setActiveCenterline(id)
+      setSelectedLabelId(null)
+    },
+    toggleCenterline: (id: string, selected: boolean) => {
+      sourceController.toggleCenterline(id, selected)
       resetLabelOverrides()
     },
-    changeDirection: (direction: typeof state.direction) => {
+    changeDirection: (direction: CenterlineDirection) => {
       sourceController.setDirection(direction)
       resetLabelOverrides()
     },
@@ -77,18 +76,23 @@ export function usePlanViewStationing({
     clearSelection: () => setSelectedLabelId(null),
     panelProps: {
       candidates: stationing.candidates,
-      centerlineId: state.centerlineId,
-      direction: state.direction,
-      startStation: state.startStation,
+      centerlineId: state.activeCenterlineId,
+      selectedCenterlineIds: state.centerlines.map((entry) => entry.centerlineId),
+      direction: stationing.activeEntry?.direction ?? 'a-to-b',
+      startStation: stationing.activeEntry?.startStation ?? 0,
       settings: settings.centerlineStationing,
-      ticks: stationing.ticks,
+      ticks: stationing.activeLayer?.ticks ?? [],
       selectedLabelId,
-      hasCenterline: Boolean(stationing.selectedCenterline),
+      hasCenterline: stationing.layers.length > 0,
       onCenterlineChange: (id: string) => {
-        sourceController.setCenterline(id)
+        sourceController.setActiveCenterline(id)
+        setSelectedLabelId(null)
+      },
+      onCenterlineToggle: (id: string, selected: boolean) => {
+        sourceController.toggleCenterline(id, selected)
         resetLabelOverrides()
       },
-      onDirectionChange: (direction: typeof state.direction) => {
+      onDirectionChange: (direction: 'a-to-b' | 'b-to-a') => {
         sourceController.setDirection(direction)
         resetLabelOverrides()
       },

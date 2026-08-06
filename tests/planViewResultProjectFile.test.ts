@@ -31,9 +31,16 @@ describe('plan-view result project files', () => {
         startingFigureNumber: 12,
       },
       stationingSource: {
-        centerlineId: 'overlay:centerline:0:0',
-        direction: 'b-to-a' as const,
-        startStation: 1200,
+        activeCenterlineId: 'overlay:centerline:1:0',
+        centerlines: [{
+          centerlineId: 'overlay:centerline:0:0',
+          direction: 'b-to-a' as const,
+          startStation: 1200,
+        }, {
+          centerlineId: 'overlay:centerline:1:0',
+          direction: 'a-to-b' as const,
+          startStation: 2500,
+        }],
       },
     }
     assert.deepEqual(

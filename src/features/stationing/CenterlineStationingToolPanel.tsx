@@ -28,6 +28,7 @@ type Props = CenterlineSourceControlsProps & {
 export function CenterlineStationingToolPanel({
   candidates,
   centerlineId,
+  selectedCenterlineIds,
   direction,
   startStation,
   settings,
@@ -35,6 +36,7 @@ export function CenterlineStationingToolPanel({
   selectedLabelId,
   hasCenterline,
   onCenterlineChange,
+  onCenterlineToggle,
   onDirectionChange,
   onStartStationChange,
   onChange,
@@ -48,9 +50,11 @@ export function CenterlineStationingToolPanel({
       <CenterlineSourceControls
         candidates={candidates}
         centerlineId={centerlineId}
+        selectedCenterlineIds={selectedCenterlineIds}
         direction={direction}
         startStation={startStation}
         onCenterlineChange={onCenterlineChange}
+        onCenterlineToggle={onCenterlineToggle}
         onDirectionChange={onDirectionChange}
         onStartStationChange={onStartStationChange}
       />

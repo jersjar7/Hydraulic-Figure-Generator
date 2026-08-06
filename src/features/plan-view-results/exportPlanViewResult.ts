@@ -14,7 +14,7 @@ type Options = {
   engine: HydraulicEngine
   settings: PlanViewResultSettings
   overlays: MapOverlay[]
-  centerlineStationing?: CenterlineStationLayer
+  centerlineStationing?: CenterlineStationLayer[]
   appendNotices(notices: IngestNotice[]): void
 }
 

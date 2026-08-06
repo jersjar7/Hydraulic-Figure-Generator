@@ -97,6 +97,51 @@
   min-height: 28px;
 }
 
+.centerline-selection-list {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  max-height: 168px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow-y: auto;
+}
+
+.centerline-selection-list legend {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.centerline-selection-list label {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.centerline-selection-list label:hover {
+  border-color: #9db8d0;
+  background: #f7fbff;
+}
+
+.centerline-selection-list input {
+  margin: 0;
+}
+
+.centerline-selection-list span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .stationing-top-actions,
 .station-label-actions {
   display: flex;
