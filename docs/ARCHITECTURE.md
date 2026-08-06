@@ -67,6 +67,15 @@ infrastructure directly.
   catalog, role assignments, and per-scenario run selections.
 - `features/project-document/` owns shared persisted state such as overlays.
   Figure documents own only settings and annotations for that output.
+- `features/project-lifecycle/` owns the explicit New/Open/Save lifecycle,
+  dirty-state comparison, and unsaved-change protection. Folder I/O remains
+  behind `ProjectFolderStoragePort`; the browser adapter is the only layer that
+  touches the File System Access API. Hydraulic Profiles & Sections is the
+  first workspace adapter, with additional workspaces added as independent
+  persistence slices.
+- Folder projects write `project.hfg.json` last, after their editable input and
+  workspace documents. This keeps the manifest from claiming a partially
+  completed save. Derived canvas scenes are regenerated from persisted inputs.
 - `features/figures/settingsSectionModule.ts` defines the typed settings-panel
   registry; `features/tools/editorToolModule.ts` defines editor-tool metadata
   and activation contracts.

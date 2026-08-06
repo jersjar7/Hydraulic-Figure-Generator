@@ -5,6 +5,8 @@ import {
 import { useHydraulicProjectDocument } from '../project-document/useHydraulicProjectDocument'
 import { useProjectSession } from '../project-session/useProjectSession'
 import { useReportAssembly } from '../report-assembly/useReportAssembly'
+import { useHydraulicProfileDocument } from '../hydraulic-profiles/useHydraulicProfileDocument'
+import { useHydraulicProjectLifecycle } from '../project-lifecycle/useHydraulicProjectLifecycle'
 import {
   DEFAULT_FIGURE_WORKSPACE,
 } from '../figures/workspaceRegistry'
@@ -16,12 +18,18 @@ export function HydraulicProjectWorkspaceProvider({
 }: {
   children: ReactNode
 }) {
-  const projectSession = useProjectSession()
-  const projectDocument = useHydraulicProjectDocument()
-  const reportAssembly = useReportAssembly()
   const [activeFigureId, setActiveFigureId] = useState<AppWorkspaceId>(
     DEFAULT_FIGURE_WORKSPACE.id,
   )
+  const projectSession = useProjectSession()
+  const projectDocument = useHydraulicProjectDocument()
+  const reportAssembly = useReportAssembly()
+  const hydraulicProfiles = useHydraulicProfileDocument()
+  const projectLifecycle = useHydraulicProjectLifecycle({
+    profile: hydraulicProfiles.snapshot,
+    hydrateProfile: hydraulicProfiles.hydrate,
+    setActiveWorkspace: setActiveFigureId,
+  })
 
   return (
     <HydraulicProjectWorkspaceContext.Provider
@@ -31,6 +39,8 @@ export function HydraulicProjectWorkspaceProvider({
         projectSession,
         projectDocument,
         reportAssembly,
+        hydraulicProfiles,
+        projectLifecycle,
       }}
     >
       {children}

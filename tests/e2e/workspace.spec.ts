@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -40,6 +40,13 @@ const TWO_SECTION_PROFILE_VALUES = [
   [2, 10, 20, 10, 21, 10, 22, 10, 23, 10, 24, 10, 30, 10, 31, 10, 32, 10, 33, 10, 34].join('\t'),
   [3, 20, 30, 20, 21, 20, 22, 20, 23, 20, 24, 20, 40, 20, 31, 20, 32, 20, 33, 20, 34].join('\t'),
 ].join('\n')
+
+async function openHydraulicProfiles(page: Page) {
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'hydraulic-profiles-sections',
+  )
+  await page.getByRole('button', { name: 'Continue without a project' }).last().click()
+}
 
 test('shared figure workspace exposes scalable project and settings navigation', async ({
   page,
@@ -96,14 +103,109 @@ test('mobile controls keep both sidebars reachable', async ({ page }) => {
   ).toBeVisible()
 })
 
-test('SMS profile paste maps, renders, and assembles one fitted station cross section', async ({
+test('folder project saves and restores Hydraulic Profiles inputs', async ({
   page,
 }) => {
+  await page.addInitScript(() => {
+    type MemoryFile = { name: string; contents: string }
+    type MemoryDirectory = {
+      name: string
+      children: Map<string, MemoryDirectory>
+      files: Map<string, MemoryFile>
+      getDirectoryHandle(name: string, options?: { create?: boolean }): Promise<MemoryDirectory>
+      getFileHandle(name: string, options?: { create?: boolean }): Promise<{
+        getFile(): Promise<File>
+        createWritable(): Promise<{
+          write(contents: string): Promise<void>
+          close(): Promise<void>
+        }>
+      }>
+    }
+    const makeDirectory = (directoryName: string): MemoryDirectory => {
+      const directory: MemoryDirectory = {
+        name: directoryName,
+        children: new Map(),
+        files: new Map(),
+        async getDirectoryHandle(name, options) {
+          const existing = directory.children.get(name)
+          if (existing) return existing
+          if (!options?.create) throw new DOMException('Missing directory', 'NotFoundError')
+          const child = makeDirectory(name)
+          directory.children.set(name, child)
+          return child
+        },
+        async getFileHandle(name, options) {
+          let record = directory.files.get(name)
+          if (!record && !options?.create) throw new DOMException('Missing file', 'NotFoundError')
+          record ??= { name, contents: '' }
+          directory.files.set(name, record)
+          return {
+            getFile: async () => new File([record.contents], record.name, { type: 'text/plain' }),
+            createWritable: async () => ({
+              write: async (contents: string) => { record.contents = contents },
+              close: async () => undefined,
+            }),
+          }
+        },
+      }
+      return directory
+    }
+    const root = makeDirectory('Projects')
+    ;(window as Window & {
+      showDirectoryPicker?: (options: { id: string }) => Promise<MemoryDirectory>
+    }).showDirectoryPicker = async ({ id }) => {
+      if (id.includes('new-project')) return root
+      const project = [...root.children.values()][0]
+      if (!project) throw new DOMException('Missing project', 'NotFoundError')
+      return project
+    }
+  })
+
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.goto('.')
   await page.getByLabel('Workspace', { exact: true }).selectOption(
     'hydraulic-profiles-sections',
   )
+  await expect(page.getByRole('heading', { name: 'Start a project' })).toBeVisible()
+  await page.getByRole('button', { name: 'New project' }).click()
+  await page.getByLabel('Project name').fill('Site 6 FRA')
+  await page.getByRole('button', { name: 'Choose location' }).click()
+  await expect(page.getByLabel('Site 6 FRA: Saved')).toBeVisible()
+
+  await page.getByRole('tab', { name: 'Summary', exact: true }).click()
+  await page.getByLabel('SMS Summary Table').fill(PROFILE_SUMMARY)
+  await page.getByRole('tab', { name: 'Profile', exact: true }).click()
+  await page.getByLabel('SMS Profile Values').fill(PROFILE_VALUES)
+  await expect(page.getByLabel('Site 6 FRA: Unsaved changes')).toBeVisible()
+  expect(await page.evaluate(() => {
+    const event = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(event)
+    return event.defaultPrevented
+  })).toBe(true)
+
+  await page.getByRole('button', { name: 'Save project' }).click()
+  await expect(page.getByLabel('Site 6 FRA: Saved')).toBeVisible()
+  await page.getByRole('tab', { name: 'Scenario', exact: true }).click()
+  await page.getByLabel('Condition label').fill('Temporary Conditions')
+  await expect(page.getByLabel('Site 6 FRA: Unsaved changes')).toBeVisible()
+
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Open project' }).click()
+  await expect(page.getByLabel('Condition label')).toHaveValue('Proposed Conditions')
+  await expect(page.getByLabel('Site 6 FRA: Saved')).toBeVisible()
+  await page.getByRole('tab', { name: 'Summary', exact: true }).click()
+  await expect(page.getByLabel('SMS Summary Table')).toHaveValue(PROFILE_SUMMARY)
+  await page.getByRole('tab', { name: 'Profile', exact: true }).click()
+  await expect(page.getByLabel('SMS Profile Values')).toHaveValue(PROFILE_VALUES)
+  await expect(page.getByLabel('Generated SMS hydraulic profile')).toHaveClass(/is-visible/)
+})
+
+test('SMS profile paste maps, renders, and assembles one fitted station cross section', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto('.')
+  await openHydraulicProfiles(page)
   await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
     'hydraulic-profiles-sections',
   )
@@ -194,9 +296,7 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
 test('SMS Summary and Profile Values text files feed the profile parser', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.goto('.')
-  await page.getByLabel('Workspace', { exact: true }).selectOption(
-    'hydraulic-profiles-sections',
-  )
+  await openHydraulicProfiles(page)
 
   await page.getByRole('tab', { name: 'Summary', exact: true }).click()
   await page.getByTestId('summary-text-file-drop').locator('input[type="file"]').setInputFiles({
@@ -220,7 +320,7 @@ test('SMS Summary and Profile Values text files feed the profile parser', async 
 test('one profile generation exposes every detected station and batch export', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.goto('.')
-  await page.getByLabel('Workspace', { exact: true }).selectOption('hydraulic-profiles-sections')
+  await openHydraulicProfiles(page)
 
   await page.getByRole('tab', { name: 'Summary', exact: true }).click()
   await page.getByLabel('SMS Summary Table').fill(TWO_SECTION_PROFILE_SUMMARY)
@@ -245,7 +345,7 @@ test('one profile generation exposes every detected station and batch export', a
 test('profile generation waits for review when the detected ground is in another dataset slot', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.goto('.')
-  await page.getByLabel('Workspace', { exact: true }).selectOption('hydraulic-profiles-sections')
+  await openHydraulicProfiles(page)
   await page.getByRole('button', { name: 'Existing', exact: true }).click()
 
   await page.getByRole('tab', { name: 'Summary', exact: true }).click()

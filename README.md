@@ -4,7 +4,7 @@ A React workspace for producing report-ready hydraulic figures from SRH-2D and
 SMS H5 exports. Files are processed locally in the browser and are never
 uploaded.
 
-The application currently provides three independently registered workspaces:
+The application currently provides four independently registered workspaces:
 
 - **WSE Difference** compares two hydraulic scenarios for FRA mapping.
 - **Cross-Section Comparison** samples Existing and Proposed hydraulics along
@@ -27,6 +27,11 @@ The application currently provides three independently registered workspaces:
   action, and choose ground/WSE relationships for earth fill and inundation
   shading. Station labels are paired by thalweg order; Summary Z-min values are
   retained as an independent diagnostic rather than used as a greedy join key.
+  This workspace also supports folder-backed projects: New Project creates a
+  versioned manifest plus editable Summary/Profile input files, Save writes
+  explicit changes, and Open Project restores inputs, mapping, station, and
+  figure settings. Unsaved work is identified in the header and protected by
+  the browser's refresh/close warning.
 
 The FRA WSE Difference workspace:
 
@@ -80,12 +85,13 @@ src/
     figures/           Figure, tool, settings-section, and workspace contracts
     figure-sets/       Shared Figure / Figure Set / Document navigation
     project-document/  Shared project state independent of figure documents
+    project-lifecycle/ Folder-project orchestration and explicit save state
     project-session/   H5 scenario catalog, role, run, and resource ownership
     stationing/        Centerline station figure-element controls
     plan-view-results/ Scalar workspace, batch recipe, review, persistence, and export
     tools/             Reusable editor-tool module contract
     wse-difference/    WSE workspace composition, controllers, panels, and export
-  infrastructure/      Browser downloads, Word generation, and shapefile gateways
+  infrastructure/      Browser folder/files, downloads, Word, and shapefile gateways
   App.tsx              Figure workspace host
 ```
 

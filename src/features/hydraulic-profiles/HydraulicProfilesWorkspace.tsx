@@ -5,7 +5,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ChangeEvent,
 } from 'react'
 import '../../App.css'
 import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspaceScaffold'
@@ -16,12 +15,13 @@ import {
   parseSmsSummaryTable,
 } from '../../core/hydraulic-profiles/smsClipboard'
 import type {
-  HydraulicProfileDatasetConfiguration,
   HydraulicProfileScene,
   IngestNotice,
 } from '../../core/types'
 import { FigurePicker } from '../figures/FigurePicker'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
+import { ProjectSaveStatus } from '../project-lifecycle/ProjectSaveStatus'
+import { ProjectStartDialog } from '../project-lifecycle/ProjectStartDialog'
 import { downloadHydraulicProfilePng } from './exportHydraulicProfile'
 import { HydraulicProfileCanvas } from './HydraulicProfileCanvas'
 import type { HydraulicProfileSettingsSectionKey } from './hydraulicProfileDefinition'
@@ -29,21 +29,32 @@ import { hydraulicProfileFigure } from './hydraulicProfileFigure'
 import { createHydraulicProfileReportFigure } from './hydraulicProfileReportAdapter'
 import { HydraulicProfileInputPanel } from './HydraulicProfileInputPanel'
 import { HydraulicProfileSettingsPanel } from './HydraulicProfileSettingsPanel'
-import { createDefaultHydraulicProfileSettings } from './hydraulicProfileSettings'
-import { createHydraulicProfilePresetConfiguration } from './hydraulicProfilePresets'
 import { HYDRAULIC_PROFILE_WORKSPACE_SETTINGS } from './hydraulicProfileSettingsSections'
-import { useHydraulicProfileProjectFiles } from './useHydraulicProfileProjectFiles'
 
 export function HydraulicProfilesWorkspace() {
-  const { reportAssembly } = useHydraulicProjectWorkspace()
-  const [conditionLabel, setConditionLabel] = useState('Proposed Conditions')
-  const [summaryText, setSummaryText] = useState('')
-  const [profileText, setProfileText] = useState('')
-  const [datasetConfiguration, setDatasetConfiguration] = useState<HydraulicProfileDatasetConfiguration | null>(
-    () => createHydraulicProfilePresetConfiguration('proposed'),
-  )
-  const [selectedSectionId, setSelectedSectionId] = useState('')
-  const [settings, setSettings] = useState(createDefaultHydraulicProfileSettings)
+  const {
+    reportAssembly,
+    hydraulicProfiles,
+    projectLifecycle,
+  } = useHydraulicProjectWorkspace()
+  const {
+    snapshot: {
+      conditionLabel,
+      summaryText,
+      profileText,
+      datasetConfiguration,
+      selectedSectionId,
+      settings,
+    },
+    hydrationRevision,
+    setConditionLabel,
+    setSummaryText,
+    setProfileText,
+    setDatasetConfiguration,
+    setSelectedSectionId,
+    setSettings,
+    reset: resetDocument,
+  } = hydraulicProfiles
   const [scenes, setScenes] = useState<HydraulicProfileScene[]>([])
   const [runtimeNotices, setRuntimeNotices] = useState<IngestNotice[]>([])
   const [leftOpen, setLeftOpen] = useState(false)
@@ -51,7 +62,6 @@ export function HydraulicProfilesWorkspace() {
   const [rightOpen, setRightOpen] = useState(false)
   const [activeSection, setActiveSection] = useState<HydraulicProfileSettingsSectionKey>('layout')
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const projectInputRef = useRef<HTMLInputElement>(null)
 
   const parsedSummary = useMemo(() => parseSmsSummaryTable(summaryText), [summaryText])
   const parsedProfile = useMemo(() => parseSmsProfileValues(profileText), [profileText])
@@ -71,9 +81,16 @@ export function HydraulicProfilesWorkspace() {
     if (!dataset.sections.some((section) => section.id === selectedSectionId)) {
       setSelectedSectionId(dataset.sections[0]?.id ?? '')
     }
-  }, [dataset.sections, selectedSectionId])
+  }, [dataset.sections, selectedSectionId, setSelectedSectionId])
 
   useEffect(() => setScenes([]), [conditionLabel, dataset])
+
+  useEffect(() => {
+    if (hydrationRevision === 0 || !ready) return
+    setScenes(dataset.sections.map((section) =>
+      hydraulicProfileFigure.buildScene({ conditionLabel, section }),
+    ))
+  }, [conditionLabel, dataset, hydrationRevision, ready])
 
   useEffect(() => {
     if (!scene || !canvasRef.current) return
@@ -136,51 +153,31 @@ export function HydraulicProfilesWorkspace() {
     }])
   }
 
-  const projectFiles = useHydraulicProfileProjectFiles({
-    snapshot: {
-      conditionLabel,
-      summaryText,
-      profileText,
-      selectedSectionId,
-      datasetConfiguration,
-      settings,
-    },
-    appendNotices,
-  })
-
-  const loadProject = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0]
-    event.currentTarget.value = ''
-    if (!file) return
-    const payload = await projectFiles.loadProjectFile(file)
-    if (!payload) return
-    setConditionLabel(payload.conditionLabel)
-    setSummaryText(payload.summaryText)
-    setProfileText(payload.profileText)
-    setSelectedSectionId(payload.selectedSectionId)
-    setDatasetConfiguration(
-      payload.datasetConfiguration ?? createHydraulicProfilePresetConfiguration('proposed'),
-    )
-    setSettings(payload.settings)
-    setScenes([])
-    appendNotices([{ level: 'success', text: 'Hydraulic profile project loaded.' }])
+  const saveProject = async () => {
+    try {
+      if (await projectLifecycle.saveProject()) {
+        appendNotices([{ level: 'success', text: 'Project folder saved.' }])
+      }
+    } catch (error) {
+      appendNotices([{
+        level: 'error',
+        text: `Project save failed: ${error instanceof Error ? error.message : String(error)}`,
+      }])
+    }
   }
 
   const reset = () => {
-    setConditionLabel('Proposed Conditions')
-    setSummaryText('')
-    setProfileText('')
-    setDatasetConfiguration(createHydraulicProfilePresetConfiguration('proposed'))
-    setSelectedSectionId('')
-    setSettings(createDefaultHydraulicProfileSettings())
+    if (!projectLifecycle.confirmDiscard()) return
+    resetDocument()
     setScenes([])
     setRuntimeNotices([])
     setLeftCollapsed(false)
   }
 
   return (
-    <FigureWorkspaceScaffold<HydraulicProfileSettingsSectionKey>
-      figureLabel={hydraulicProfileFigure.label}
+    <>
+      <FigureWorkspaceScaffold<HydraulicProfileSettingsSectionKey>
+        figureLabel={hydraulicProfileFigure.label}
       comparisonDescription={selectedSection ? `${conditionLabel} | Station ${selectedSection.stationLabel}` : 'SMS Summary Table + Profile Values'}
       inputsCollapsed={leftCollapsed}
       leftPanelOpen={leftOpen}
@@ -190,8 +187,9 @@ export function HydraulicProfilesWorkspace() {
       settingsSections={HYDRAULIC_PROFILE_WORKSPACE_SETTINGS}
       activeSettingsSection={activeSection}
       showMapActions={false}
-      onSave={projectFiles.saveProject}
-      onLoad={() => projectInputRef.current?.click()}
+      onSave={() => void saveProject()}
+      onLoad={() => void projectLifecycle.openProject()}
+      onNew={projectLifecycle.requestNewProject}
       onOpenLeftPanel={() => { setLeftCollapsed(false); setLeftOpen(true) }}
       onOpenRightPanel={() => setRightOpen(true)}
       onCloseMobilePanels={() => { setLeftOpen(false); setRightOpen(false) }}
@@ -200,7 +198,15 @@ export function HydraulicProfilesWorkspace() {
       onZoomOut={() => undefined}
       onZoomIn={() => undefined}
       onFitFrame={() => undefined}
-      loadInput={<input ref={projectInputRef} className="visually-hidden" type="file" accept=".hydfig,.json" onChange={loadProject} />}
+      projectStatus={
+        <ProjectSaveStatus
+          projectName={projectLifecycle.projectName}
+          dirty={projectLifecycle.isDirty}
+          error={projectLifecycle.error}
+        />
+      }
+      saveLabel="Save project"
+      loadLabel="Open project"
       projectPanel={
         <HydraulicProfileInputPanel
           mobileOpen={leftOpen}
@@ -252,7 +258,19 @@ export function HydraulicProfilesWorkspace() {
           onClick={generate}
         />
       }
-      figurePicker={<FigurePicker />}
-    />
+        figurePicker={<FigurePicker />}
+      />
+      <ProjectStartDialog
+        mode={projectLifecycle.dialog}
+        supported={projectLifecycle.isSupported}
+        busy={projectLifecycle.busy}
+        error={projectLifecycle.error}
+        onNew={projectLifecycle.requestNewProject}
+        onCreate={projectLifecycle.createProject}
+        onOpen={projectLifecycle.openProject}
+        onContinue={projectLifecycle.dismissDialog}
+        onBack={projectLifecycle.backToWelcome}
+      />
+    </>
   )
 }

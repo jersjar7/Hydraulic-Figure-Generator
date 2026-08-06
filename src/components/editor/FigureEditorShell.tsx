@@ -1,4 +1,5 @@
 import {
+  FilePlus2,
   FolderOpen,
   Map,
   PanelLeft,
@@ -13,11 +14,15 @@ type Props = {
   rightPanelOpen: boolean
   onSave(): void
   onLoad(): void
+  onNew?(): void
   onOpenLeftPanel(): void
   onOpenRightPanel(): void
   onCloseMobilePanels(): void
   loadInput?: ReactNode
   figurePicker?: ReactNode
+  projectStatus?: ReactNode
+  saveLabel?: string
+  loadLabel?: string
   workspaceClassName?: string
   showPanelButtons?: boolean
   children: ReactNode
@@ -29,11 +34,15 @@ export function FigureEditorShell({
   rightPanelOpen,
   onSave,
   onLoad,
+  onNew,
   onOpenLeftPanel,
   onOpenRightPanel,
   onCloseMobilePanels,
   loadInput,
   figurePicker,
+  projectStatus,
+  saveLabel = 'Save',
+  loadLabel = 'Load',
   workspaceClassName = '',
   showPanelButtons = true,
   children,
@@ -51,13 +60,24 @@ export function FigureEditorShell({
           </div>
         </div>
         <div className="topbar-actions">
+          {projectStatus}
+          {onNew ? (
+            <button
+              className="button secondary compact"
+              type="button"
+              onClick={onNew}
+            >
+              <FilePlus2 size={16} aria-hidden="true" />
+              <span>New</span>
+            </button>
+          ) : null}
           <button
             className="button secondary compact"
             type="button"
             onClick={onSave}
           >
             <Save size={16} aria-hidden="true" />
-            <span>Save</span>
+            <span>{saveLabel}</span>
           </button>
           <button
             className="button secondary compact"
@@ -65,7 +85,7 @@ export function FigureEditorShell({
             onClick={onLoad}
           >
             <FolderOpen size={16} aria-hidden="true" />
-            <span>Load</span>
+            <span>{loadLabel}</span>
           </button>
           {showPanelButtons ? <button
             className="icon-button mobile-panel-button"
