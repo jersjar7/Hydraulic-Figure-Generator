@@ -1,4 +1,9 @@
 import type { FigureSettings, ProjectedGeometry } from '../types'
+import {
+  DEFAULT_COLOR_RAMP_BY_USE,
+  colorRampColor,
+  type ColorRampKey,
+} from '../colorRamps'
 import type { MapView } from './view'
 
 const VALID = (value: number) =>
@@ -18,39 +23,16 @@ export function localCoordinates(
   return { localX, localY }
 }
 
-const RAMP_STOPS = [
-  [0, [0, 31, 176]],
-  [0.25, [99, 169, 213]],
-  [0.48, [236, 245, 248]],
-  [0.52, [255, 255, 210]],
-  [0.75, [246, 173, 55]],
-  [1, [197, 32, 32]],
-] as const
-
-function interpolateColor(value: number) {
-  const normalized = Math.max(0, Math.min(1, value))
-  let upper = 1
-  while (upper < RAMP_STOPS.length && normalized > RAMP_STOPS[upper][0]) {
-    upper += 1
-  }
-  const [lowerPosition, lowerColor] = RAMP_STOPS[Math.max(0, upper - 1)]
-  const [upperPosition, upperColor] =
-    RAMP_STOPS[Math.min(RAMP_STOPS.length - 1, upper)]
-  const fraction =
-    upperPosition === lowerPosition
-      ? 0
-      : (normalized - lowerPosition) / (upperPosition - lowerPosition)
-  return lowerColor.map((channel, index) =>
-    Math.round(channel + (upperColor[index] - channel) * fraction),
-  )
-}
-
-export function differenceColor(value: number, maxAbsolute: number) {
+export function differenceColor(
+  value: number,
+  maxAbsolute: number,
+  ramp: ColorRampKey = DEFAULT_COLOR_RAMP_BY_USE.wseDifference,
+) {
   if (!VALID(value)) return null
-  const color = interpolateColor(
+  return colorRampColor(
+    ramp,
     (value + maxAbsolute) / (2 * maxAbsolute || 1),
   )
-  return `rgb(${color.join(',')})`
 }
 
 export function differenceBandCount(
@@ -121,6 +103,7 @@ export function fillDifferenceBands(
   values: Float32Array,
   maxAbsolute: number,
   interval: number | null,
+  ramp: ColorRampKey = DEFAULT_COLOR_RAMP_BY_USE.wseDifference,
 ) {
   const bandCount = differenceBandCount(maxAbsolute, interval)
   fillScalarBands(
@@ -132,7 +115,7 @@ export function fillDifferenceBands(
     -maxAbsolute,
     maxAbsolute,
     bandCount,
-    (value) => differenceColor(value, maxAbsolute) ?? '#ffffff',
+    (value) => differenceColor(value, maxAbsolute, ramp) ?? '#ffffff',
   )
 }
 

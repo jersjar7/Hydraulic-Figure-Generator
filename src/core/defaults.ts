@@ -1,6 +1,7 @@
 import { cloneDefaultElementStyles } from './figureElements'
 import { DEFAULT_ELEMENT_POSITIONS } from './mapRenderer'
 import type { AnnotationDefaults, FigureSettings } from './types'
+import { DEFAULT_COLOR_RAMP_BY_USE } from './colorRamps'
 
 export function createDefaultFigureSettings(): FigureSettings {
   return {
@@ -28,6 +29,7 @@ export function createDefaultFigureSettings(): FigureSettings {
       '{type} - {baseline}: {baselineRun} vs {comparison}: {comparisonRun}',
     legendBound: null,
     legendInterval: null,
+    differenceRamp: DEFAULT_COLOR_RAMP_BY_USE.wseDifference,
     legendFontSize: 19,
     newlyWetColor: '#2cc88b',
     newlyDryColor: '#e97768',

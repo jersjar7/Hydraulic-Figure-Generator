@@ -21,6 +21,7 @@ describe('WSE Difference production baseline', () => {
     assert.equal(settings.showAssessmentLabels, true)
     assert.equal(settings.legendBound, null)
     assert.equal(settings.legendInterval, null)
+    assert.equal(settings.differenceRamp, 'wseDifference')
     assert.equal(settings.centerlineStationing.visible, false)
     assert.deepEqual(FRAMES, {
       landscape: { width: 1650, height: 1275 },

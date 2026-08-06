@@ -1,4 +1,7 @@
 import { ControlSection } from '../../../components/ControlSection'
+import { ColorRampSelect } from '../../../components/settings/ColorRampSelect'
+import { SettingsGroup } from '../../../components/settings/SettingsGroup'
+import { DEFAULT_COLOR_RAMP_BY_USE } from '../../../core/colorRamps'
 import type { FigureSettings } from '../../../core/types'
 import type { FigureSettingsChange } from '../settingsPanelTypes'
 
@@ -19,66 +22,75 @@ export function LegendSettingsPanel({
 }: LegendSettingsPanelProps) {
   return (
     <ControlSection>
-      <div className="field-grid two">
-        <label className="field">
-          <span>
-            Symmetric bound <small>± ft</small>
-          </span>
-          <input
-            type="number"
-            min="0.01"
-            step="0.25"
-            placeholder="Auto"
-            value={settings.legendBound ?? ''}
-            onChange={(event) =>
-              onSettingsChange(
-                'legendBound',
-                optionalNumber(event.target.value, 3),
-              )
-            }
-          />
-        </label>
-        <label className="field">
-          <span>
-            Legend interval <small>ft</small>
-          </span>
-          <input
-            type="number"
-            min="0.01"
-            step="0.1"
-            placeholder="Auto"
-            value={settings.legendInterval ?? ''}
-            onChange={(event) =>
-              onSettingsChange(
-                'legendInterval',
-                optionalNumber(event.target.value, 0.5),
-              )
-            }
-          />
-        </label>
-      </div>
-      <div className="field-grid two">
-        <label className="field color-field">
-          <span>Newly inundated</span>
-          <input
-            type="color"
-            value={settings.newlyWetColor}
-            onChange={(event) =>
-              onSettingsChange('newlyWetColor', event.target.value)
-            }
-          />
-        </label>
-        <label className="field color-field">
-          <span>Newly dry</span>
-          <input
-            type="color"
-            value={settings.newlyDryColor}
-            onChange={(event) =>
-              onSettingsChange('newlyDryColor', event.target.value)
-            }
-          />
-        </label>
-      </div>
+      <SettingsGroup title="WSE Difference">
+        <ColorRampSelect
+          value={settings.differenceRamp}
+          defaultRamp={DEFAULT_COLOR_RAMP_BY_USE.wseDifference}
+          onChange={(ramp) => onSettingsChange('differenceRamp', ramp)}
+        />
+        <div className="field-grid two">
+          <label className="field">
+            <span>
+              Difference bound <small>± ft</small>
+            </span>
+            <input
+              type="number"
+              min="0.01"
+              step="0.25"
+              placeholder="Auto"
+              value={settings.legendBound ?? ''}
+              onChange={(event) =>
+                onSettingsChange(
+                  'legendBound',
+                  optionalNumber(event.target.value, 3),
+                )
+              }
+            />
+          </label>
+          <label className="field">
+            <span>
+              Class interval <small>ft</small>
+            </span>
+            <input
+              type="number"
+              min="0.01"
+              step="0.1"
+              placeholder="Auto"
+              value={settings.legendInterval ?? ''}
+              onChange={(event) =>
+                onSettingsChange(
+                  'legendInterval',
+                  optionalNumber(event.target.value, 0.5),
+                )
+              }
+            />
+          </label>
+        </div>
+      </SettingsGroup>
+      <SettingsGroup title="Wet/Dry Change">
+        <div className="field-grid two">
+          <label className="field color-field">
+            <span>Newly inundated</span>
+            <input
+              type="color"
+              value={settings.newlyWetColor}
+              onChange={(event) =>
+                onSettingsChange('newlyWetColor', event.target.value)
+              }
+            />
+          </label>
+          <label className="field color-field">
+            <span>Newly dry</span>
+            <input
+              type="color"
+              value={settings.newlyDryColor}
+              onChange={(event) =>
+                onSettingsChange('newlyDryColor', event.target.value)
+              }
+            />
+          </label>
+        </div>
+      </SettingsGroup>
     </ControlSection>
   )
 }

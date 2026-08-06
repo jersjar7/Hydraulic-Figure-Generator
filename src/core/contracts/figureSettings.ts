@@ -1,5 +1,6 @@
 import type { MapElementPositions, MapElementStyles } from './figureElements'
 import type { CenterlineStationingSettings } from './stationing'
+import type { ColorRampKey } from '../colorRamps'
 
 export type FigureSettings = {
   orientation: 'landscape' | 'portrait'
@@ -25,6 +26,7 @@ export type FigureSettings = {
   titleTemplate: string
   legendBound: number | null
   legendInterval: number | null
+  differenceRamp: ColorRampKey
   legendFontSize: number
   newlyWetColor: string
   newlyDryColor: string

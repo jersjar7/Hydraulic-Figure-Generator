@@ -24,6 +24,7 @@ export const differenceBandsRenderLayer: FigureRenderLayer<WseDifferenceLayerCon
           scene.diff,
           legendBound,
           settings.legendInterval,
+          settings.differenceRamp,
         )
       })
     },

@@ -2,12 +2,10 @@ import { Download, FileJson, Images } from 'lucide-react'
 import type { ComponentProps } from 'react'
 import { ControlSection } from '../../components/ControlSection'
 import { FigureElementsPanel } from '../../components/FigureElementsPanel'
+import { ColorRampSelect } from '../../components/settings/ColorRampSelect'
 import { CompactFieldGrid } from '../../components/settings/CompactFieldGrid'
 import { SettingsGroup } from '../../components/settings/SettingsGroup'
-import {
-  SCALAR_RAMP_OPTIONS,
-  scalarRampGradient,
-} from '../../core/map/scalarResultRamp'
+import { SCALAR_COLOR_RAMP_OPTIONS } from '../../core/colorRamps'
 import type {
   FigureElementPanelKey,
   PlanViewResultSettings,
@@ -62,24 +60,14 @@ function LegendControls({
       {showsSurface ? (
         <>
           <SettingsGroup title="Classification">
-            <label className="field">
-              <span>Color ramp</span>
-              <select
-                value={settings.ramp}
-                onChange={(event) =>
-                  onSettingsChange('ramp', event.currentTarget.value as ScalarRampKey)
-                }
-              >
-                {SCALAR_RAMP_OPTIONS.map((option) => (
-                  <option value={option.key} key={option.key}>{option.label}</option>
-                ))}
-              </select>
-              <span
-                className="ramp-preview"
-                style={{ background: scalarRampGradient(settings.ramp) }}
-                aria-hidden="true"
-              />
-            </label>
+            <ColorRampSelect
+              value={settings.ramp}
+              defaultRamp={output?.defaultRamp ?? settings.ramp}
+              options={SCALAR_COLOR_RAMP_OPTIONS}
+              onChange={(ramp) =>
+                onSettingsChange('ramp', ramp as ScalarRampKey)
+              }
+            />
             <CompactFieldGrid columns={3}>
               <label className="field">
                 <span>Minimum</span>

@@ -1,4 +1,7 @@
 import type {
+  ColorRampKey,
+} from '../colorRamps'
+import type {
   DifferenceLegendElementStyle,
   MapElementPositions,
 } from '../types'
@@ -20,6 +23,7 @@ export function drawDifferenceLegend(
   context: CanvasRenderingContext2D,
   maxAbsolute: number,
   interval: number | null,
+  ramp: ColorRampKey,
   frame: MapFrame,
   position: MapElementPositions['diffLegend'],
   style: DifferenceLegendElementStyle,
@@ -92,7 +96,7 @@ export function drawDifferenceLegend(
     for (let band = 0; band < bandCount; band += 1) {
       const middle =
         -maxAbsolute + ((band + 0.5) * 2 * maxAbsolute) / bandCount
-      context.fillStyle = differenceColor(middle, maxAbsolute) ?? '#fff'
+      context.fillStyle = differenceColor(middle, maxAbsolute, ramp) ?? '#fff'
       context.fillRect(
         barX + band * blockWidth,
         barTop,
@@ -122,7 +126,7 @@ export function drawDifferenceLegend(
     for (let band = 0; band < bandCount; band += 1) {
       const middle =
         -maxAbsolute + ((band + 0.5) * 2 * maxAbsolute) / bandCount
-      context.fillStyle = differenceColor(middle, maxAbsolute) ?? '#fff'
+      context.fillStyle = differenceColor(middle, maxAbsolute, ramp) ?? '#fff'
       context.fillRect(
         barX,
         barBottom - (band + 1) * blockHeight,

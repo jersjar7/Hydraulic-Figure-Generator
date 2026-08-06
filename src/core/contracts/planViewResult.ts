@@ -1,4 +1,5 @@
 import type { FigureSettings } from './figureSettings'
+import type { ScalarColorRampKey } from '../colorRamps'
 import type {
   ConditionData,
   ProjectedGeometry,
@@ -20,15 +21,7 @@ export type PlanViewGeometryOutputId =
   | typeof PLAN_VIEW_MESH_ELEMENTS_ID
   | typeof PLAN_VIEW_TOPOGRAPHY_MESH_ID
 
-export type ScalarRampKey =
-  | 'topography'
-  | 'depth'
-  | 'velocity'
-  | 'shear'
-  | 'waterSurface'
-  | 'froude'
-  | 'dvProduct'
-  | 'surcharge'
+export type ScalarRampKey = ScalarColorRampKey
 
 export type ScalarResultMetadata = {
   paramName: string

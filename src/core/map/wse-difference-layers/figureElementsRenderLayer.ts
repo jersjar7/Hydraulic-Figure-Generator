@@ -39,6 +39,7 @@ export const figureElementsRenderLayer: FigureRenderLayer<WseDifferenceLayerCont
             context,
             legendBound,
             settings.legendInterval,
+            settings.differenceRamp,
             frame,
             positions.diffLegend,
             styles.diffLegend,
