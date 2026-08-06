@@ -682,7 +682,15 @@ test('Plan-View loads a zipped centerline and renders station ticks', async ({
   await page.getByText('Show shapefile overlays', { exact: true }).click()
 
   await page.getByRole('tab', { name: 'Stationing', exact: true }).click()
-  await page.getByLabel('Centerline feature').selectOption({
+  const stationingSources = page.getByRole('group', {
+    name: 'Centerlines on figure',
+  })
+  const centerline = stationingSources.getByRole('checkbox', {
+    name: 'Synthetic-Centerline',
+  })
+  await expect(centerline).toBeVisible()
+  if (!(await centerline.isChecked())) await centerline.check()
+  await page.getByLabel('Edit stationing for').selectOption({
     label: 'Synthetic-Centerline',
   })
   const settingsPanel = page.locator('.right-sidebar')
