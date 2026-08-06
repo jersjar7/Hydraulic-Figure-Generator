@@ -19,7 +19,8 @@ The application currently provides three independently registered workspaces:
   assembles included figures into ordered, captioned Letter pages, previews
   portrait or landscape output, and exports a client-side Word document.
 - **Hydraulic Profiles & Sections** converts SMS Summary Table and Profile
-  Values clipboard exports into report-ready cross sections. Existing and
+  Values clipboard exports into report-ready cross sections. Inputs may be
+  pasted or loaded from local `.txt` files. Existing and
   Proposed presets provide an editable starting point; engineers can add,
   remove, classify, and name any number of Ground, WSE, and Other lines, select
   and review the station-order ground, generate every detected station in one

@@ -28,6 +28,7 @@ import {
   HYDRAULIC_PROFILE_PRESETS,
   matchesHydraulicProfilePreset,
 } from './hydraulicProfilePresets'
+import { HydraulicProfileTextField } from './HydraulicProfileTextField'
 
 type InputSection = 'scenario' | 'summary' | 'profile' | 'review'
 
@@ -227,16 +228,25 @@ export function HydraulicProfileInputPanel({
           </div>
         ) : null}
         {active === 'summary' ? (
-          <div className="profile-input-stack">
-            <label className="field"><span>SMS Summary Table</span><textarea className="profile-paste" aria-label="SMS Summary Table" spellCheck={false} value={summaryText} onChange={(event) => onSummaryTextChange(event.currentTarget.value)} /></label>
-            <div className="profile-parse-status"><Table2 size={16} /><span>{dataset.sections.filter((section) => section.station != null).length} station labels paired</span></div>
-          </div>
+          <HydraulicProfileTextField
+            label="SMS Summary Table"
+            value={summaryText}
+            dropTitle="Add Summary Table .txt"
+            dropTestId="summary-text-file-drop"
+            status={<div className="profile-parse-status"><Table2 size={16} /><span>{dataset.sections.filter((section) => section.station != null).length} station labels paired</span></div>}
+            onChange={onSummaryTextChange}
+          />
         ) : null}
         {active === 'profile' ? (
-          <div className="profile-input-stack">
-            <label className="field"><span>SMS Profile Values</span><textarea className="profile-paste large" aria-label="SMS Profile Values" spellCheck={false} value={profileText} onChange={(event) => onProfileTextChange(event.currentTarget.value)} /></label>
-            <div className="profile-parse-status"><ListPlus size={16} /><span>{dataset.seriesCount} series parsed · {dataset.sections.length} cross sections detected</span></div>
-          </div>
+          <HydraulicProfileTextField
+            label="SMS Profile Values"
+            value={profileText}
+            large
+            dropTitle="Add Profile Values .txt"
+            dropTestId="profile-text-file-drop"
+            status={<div className="profile-parse-status"><ListPlus size={16} /><span>{dataset.seriesCount} series parsed · {dataset.sections.length} cross sections detected</span></div>}
+            onChange={onProfileTextChange}
+          />
         ) : null}
         {active === 'review' ? (
           <div className="profile-input-stack">

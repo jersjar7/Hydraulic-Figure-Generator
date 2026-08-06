@@ -93,6 +93,33 @@
   min-height: 310px;
 }
 
+.profile-text-input {
+  gap: 8px;
+}
+
+.profile-text-file-drop .file-drop {
+  min-height: 48px;
+  justify-content: flex-start;
+  padding: 7px 9px;
+}
+
+.profile-text-file-drop .file-drop strong {
+  font-size: 10px;
+}
+
+.profile-text-file-drop .file-drop small {
+  font-size: 9px;
+}
+
+.profile-text-file-error {
+  padding: 6px 8px;
+  color: #8a2f2f;
+  background: #fff2f2;
+  border: 1px solid #e2baba;
+  border-radius: 5px;
+  font-size: 10px;
+}
+
 .profile-parse-status {
   min-height: 34px;
   display: flex;

@@ -191,6 +191,32 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
   expect((await wordPromise).suggestedFilename()).toBe('Hydraulic_Figure_Report.docx')
 })
 
+test('SMS Summary and Profile Values text files feed the profile parser', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto('.')
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'hydraulic-profiles-sections',
+  )
+
+  await page.getByRole('tab', { name: 'Summary', exact: true }).click()
+  await page.getByTestId('summary-text-file-drop').locator('input[type="file"]').setInputFiles({
+    name: 'SummaryTable.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(PROFILE_SUMMARY),
+  })
+  await expect(page.getByLabel('SMS Summary Table')).toHaveValue(PROFILE_SUMMARY)
+
+  await page.getByRole('tab', { name: 'Profile', exact: true }).click()
+  await page.getByTestId('profile-text-file-drop').locator('input[type="file"]').setInputFiles({
+    name: 'ProfileValues.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(PROFILE_VALUES),
+  })
+  await expect(page.getByLabel('SMS Profile Values')).toHaveValue(PROFILE_VALUES)
+  await expect(page.getByText('5 series parsed · 1 cross sections detected')).toBeVisible()
+  await expect(page.getByTestId('generate-hydraulic-profile')).toBeEnabled()
+})
+
 test('one profile generation exposes every detected station and batch export', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.goto('.')

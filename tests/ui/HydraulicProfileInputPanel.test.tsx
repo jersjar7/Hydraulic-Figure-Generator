@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { buildHydraulicProfileDataset } from '../../src/core/hydraulic-profiles/buildHydraulicProfileDataset'
@@ -13,6 +13,58 @@ const series = [
 ]
 
 describe('HydraulicProfileInputPanel', () => {
+  it('imports Summary and Profile Values from local text files', async () => {
+    const user = userEvent.setup()
+    const onSummaryTextChange = vi.fn()
+    const onProfileTextChange = vi.fn()
+    const configuration = createHydraulicProfilePresetConfiguration('existing')
+    const dataset = buildHydraulicProfileDataset([], [], {
+      datasetConfiguration: configuration,
+    })
+    render(
+      <HydraulicProfileInputPanel
+        mobileOpen={false}
+        collapsed={false}
+        conditionLabel="Existing Conditions"
+        summaryText=""
+        profileText=""
+        dataset={dataset}
+        summaryRows={[]}
+        selectedSectionId=""
+        onConditionLabelChange={vi.fn()}
+        onSummaryTextChange={onSummaryTextChange}
+        onProfileTextChange={onProfileTextChange}
+        onSelectedSectionChange={vi.fn()}
+        onDatasetConfigurationChange={vi.fn()}
+        onCollapse={vi.fn()}
+        onExpand={vi.fn()}
+        onMobileClose={vi.fn()}
+        onReset={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('tab', { name: 'Summary' }))
+    const summaryFile = new File(['Reach\tStation\tMin\nSite\t100\t25'], 'SummaryTable.txt', {
+      type: 'text/plain',
+    })
+    const summaryInput = screen.getByTestId('summary-text-file-drop').querySelector('input')!
+    await user.upload(summaryInput, summaryFile)
+    await waitFor(() => expect(onSummaryTextChange).toHaveBeenCalledWith(
+      'Reach\tStation\tMin\nSite\t100\t25',
+    ))
+
+    await user.click(screen.getByRole('tab', { name: 'Profile' }))
+    const profileFile = new File(['Distance\tValue\n0\t25'], 'ProfileValues.txt', {
+      type: 'text/plain',
+    })
+    fireEvent.drop(screen.getByTestId('profile-text-file-drop'), {
+      dataTransfer: { files: [profileFile] },
+    })
+    await waitFor(() => expect(onProfileTextChange).toHaveBeenCalledWith(
+      'Distance\tValue\n0\t25',
+    ))
+  })
+
   it('applies condition presets and lets the engineer add datasets', async () => {
     const user = userEvent.setup()
     const configuration = createHydraulicProfilePresetConfiguration('existing')
