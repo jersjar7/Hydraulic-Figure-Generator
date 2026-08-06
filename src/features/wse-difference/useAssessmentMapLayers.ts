@@ -7,6 +7,8 @@ import type {
 } from '../../core/types'
 import type { AssessmentWorkflowState } from '../assessment-lines/useAssessmentWorkflow'
 import { useCenterlineStationingLayer } from '../stationing/useCenterlineStationingLayer'
+import { useCenterlineStationingLayers } from '../stationing/useCenterlineStationingLayers'
+import type { useCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 import { assessmentWseLabel } from './workspaceInteractions'
 
 type AssessmentMapLayerOptions = {
@@ -14,26 +16,29 @@ type AssessmentMapLayerOptions = {
   overlays: MapOverlay[]
   state: AssessmentWorkflowState
   stationing: FigureSettings['centerlineStationing']
+  stationingSource?: ReturnType<typeof useCenterlineStationingSource>
   selectedStationLabelId: string | null
-  setCenterline: (id: string) => void
+  setCenterline?: (id: string) => void
   setSelectedLabelId?: (id: string | null) => void
 }
+
+const EMPTY_STATIONING_SOURCE = {
+  activeCenterlineId: '',
+  centerlines: [],
+}
+const ignoreCenterlineChange = () => undefined
 
 export function useAssessmentMapLayers({
   modelWkt,
   overlays,
   state,
   stationing,
+  stationingSource,
   selectedStationLabelId,
   setCenterline,
   setSelectedLabelId,
 }: AssessmentMapLayerOptions) {
-  const {
-    candidates: centerlineCandidates,
-    selectedCenterline,
-    ticks: centerlineStationTicks,
-    layer: centerlineStationLayer,
-  } = useCenterlineStationingLayer({
+  const legacyStationing = useCenterlineStationingLayer({
     modelWkt,
     overlays,
     settings: stationing,
@@ -41,34 +46,75 @@ export function useAssessmentMapLayers({
     direction: state.direction,
     startStation: state.startStation,
     selectedLabelId: selectedStationLabelId,
-    setCenterline,
+    setCenterline: setCenterline ?? ignoreCenterlineChange,
     setSelectedLabelId,
   })
+  const centerlineStationing = useCenterlineStationingLayers({
+    modelWkt,
+    overlays,
+    settings: stationing,
+    source: stationingSource?.state ?? EMPTY_STATIONING_SOURCE,
+    selectedLabelId: selectedStationLabelId,
+    toggleCenterline:
+      stationingSource?.toggleCenterline ?? ignoreCenterlineChange,
+    setSelectedLabelId,
+  })
+  const multiCenterline = Boolean(stationingSource)
+  const selectedCenterline = multiCenterline
+    ? centerlineStationing.activeCenterline
+    : legacyStationing.selectedCenterline
+  const activeEntry = useMemo(
+    () => multiCenterline
+      ? centerlineStationing.activeEntry
+      : selectedCenterline
+        ? {
+            centerlineId: selectedCenterline.id,
+            direction: state.direction,
+            startStation: state.startStation,
+          }
+        : null,
+    [
+      centerlineStationing.activeEntry,
+      multiCenterline,
+      selectedCenterline,
+      state.direction,
+      state.startStation,
+    ],
+  )
+  const centerlineStationTicks = multiCenterline
+    ? centerlineStationing.activeLayer?.ticks ?? []
+    : legacyStationing.ticks
+  const centerlineStationLayers = useMemo(
+    () => multiCenterline
+      ? centerlineStationing.layers
+      : legacyStationing.layer ? [legacyStationing.layer] : [],
+    [centerlineStationing.layers, legacyStationing.layer, multiCenterline],
+  )
 
   const stationedAssessmentLines = useMemo(
     () =>
-      selectedCenterline
+      selectedCenterline && activeEntry
         ? stationWseAssessmentLines({
             lines: state.collection.lines,
             centerline: selectedCenterline,
-            direction: state.direction,
-            startStation: state.startStation,
+            direction: activeEntry.direction,
+            startStation: activeEntry.startStation,
             overrides: state.overrides,
           })
         : null,
     [
       selectedCenterline,
+      activeEntry,
       state.collection.lines,
-      state.direction,
       state.overrides,
-      state.startStation,
     ],
   )
 
   const exportLayer = useMemo<AssessmentMapLayer>(() => {
-    const exportStationing = centerlineStationLayer
-      ? { ...centerlineStationLayer, selectedLabelId: null }
-      : undefined
+    const exportStationing = centerlineStationLayers.map((layer) => ({
+      ...layer,
+      selectedLabelId: null,
+    }))
     if (!stationedAssessmentLines) {
       return {
         lines: state.collection.lines,
@@ -93,7 +139,7 @@ export function useAssessmentMapLayers({
         })),
     }
   }, [
-    centerlineStationLayer,
+    centerlineStationLayers,
     stationedAssessmentLines,
     state.collection.lines,
     state.overrides,
@@ -103,7 +149,7 @@ export function useAssessmentMapLayers({
     const baseLayer = {
       ...exportLayer,
       selectedCalloutId: state.selectedLineId,
-      centerlineStationing: centerlineStationLayer,
+      centerlineStationing: centerlineStationLayers,
     }
     if (state.panelView !== 'review' || !stationedAssessmentLines) {
       return baseLayer
@@ -130,17 +176,23 @@ export function useAssessmentMapLayers({
     }
   }, [
     exportLayer,
-    centerlineStationLayer,
+    centerlineStationLayers,
     state.panelView,
     state.selectedLineId,
     stationedAssessmentLines,
   ])
 
   return {
-    centerlineCandidates,
+    centerlineCandidates: multiCenterline
+      ? centerlineStationing.candidates
+      : legacyStationing.candidates,
     selectedCenterline,
     centerlineStationTicks,
-    centerlineStationLayer,
+    centerlineStationLayer: multiCenterline
+      ? centerlineStationing.activeLayer
+      : legacyStationing.layer,
+    centerlineStationLayers,
+    activeCenterlineEntry: activeEntry,
     stationedAssessmentLines,
     exportLayer,
     displayLayer,

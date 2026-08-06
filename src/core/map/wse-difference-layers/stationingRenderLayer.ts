@@ -6,12 +6,8 @@ export const stationingRenderLayer: FigureRenderLayer<WseDifferenceLayerContext>
   {
     id: 'stationing',
     render({ context, assessment, view, settings, frame }) {
-      drawCenterlineStationing(
-        context,
-        assessment.centerlineStationing,
-        view,
-        settings,
-        frame,
-      )
+      for (const layer of assessment.centerlineStationing ?? []) {
+        drawCenterlineStationing(context, layer, view, settings, frame)
+      }
     },
   }

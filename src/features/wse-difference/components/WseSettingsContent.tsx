@@ -28,6 +28,7 @@ type Props = {
   hasCenterline: boolean
   centerlineCandidates: CenterlineCandidate[]
   centerlineId: string
+  selectedCenterlineIds: string[]
   centerlineDirection: CenterlineDirection
   startStation: number
   sceneReady: boolean
@@ -37,6 +38,7 @@ type Props = {
   onActiveElementChange(key: FigureElementPanelKey): void
   onStationLabelSelect(id: string | null): void
   onCenterlineChange(id: string): void
+  onCenterlineToggle(id: string, selected: boolean): void
   onCenterlineDirectionChange(direction: CenterlineDirection): void
   onStartStationChange(station: number): void
   onDryDepthChange(dryDepth: number): void
@@ -54,6 +56,7 @@ export function WseSettingsContent({
   hasCenterline,
   centerlineCandidates,
   centerlineId,
+  selectedCenterlineIds,
   centerlineDirection,
   startStation,
   sceneReady,
@@ -63,6 +66,7 @@ export function WseSettingsContent({
   onActiveElementChange,
   onStationLabelSelect,
   onCenterlineChange,
+  onCenterlineToggle,
   onCenterlineDirectionChange,
   onStartStationChange,
   onDryDepthChange,
@@ -101,6 +105,7 @@ export function WseSettingsContent({
     stationing: {
       candidates: centerlineCandidates,
       centerlineId,
+      selectedCenterlineIds,
       direction: centerlineDirection,
       startStation,
       settings: settings.centerlineStationing,
@@ -108,6 +113,7 @@ export function WseSettingsContent({
       selectedLabelId: selectedStationLabelId,
       hasCenterline,
       onCenterlineChange,
+      onCenterlineToggle,
       onDirectionChange: onCenterlineDirectionChange,
       onStartStationChange,
       onChange: figureElements.updateCenterlineStationing,

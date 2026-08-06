@@ -147,7 +147,7 @@ export type AssessmentWseCallout = {
 
 export type AssessmentMapLayer = {
   lines: WseAssessmentLine[]
-  centerlineStationing?: CenterlineStationLayer
+  centerlineStationing?: CenterlineStationLayer[]
   wseCallouts?: AssessmentWseCallout[]
   selectedCalloutId?: string | null
   selectedLine?: WseAssessmentLine | null
@@ -161,4 +161,3 @@ export type AssessmentMapLayer = {
     selected: boolean
   }[]
 }
-

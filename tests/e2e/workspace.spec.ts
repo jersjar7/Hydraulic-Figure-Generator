@@ -394,6 +394,34 @@ test('synthetic SMS files upload and render a nonblank figure', async ({
   await expect(page.getByLabel('PR scenario name')).toBeVisible()
   await expect(page.getByTestId('generate-map')).toBeEnabled()
 
+  await page.getByRole('tab', { name: 'Layers', exact: true }).click()
+  const wseCenterlineArchive = await readFile(
+    shapefileFixture('Synthetic-Centerline.zip'),
+  )
+  await page
+    .getByTestId('overlay-file-drop')
+    .locator('input[type="file"]')
+    .setInputFiles([
+      {
+        name: 'Synthetic-Centerline.zip',
+        mimeType: 'application/zip',
+        buffer: wseCenterlineArchive,
+      },
+      {
+        name: 'Synthetic-Tributary.zip',
+        mimeType: 'application/zip',
+        buffer: wseCenterlineArchive,
+      },
+    ])
+  await page.getByRole('tab', { name: 'Stationing', exact: true }).click()
+  const stationingSources = page.getByRole('group', {
+    name: 'Centerlines on figure',
+  })
+  const centerlines = await stationingSources.getByRole('checkbox').all()
+  expect(centerlines).toHaveLength(2)
+  for (const centerline of centerlines) await centerline.check()
+  await expect(page.getByLabel('Edit stationing for')).toBeEnabled()
+
   await page.getByRole('tab', { name: 'View', exact: true }).click()
   await page
     .locator('label.range-field')
@@ -671,13 +699,25 @@ test('Plan-View loads a zipped centerline and renders station ticks', async ({
     ])
 
   await page.getByRole('tab', { name: 'Layers', exact: true }).click()
+  const centerlineArchive = await readFile(
+    shapefileFixture('Synthetic-Centerline.zip'),
+  )
   await page
     .getByTestId('overlay-file-drop')
     .locator('input[type="file"]')
-    .setInputFiles(
-      shapefileFixture('Synthetic-Centerline.zip'),
-    )
-  await expect(page.getByText('Synthetic-Centerline', { exact: true }))
+    .setInputFiles([
+      {
+        name: 'Synthetic-Centerline.zip',
+        mimeType: 'application/zip',
+        buffer: centerlineArchive,
+      },
+      {
+        name: 'Synthetic-Tributary.zip',
+        mimeType: 'application/zip',
+        buffer: centerlineArchive,
+      },
+    ])
+  await expect(page.getByText('Synthetic-Centerline', { exact: true }).first())
     .toBeVisible()
   await page.getByText('Show shapefile overlays', { exact: true }).click()
 
@@ -685,14 +725,10 @@ test('Plan-View loads a zipped centerline and renders station ticks', async ({
   const stationingSources = page.getByRole('group', {
     name: 'Centerlines on figure',
   })
-  const centerline = stationingSources.getByRole('checkbox', {
-    name: 'Synthetic-Centerline',
-  })
-  await expect(centerline).toBeVisible()
-  if (!(await centerline.isChecked())) await centerline.check()
-  await page.getByLabel('Edit stationing for').selectOption({
-    label: 'Synthetic-Centerline',
-  })
+  const centerlines = await stationingSources.getByRole('checkbox').all()
+  expect(centerlines).toHaveLength(2)
+  for (const centerline of centerlines) await centerline.check()
+  await expect(page.getByLabel('Edit stationing for')).toBeEnabled()
   const settingsPanel = page.locator('.right-sidebar')
   await settingsPanel.getByText('Show on figure', { exact: true }).click()
   await settingsPanel.locator('input[type="color"]').first().fill('#ff00ff')

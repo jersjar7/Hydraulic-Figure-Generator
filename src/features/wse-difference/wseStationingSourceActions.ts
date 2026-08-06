@@ -1,16 +1,16 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { CenterlineDirection } from '../../core/types'
-import type { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
+import type { useCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 import type { useWseFigureElementController } from './useWseFigureElementController'
 
 type Options = {
-  assessmentWorkflow: ReturnType<typeof useAssessmentWorkflow>
+  sourceController: ReturnType<typeof useCenterlineStationingSource>
   figureElements: ReturnType<typeof useWseFigureElementController>
   setSelectedLabelId: Dispatch<SetStateAction<string | null>>
 }
 
 export function createWseStationingSourceActions({
-  assessmentWorkflow,
+  sourceController,
   figureElements,
   setSelectedLabelId,
 }: Options) {
@@ -19,16 +19,20 @@ export function createWseStationingSourceActions({
     setSelectedLabelId(null)
   }
   return {
-    changeCenterline: (id: string) => {
-      assessmentWorkflow.setCenterline(id)
+    changeActiveCenterline: (id: string) => {
+      sourceController.setActiveCenterline(id)
+      setSelectedLabelId(null)
+    },
+    toggleCenterline: (id: string, selected: boolean) => {
+      sourceController.toggleCenterline(id, selected)
       resetLabelOverrides()
     },
     changeDirection: (direction: CenterlineDirection) => {
-      assessmentWorkflow.setDirection(direction)
+      sourceController.setDirection(direction)
       resetLabelOverrides()
     },
     changeStartStation: (station: number) => {
-      assessmentWorkflow.setStartStation(station)
+      sourceController.setStartStation(station)
       resetLabelOverrides()
     },
   }

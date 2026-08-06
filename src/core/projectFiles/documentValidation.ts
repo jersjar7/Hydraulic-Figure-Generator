@@ -150,6 +150,32 @@ function assessmentOverrides(value: unknown, path: string) {
   return output
 }
 
+function centerlineStationingSource(value: unknown, path: string) {
+  const input = record(value, path)
+  const output: NonNullable<AssessmentWorkflowProject['stationingSource']> = {}
+  if ('activeCenterlineId' in input) {
+    output.activeCenterlineId = text(
+      input.activeCenterlineId,
+      `${path}.activeCenterlineId`,
+    )
+  }
+  if ('centerlines' in input) {
+    if (!Array.isArray(input.centerlines)) {
+      throw new Error(`${path}.centerlines must be an array.`)
+    }
+    output.centerlines = input.centerlines.map((entry, index) =>
+      shape(entry, `${path}.centerlines[${index}]`, {
+        centerlineId: nonemptyText,
+        direction: oneOf(['a-to-b', 'b-to-a']),
+        startStation: finite,
+      }) as NonNullable<
+        NonNullable<AssessmentWorkflowProject['stationingSource']>['centerlines']
+      >[number],
+    )
+  }
+  return output
+}
+
 export function assessmentWorkflow(
   value: unknown,
   path: string,
@@ -158,6 +184,7 @@ export function assessmentWorkflow(
     centerlineId: text,
     direction: oneOf(['a-to-b', 'b-to-a']),
     startStation: finite,
+    stationingSource: centerlineStationingSource,
     overrides: assessmentOverrides,
   }) as AssessmentWorkflowProject
 }

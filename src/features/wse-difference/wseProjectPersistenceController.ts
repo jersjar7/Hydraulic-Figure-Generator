@@ -6,6 +6,7 @@ import type {
 import type { IngestNotice, WseDifferenceScene } from '../../core/types'
 import type { HydraulicProjectWorkspaceValue } from '../project-workspace/hydraulicProjectWorkspaceContext'
 import type { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
+import type { useCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 import type { useWseEditorUi } from './useWseEditorUi'
 import type { useWseFigureDocument } from './useWseFigureDocument'
 import { createWseProjectFileActions } from './wseProjectFileActions'
@@ -15,6 +16,7 @@ type Options = {
   projectDocument: HydraulicProjectWorkspaceValue['projectDocument']
   figureDocument: ReturnType<typeof useWseFigureDocument>
   assessmentWorkflow: ReturnType<typeof useAssessmentWorkflow>
+  stationingSource: ReturnType<typeof useCenterlineStationingSource>
   editorUi: ReturnType<typeof useWseEditorUi>
   setScene: Dispatch<SetStateAction<WseDifferenceScene | null>>
   appendNotices(notices: IngestNotice[]): void
@@ -25,6 +27,7 @@ export function createWseProjectPersistenceController({
   projectDocument,
   figureDocument,
   assessmentWorkflow,
+  stationingSource,
   editorUi,
   setScene,
   appendNotices,
@@ -52,6 +55,7 @@ export function createWseProjectPersistenceController({
         centerlineId: state.centerlineId,
         direction: state.direction,
         startStation: state.startStation,
+        stationingSource: stationingSource.state,
         overrides: state.overrides,
       },
     },
@@ -82,6 +86,7 @@ export function createWseProjectPersistenceController({
       loaded.assessment,
       loaded.document.settings.assessmentLineInterval,
     )
+    stationingSource.load(loaded.assessment.stationingSource ?? {})
     appendNotices([
       {
         level: 'success',

@@ -78,6 +78,14 @@ export type AssessmentWorkflowProject = {
   centerlineId?: string
   direction?: CenterlineDirection
   startStation?: number
+  stationingSource?: {
+    activeCenterlineId?: string
+    centerlines?: Array<{
+      centerlineId: string
+      direction: CenterlineDirection
+      startStation: number
+    }>
+  }
   overrides?: AssessmentLineOverrides
 }
 

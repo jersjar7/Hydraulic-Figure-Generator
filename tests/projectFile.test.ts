@@ -68,6 +68,21 @@ describe('hydraulic figure project files', () => {
         centerlineId: 'overlay-1:0:0',
         direction: 'b-to-a',
         startStation: 1000,
+        stationingSource: {
+          activeCenterlineId: 'overlay-2:0:0',
+          centerlines: [
+            {
+              centerlineId: 'overlay-1:0:0',
+              direction: 'b-to-a',
+              startStation: 1000,
+            },
+            {
+              centerlineId: 'overlay-2:0:0',
+              direction: 'a-to-b',
+              startStation: 2500,
+            },
+          ],
+        },
         overrides: {
           'existing-wse:52:0': {
             included: true,
