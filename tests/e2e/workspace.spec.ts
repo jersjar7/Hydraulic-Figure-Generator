@@ -103,7 +103,7 @@ test('mobile controls keep both sidebars reachable', async ({ page }) => {
   ).toBeVisible()
 })
 
-test('folder project saves and restores Hydraulic Profiles inputs', async ({
+test('folder project saves and restores profiles with the Export Collection', async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -185,12 +185,23 @@ test('folder project saves and restores Hydraulic Profiles inputs', async ({
 
   await page.getByRole('button', { name: 'Save project' }).click()
   await expect(page.getByLabel('Site 6 FRA: Saved')).toBeVisible()
-  await page.getByRole('tab', { name: 'Scenario', exact: true }).click()
-  await page.getByLabel('Condition label').fill('Temporary Conditions')
+
+  await page.getByLabel('Workspace', { exact: true }).selectOption('report-assembly')
+  await page.getByLabel('Document title').fill('Site 6 Hydraulic Report')
   await expect(page.getByLabel('Site 6 FRA: Unsaved changes')).toBeVisible()
+  await page.getByRole('button', { name: 'Save project' }).click()
+  await expect(page.getByLabel('Site 6 FRA: Saved')).toBeVisible()
+  await page.getByLabel('Document title').fill('Temporary Report')
 
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Open project' }).click()
+  await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue('report-assembly')
+  await expect(page.getByLabel('Document title')).toHaveValue('Site 6 Hydraulic Report')
+  await expect(page.getByLabel('Site 6 FRA: Saved')).toBeVisible()
+
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'hydraulic-profiles-sections',
+  )
   await expect(page.getByLabel('Condition label')).toHaveValue('Proposed Conditions')
   await expect(page.getByLabel('Site 6 FRA: Saved')).toBeVisible()
   await page.getByRole('tab', { name: 'Summary', exact: true }).click()

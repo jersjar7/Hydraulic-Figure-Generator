@@ -5,21 +5,19 @@ import type {
 import { HYDRAULIC_PROFILES_FIGURE_ID } from '../../core/figureIds'
 import {
   HYDRAULIC_PROJECT_MANIFEST_FILE,
-  HYDRAULIC_PROJECT_SCHEMA,
-  HYDRAULIC_PROJECT_VERSION,
   parseHydraulicProjectManifest,
-  serializeHydraulicProjectManifest,
   type HydraulicProjectManifest,
 } from '../../core/projectFiles/hydraulicProjectManifest'
+import type { HydraulicProfileProjectState } from '../hydraulic-profiles/hydraulicProfileProjectFile'
 import {
-  parseHydraulicProfileProject,
-  serializeHydraulicProfileProject,
-  type HydraulicProfileProjectState,
-} from '../hydraulic-profiles/hydraulicProfileProjectFile'
+  createHydraulicProjectFolder,
+  hydraulicProjectDirectoryName,
+  saveHydraulicProjectFolder,
+} from './hydraulicProjectFolder'
+import { hydraulicProfileFolderAdapter } from './hydraulicProfileFolderAdapter'
+import { bindProjectWorkspace } from './projectWorkspaceFolderAdapter'
 
-const PROFILE_DOCUMENT_PATH = 'workspaces/hydraulic-profiles.hydfig.json'
-const SUMMARY_INPUT_PATH = 'inputs/profiles/summary-table.txt'
-const PROFILE_INPUT_PATH = 'inputs/profiles/profile-values.txt'
+export { hydraulicProjectDirectoryName }
 
 export type OpenedHydraulicProfileProject = {
   directory: ProjectDirectoryReference
@@ -27,40 +25,16 @@ export type OpenedHydraulicProfileProject = {
   profile: HydraulicProfileProjectState
 }
 
-export function hydraulicProjectDirectoryName(projectName: string) {
-  const printableName = Array.from(projectName, (character) =>
-    character.charCodeAt(0) < 32 ? '-' : character,
-  ).join('')
-  const sanitized = printableName
-    .trim()
-    .replace(/[<>:"/\\|?*]/g, '-')
-    .replace(/[. ]+$/g, '')
-    .replace(/\s+/g, ' ')
-  if (!sanitized) throw new Error('Enter a project name.')
-  return sanitized
-}
-
-function createManifest(
-  projectName: string,
-  timestamp: string,
-): HydraulicProjectManifest {
-  return {
-    schema: HYDRAULIC_PROJECT_SCHEMA,
-    version: HYDRAULIC_PROJECT_VERSION,
-    projectName,
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    activeWorkspaceId: HYDRAULIC_PROFILES_FIGURE_ID,
-    workspaces: {
-      [HYDRAULIC_PROFILES_FIGURE_ID]: {
-        documentPath: PROFILE_DOCUMENT_PATH,
-        inputPaths: {
-          summaryTable: SUMMARY_INPUT_PATH,
-          profileValues: PROFILE_INPUT_PATH,
-        },
-      },
-    },
-  }
+function profileBinding(
+  profile: HydraulicProfileProjectState,
+  hydrate: (profile: HydraulicProfileProjectState) => void = () => undefined,
+) {
+  return bindProjectWorkspace({
+    adapter: hydraulicProfileFolderAdapter,
+    state: profile,
+    hydrate,
+    createInitialState: () => profile,
+  })
 }
 
 export async function saveHydraulicProfileProjectFolder({
@@ -76,26 +50,14 @@ export async function saveHydraulicProfileProjectFolder({
   profile: HydraulicProfileProjectState
   timestamp: string
 }) {
-  const workspace = manifest.workspaces[HYDRAULIC_PROFILES_FIGURE_ID]
-  if (!workspace) throw new Error('The project does not contain Hydraulic Profiles & Sections.')
-  await storage.writeText(directory, workspace.inputPaths.summaryTable, profile.summaryText)
-  await storage.writeText(directory, workspace.inputPaths.profileValues, profile.profileText)
-  await storage.writeText(
+  return saveHydraulicProjectFolder({
+    storage,
     directory,
-    workspace.documentPath,
-    serializeHydraulicProfileProject(profile),
-  )
-  const nextManifest: HydraulicProjectManifest = {
-    ...manifest,
-    updatedAt: timestamp,
+    manifest,
+    workspaces: [profileBinding(profile)],
     activeWorkspaceId: HYDRAULIC_PROFILES_FIGURE_ID,
-  }
-  await storage.writeText(
-    directory,
-    HYDRAULIC_PROJECT_MANIFEST_FILE,
-    serializeHydraulicProjectManifest(nextManifest),
-  )
-  return nextManifest
+    timestamp,
+  })
 }
 
 export async function createHydraulicProfileProjectFolder({
@@ -111,19 +73,15 @@ export async function createHydraulicProfileProjectFolder({
   profile: HydraulicProfileProjectState
   timestamp: string
 }): Promise<OpenedHydraulicProfileProject> {
-  const directoryName = hydraulicProjectDirectoryName(projectName)
-  if (await storage.directoryExists(parent, directoryName)) {
-    throw new Error(`A folder named "${directoryName}" already exists.`)
-  }
-  const directory = await storage.createDirectory(parent, directoryName)
-  const manifest = await saveHydraulicProfileProjectFolder({
+  const opened = await createHydraulicProjectFolder({
     storage,
-    directory,
-    manifest: createManifest(projectName.trim(), timestamp),
-    profile,
+    parent,
+    projectName,
+    workspaces: [profileBinding(profile)],
+    activeWorkspaceId: HYDRAULIC_PROFILES_FIGURE_ID,
     timestamp,
   })
-  return { directory, manifest, profile }
+  return { ...opened, profile }
 }
 
 export async function openHydraulicProfileProjectFolder({
@@ -136,18 +94,14 @@ export async function openHydraulicProfileProjectFolder({
   const manifest = parseHydraulicProjectManifest(
     await storage.readText(directory, HYDRAULIC_PROJECT_MANIFEST_FILE),
   )
-  const workspace = manifest.workspaces[HYDRAULIC_PROFILES_FIGURE_ID]
-  if (!workspace) throw new Error('This project does not contain Hydraulic Profiles & Sections.')
-  const savedProfile = parseHydraulicProfileProject(
-    await storage.readText(directory, workspace.documentPath),
-  )
-  const [summaryText, profileText] = await Promise.all([
-    storage.readText(directory, workspace.inputPaths.summaryTable),
-    storage.readText(directory, workspace.inputPaths.profileValues),
-  ])
-  return {
-    directory,
-    manifest,
-    profile: { ...savedProfile, summaryText, profileText },
+  const entry = manifest.workspaces[HYDRAULIC_PROFILES_FIGURE_ID]
+  if (!entry) {
+    throw new Error('This project does not contain Hydraulic Profiles & Sections.')
   }
+  const profile = await hydraulicProfileFolderAdapter.read({
+    storage,
+    directory,
+    entry,
+  })
+  return { directory, manifest, profile }
 }

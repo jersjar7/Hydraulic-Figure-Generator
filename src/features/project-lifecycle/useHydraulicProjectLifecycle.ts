@@ -1,22 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ProjectFolderStoragePort } from '../../application/ports/projectFolderStorage'
-import { HYDRAULIC_PROFILES_FIGURE_ID } from '../../core/figureIds'
 import { browserProjectFolderStoragePort } from '../../infrastructure/browser/browserProjectFolderStoragePort'
-import type { HydraulicProfileProjectState } from '../hydraulic-profiles/hydraulicProfileProjectFile'
-import { serializeHydraulicProfileProject } from '../hydraulic-profiles/hydraulicProfileProjectFile'
 import type { AppWorkspaceId } from '../project-workspace/hydraulicProjectWorkspaceContext'
 import {
-  createHydraulicProfileProjectFolder,
-  openHydraulicProfileProjectFolder,
-  saveHydraulicProfileProjectFolder,
-  type OpenedHydraulicProfileProject,
-} from './hydraulicProfileProjectFolder'
+  createHydraulicProjectFolder,
+  openHydraulicProjectFolder,
+  saveHydraulicProjectFolder,
+  type OpenedHydraulicProject,
+} from './hydraulicProjectFolder'
+import {
+  projectWorkspaceFingerprint,
+  type ProjectWorkspaceFolderBinding,
+} from './projectWorkspaceFolderAdapter'
 
 export type ProjectLifecycleDialog = 'welcome' | 'new' | null
 
 type Options = {
-  profile: HydraulicProfileProjectState
-  hydrateProfile(profile: HydraulicProfileProjectState): void
+  workspaces: ProjectWorkspaceFolderBinding[]
+  activeWorkspaceId: AppWorkspaceId
   setActiveWorkspace(workspaceId: AppWorkspaceId): void
   storage?: ProjectFolderStoragePort
   now?: () => string
@@ -26,20 +27,32 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
 
+function persistedActiveWorkspace(
+  workspaces: ProjectWorkspaceFolderBinding[],
+  requested: string,
+) {
+  return workspaces.some(({ workspaceId }) => workspaceId === requested)
+    ? requested
+    : workspaces[0]?.workspaceId ?? requested
+}
+
 export function useHydraulicProjectLifecycle({
-  profile,
-  hydrateProfile,
+  workspaces,
+  activeWorkspaceId,
   setActiveWorkspace,
   storage = browserProjectFolderStoragePort,
   now = () => new Date().toISOString(),
 }: Options) {
-  const initialFingerprint = useRef(serializeHydraulicProfileProject(profile))
-  const [project, setProject] = useState<OpenedHydraulicProfileProject | null>(null)
+  const fingerprint = useMemo(
+    () => projectWorkspaceFingerprint(workspaces),
+    [workspaces],
+  )
+  const initialFingerprint = useRef(fingerprint)
+  const [project, setProject] = useState<OpenedHydraulicProject | null>(null)
   const [savedFingerprint, setSavedFingerprint] = useState(initialFingerprint.current)
   const [dialog, setDialog] = useState<ProjectLifecycleDialog>('welcome')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const fingerprint = useMemo(() => serializeHydraulicProfileProject(profile), [profile])
   const isDirty = fingerprint !== savedFingerprint
 
   useEffect(() => {
@@ -71,16 +84,17 @@ export function useHydraulicProjectLifecycle({
         mode: 'readwrite',
       })
       if (!parent) return false
-      const opened = await createHydraulicProfileProjectFolder({
+      const persistedWorkspaceId = persistedActiveWorkspace(workspaces, activeWorkspaceId)
+      const opened = await createHydraulicProjectFolder({
         storage,
         parent,
         projectName,
-        profile,
+        workspaces,
+        activeWorkspaceId: persistedWorkspaceId,
         timestamp: now(),
       })
       setProject(opened)
       setSavedFingerprint(fingerprint)
-      setActiveWorkspace(HYDRAULIC_PROFILES_FIGURE_ID)
       setDialog(null)
       return true
     } catch (caught) {
@@ -89,7 +103,7 @@ export function useHydraulicProjectLifecycle({
     } finally {
       setBusy(false)
     }
-  }, [fingerprint, now, profile, setActiveWorkspace, storage])
+  }, [activeWorkspaceId, fingerprint, now, storage, workspaces])
 
   const openProject = useCallback(async () => {
     if (!confirmDiscard()) return false
@@ -101,11 +115,15 @@ export function useHydraulicProjectLifecycle({
         mode: 'readwrite',
       })
       if (!directory) return false
-      const opened = await openHydraulicProfileProjectFolder({ storage, directory })
-      hydrateProfile(opened.profile)
-      setProject(opened)
-      setSavedFingerprint(serializeHydraulicProfileProject(opened.profile))
-      setActiveWorkspace(HYDRAULIC_PROFILES_FIGURE_ID)
+      const opened = await openHydraulicProjectFolder({ storage, directory, workspaces })
+      opened.hydrations.forEach((hydration) => hydration.apply())
+      setProject({ directory: opened.directory, manifest: opened.manifest })
+      setSavedFingerprint(projectWorkspaceFingerprint(opened.hydrations))
+      const workspaceId = persistedActiveWorkspace(
+        workspaces,
+        opened.manifest.activeWorkspaceId,
+      ) as AppWorkspaceId
+      setActiveWorkspace(workspaceId)
       setDialog(null)
       return true
     } catch (caught) {
@@ -115,7 +133,7 @@ export function useHydraulicProjectLifecycle({
     } finally {
       setBusy(false)
     }
-  }, [confirmDiscard, hydrateProfile, setActiveWorkspace, storage])
+  }, [confirmDiscard, setActiveWorkspace, storage, workspaces])
 
   const saveProject = useCallback(async () => {
     if (!project) {
@@ -125,14 +143,15 @@ export function useHydraulicProjectLifecycle({
     setBusy(true)
     setError('')
     try {
-      const manifest = await saveHydraulicProfileProjectFolder({
+      const manifest = await saveHydraulicProjectFolder({
         storage,
         directory: project.directory,
         manifest: project.manifest,
-        profile,
+        workspaces,
+        activeWorkspaceId: persistedActiveWorkspace(workspaces, activeWorkspaceId),
         timestamp: now(),
       })
-      setProject({ ...project, manifest, profile })
+      setProject({ ...project, manifest })
       setSavedFingerprint(fingerprint)
       return true
     } catch (caught) {
@@ -141,7 +160,7 @@ export function useHydraulicProjectLifecycle({
     } finally {
       setBusy(false)
     }
-  }, [fingerprint, now, profile, project, storage])
+  }, [activeWorkspaceId, fingerprint, now, project, storage, workspaces])
 
   return {
     project,
