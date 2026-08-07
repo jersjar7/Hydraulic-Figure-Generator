@@ -101,7 +101,10 @@ and rendering contracts. Facade files preserve established imports while
 implementation ownership stays in focused directories. See
 [Architecture](docs/ARCHITECTURE.md),
 [Hydraulic contract](docs/HYDRAULIC-CONTRACT.md), and
-[Testing](docs/TESTING.md) before extending those contracts.
+[Testing](docs/TESTING.md) before extending those contracts. The current
+cross-workspace capability baseline is recorded in the
+[Tool inventory](docs/TOOL-INVENTORY.md), with its implementation sequence in
+the [Tool standardization plan](docs/TOOL-STANDARDIZATION-PLAN.md).
 
 ## Development
 
