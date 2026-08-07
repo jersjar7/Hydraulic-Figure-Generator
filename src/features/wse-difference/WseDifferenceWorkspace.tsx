@@ -1,9 +1,5 @@
 import { Map } from 'lucide-react'
-import {
-  useCallback,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useRef, useState } from 'react'
 import '../../App.css'
 import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspaceScaffold'
 import { HydraulicProjectPanel } from '../../components/project-data/HydraulicProjectPanel'
@@ -15,11 +11,7 @@ import { FigurePicker } from '../figures/FigurePicker'
 import { createCanvasReportFigure } from '../figures/canvasReportFigure'
 import { useAssessmentMapLayers } from './useAssessmentMapLayers'
 import { wseDifferenceFigure } from './wseDifferenceFigure'
-import type {
-  FigureSettings,
-  IngestNotice,
-  WseDifferenceScene,
-} from '../../core/types'
+import type { FigureSettings, IngestNotice, WseDifferenceScene } from '../../core/types'
 import type { SettingsSectionKey } from './workspaceConfiguration'
 import { useFittedCanvasSize } from './useFittedCanvasSize'
 import { useWseEditorUi } from './useWseEditorUi'
@@ -37,6 +29,7 @@ import { createWseMapExportAction } from './wseMapExportAction'
 import { createWseScenarioContext } from './wseScenarioContext'
 import { createWseStationingSourceActions } from './wseStationingSourceActions'
 import { useCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
+import { useWseDraftRetention } from './useWseDraftRetention'
 
 const ACTIVE_FIGURE = wseDifferenceFigure
 
@@ -116,6 +109,10 @@ export function WseDifferenceWorkspace() {
     setElementDragging,
   } = editorUi
   const [scene, setScene] = useState<WseDifferenceScene | null>(null)
+  const draftSnapshot = useWseDraftRetention({
+    projectSession, projectDocument, figureDocument,
+    assessmentWorkflow, stationingSource, setScene,
+  })
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const canvasFrameRef = useRef<HTMLDivElement>(null)
   const canvasDisplaySize = useFittedCanvasSize(
@@ -347,6 +344,7 @@ export function WseDifferenceWorkspace() {
     assessmentWorkflow,
     stationingSource,
     editorUi,
+    snapshot: draftSnapshot,
     setScene,
     appendNotices,
   })

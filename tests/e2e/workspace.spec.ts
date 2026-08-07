@@ -111,6 +111,64 @@ test('mobile controls keep both sidebars reachable', async ({ page }) => {
   ).toBeVisible()
 })
 
+test('figure workspace drafts survive navigation through the Export Collection', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto('.')
+  await continueWithoutProject(page)
+
+  await page.getByRole('tab', { name: /map/i }).click()
+  await page.getByLabel('Dry-depth threshold').fill('0.27')
+
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'hydraulic-profiles-sections',
+  )
+  await page.getByLabel('Condition label').fill('Retained profile draft')
+
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'fra-cross-section-comparison',
+  )
+  await page.getByLabel('Section name').fill('Retained section draft')
+
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'plan-view-hydraulic-results',
+  )
+  await page.getByRole('tab', { name: /frame/i }).click()
+  await page.getByRole('button', { name: 'Portrait' }).click()
+
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'report-assembly',
+  )
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'fra-wse-difference',
+  )
+  await page.getByRole('tab', { name: /map/i }).click()
+  await expect(page.getByLabel('Dry-depth threshold')).toHaveValue('0.27')
+
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'hydraulic-profiles-sections',
+  )
+  await expect(page.getByLabel('Condition label')).toHaveValue(
+    'Retained profile draft',
+  )
+
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'fra-cross-section-comparison',
+  )
+  await expect(page.getByLabel('Section name')).toHaveValue(
+    'Retained section draft',
+  )
+
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
+    'plan-view-hydraulic-results',
+  )
+  await page.getByRole('tab', { name: /frame/i }).click()
+  await expect(page.getByRole('button', { name: 'Portrait' })).toHaveClass(
+    /active/,
+  )
+})
+
 test('folder project saves and restores profiles with the Export Collection', async ({
   page,
 }) => {

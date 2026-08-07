@@ -26,6 +26,7 @@ import { useFittedCanvasAspect } from '../figures/useFittedCanvasAspect'
 import { useMapElementController } from '../figures/useMapElementController'
 import { createHydraulicProjectInputActions } from '../project-workspace/hydraulicProjectInputActions'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
+import { useWorkspaceDraftRetention } from '../project-workspace/useWorkspaceDraftRetention'
 import { exportPlanViewResult } from './exportPlanViewResult'
 import type { PlanViewResultSettingsSectionKey } from './planViewResultDefinition'
 import { planViewResultFigure } from './planViewResultFigure'
@@ -49,6 +50,7 @@ import { usePlanViewFigureDocument } from './usePlanViewFigureDocument'
 import { PlanViewWorkspaceFooter } from './PlanViewWorkspaceFooter'
 import { PlanViewWorkspaceMap } from './PlanViewWorkspaceMap'
 import { usePlanViewStationing } from './usePlanViewStationing'
+import { planViewResultWorkspaceDraft } from './planViewResultWorkspaceDraft'
 import { useCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 
 const SCENARIO_ROLES: readonly ScenarioRoleOption[] = [
@@ -269,13 +271,9 @@ export function PlanViewResultWorkspace() {
       ...stationingSource.state,
     },
   }
-  const projectFiles = usePlanViewResultProjectFiles({ snapshot, appendNotices })
-  const loadProject = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0]
-    event.currentTarget.value = ''
-    if (!file) return
-    const loaded = await projectFiles.loadProjectFile(file)
-    if (!loaded) return
+  const hydrateDraft = (
+    loaded: ReturnType<typeof planViewResultWorkspaceDraft.parseDraft>,
+  ) => {
     setSettings(loaded.settings)
     loadDocument(loaded.project)
     projectSession.loadSelection(loaded.scenarioSelection)
@@ -284,6 +282,20 @@ export function PlanViewResultWorkspace() {
     stationingSource.load(loaded.stationingSource ?? {})
     stationing.clearSelection()
     setScene(null)
+  }
+  useWorkspaceDraftRetention({
+    module: planViewResultWorkspaceDraft,
+    snapshot,
+    hydrate: hydrateDraft,
+  })
+  const projectFiles = usePlanViewResultProjectFiles({ snapshot, appendNotices })
+  const loadProject = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+    if (!file) return
+    const loaded = await projectFiles.loadProjectFile(file)
+    if (!loaded) return
+    hydrateDraft(loaded)
     appendNotices([{
       level: 'success',
       text: 'Plan-view project loaded. Re-add the referenced local H5 files.',

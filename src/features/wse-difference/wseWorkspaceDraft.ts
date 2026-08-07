@@ -10,9 +10,10 @@ import { createWseFigureDocument } from './wseFigureDocument'
 import {
   createWseProjectSnapshot,
   hydrateWseProject,
+  type WseProjectState,
 } from './wseProjectDocument'
 
-function createInitialDraft() {
+function createInitialDraft(): WseProjectState {
   return {
     document: createWseFigureDocument(),
     project: createHydraulicProjectDocument(),

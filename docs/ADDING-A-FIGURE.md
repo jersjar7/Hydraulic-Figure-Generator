@@ -63,6 +63,13 @@ serializer. Do not introduce an Export Collection-specific copy of the schema.
 React runtime bindings for retaining and hydrating drafts are composed from
 this module by the application workspace layer.
 
+Inside the workspace component, bind the current serializable snapshot and its
+hydration function with `useWorkspaceDraftRetention`. The shared repository
+captures the draft when navigation unmounts the workspace and restores it when
+the engineer returns. Keep generated canvases, previews, transient notices, and
+open-panel state outside the draft; they are runtime output or editor chrome,
+not the editable figure document.
+
 ## 4. Test It
 
 Before registration, add:

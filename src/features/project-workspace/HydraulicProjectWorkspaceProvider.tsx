@@ -18,6 +18,7 @@ import { useHydraulicProjectLifecycle } from '../project-lifecycle/useHydraulicP
 import {
   DEFAULT_FIGURE_WORKSPACE,
 } from '../figures/workspaceRegistry'
+import { createWorkspaceDraftRepository } from '../figures/workspaceDraftRepository'
 import type { AppWorkspaceId } from './hydraulicProjectWorkspaceContext'
 import { HydraulicProjectWorkspaceContext } from './hydraulicProjectWorkspaceContext'
 
@@ -29,6 +30,7 @@ export function HydraulicProjectWorkspaceProvider({
   const [activeFigureId, setActiveFigureId] = useState<AppWorkspaceId>(
     DEFAULT_FIGURE_WORKSPACE.id,
   )
+  const [workspaceDrafts] = useState(createWorkspaceDraftRepository)
   const projectSession = useProjectSession()
   const projectDocument = useHydraulicProjectDocument()
   const reportAssembly = useReportAssembly()
@@ -67,6 +69,7 @@ export function HydraulicProjectWorkspaceProvider({
         projectDocument,
         reportAssembly,
         hydraulicProfiles,
+        workspaceDrafts,
         projectLifecycle,
       }}
     >

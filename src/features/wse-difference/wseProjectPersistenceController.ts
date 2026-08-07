@@ -10,6 +10,7 @@ import type { useCenterlineStationingSource } from '../stationing/useCenterlineS
 import type { useWseEditorUi } from './useWseEditorUi'
 import type { useWseFigureDocument } from './useWseFigureDocument'
 import { createWseProjectFileActions } from './wseProjectFileActions'
+import type { WseProjectState } from './wseProjectDocument'
 
 type Options = {
   projectSession: HydraulicProjectWorkspaceValue['projectSession']
@@ -18,6 +19,7 @@ type Options = {
   assessmentWorkflow: ReturnType<typeof useAssessmentWorkflow>
   stationingSource: ReturnType<typeof useCenterlineStationingSource>
   editorUi: ReturnType<typeof useWseEditorUi>
+  snapshot: WseProjectState
   setScene: Dispatch<SetStateAction<WseDifferenceScene | null>>
   appendNotices(notices: IngestNotice[]): void
 }
@@ -29,35 +31,16 @@ export function createWseProjectPersistenceController({
   assessmentWorkflow,
   stationingSource,
   editorUi,
+  snapshot,
   setScene,
   appendNotices,
 }: Options) {
-  const state = assessmentWorkflow.state
   const projectFiles = createWseProjectFileActions({
     snapshot: {
-      settings: figureDocument.settings,
-      overlays: projectDocument.overlays,
-      annotations: figureDocument.annotations,
-      annotationDefaults: figureDocument.annotationDefaults,
-      scenarioSelection: {
-        baselineId: projectSession.baselineId,
-        comparisonId: projectSession.comparisonId,
-        assessmentId: projectSession.assessmentId,
-        runByScenario: projectSession.runByScenario,
-        labels: Object.fromEntries(
-          projectSession.scenarios.map((scenario) => [
-            scenario.key,
-            scenario.label,
-          ]),
-        ),
-      },
-      assessment: {
-        centerlineId: state.centerlineId,
-        direction: state.direction,
-        startStation: state.startStation,
-        stationingSource: stationingSource.state,
-        overrides: state.overrides,
-      },
+      ...snapshot.document,
+      ...snapshot.project,
+      scenarioSelection: snapshot.scenarioSelection,
+      assessment: snapshot.assessment,
     },
     currentFigure: figureDocument.document,
     currentProject: projectDocument.document,

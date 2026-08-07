@@ -20,6 +20,7 @@ import type {
 } from '../../core/types'
 import { FigurePicker } from '../figures/FigurePicker'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
+import { useWorkspaceDraftRetention } from '../project-workspace/useWorkspaceDraftRetention'
 import { ProjectSaveStatus } from '../project-lifecycle/ProjectSaveStatus'
 import { downloadHydraulicProfilePng } from './exportHydraulicProfile'
 import { HydraulicProfileCanvas } from './HydraulicProfileCanvas'
@@ -29,6 +30,7 @@ import { createHydraulicProfileReportFigure } from './hydraulicProfileReportAdap
 import { HydraulicProfileInputPanel } from './HydraulicProfileInputPanel'
 import { HydraulicProfileSettingsPanel } from './HydraulicProfileSettingsPanel'
 import { HYDRAULIC_PROFILE_WORKSPACE_SETTINGS } from './hydraulicProfileSettingsSections'
+import { hydraulicProfileWorkspaceDraft } from './hydraulicProfileWorkspaceDraft'
 
 export function HydraulicProfilesWorkspace() {
   const {
@@ -54,6 +56,11 @@ export function HydraulicProfilesWorkspace() {
     setSettings,
     reset: resetDocument,
   } = hydraulicProfiles
+  useWorkspaceDraftRetention({
+    module: hydraulicProfileWorkspaceDraft,
+    snapshot: hydraulicProfiles.snapshot,
+    hydrate: hydraulicProfiles.hydrate,
+  })
   const [scenes, setScenes] = useState<HydraulicProfileScene[]>([])
   const [runtimeNotices, setRuntimeNotices] = useState<IngestNotice[]>([])
   const [leftOpen, setLeftOpen] = useState(false)

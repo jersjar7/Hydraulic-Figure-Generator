@@ -42,12 +42,12 @@ import { useCrossSectionRendering } from './useCrossSectionRendering'
 import { useCrossSectionSelection } from './useCrossSectionSelection'
 import { CROSS_SECTION_WORKSPACE_SETTINGS } from './crossSectionSettingsSections'
 import { downloadCrossSectionPng } from './exportCrossSection'
+import { useCrossSectionDraftRetention } from './useCrossSectionDraftRetention'
 
 export function CrossSectionWorkspace() {
   const { projectSession, projectDocument, reportAssembly } = useHydraulicProjectWorkspace()
   const {
     engine,
-    scenarios,
     baselineId,
     comparisonId,
     assessmentId,
@@ -281,22 +281,18 @@ export function CrossSectionWorkspace() {
     }
   }
 
+  const workspaceDraft = useCrossSectionDraftRetention({
+    settings,
+    selectedLine,
+    selectedAssessmentLineId,
+    projectSession,
+    projectDocument,
+    setSettings,
+    loadSelection: selection.loadSelection,
+    invalidateFigures,
+  })
   const projectFiles = useCrossSectionProjectFiles({
-    snapshot: {
-      settings,
-      selectedLine,
-      selectedAssessmentLineId,
-      scenarioSelection: {
-        baselineId,
-        comparisonId,
-        assessmentId,
-        runByScenario,
-        labels: Object.fromEntries(
-          scenarios.map((scenario) => [scenario.key, scenario.label]),
-        ),
-      },
-      project: projectDocument.document,
-    },
+    snapshot: workspaceDraft.snapshot,
     appendNotices,
   })
 
@@ -306,15 +302,7 @@ export function CrossSectionWorkspace() {
     if (!file) return
     const payload = await projectFiles.loadProjectFile(file)
     if (!payload) return
-    setSettings(payload.settings)
-    selection.loadSelection(
-      payload.selectedLine,
-      payload.selectedAssessmentLineId,
-    )
-    projectSession.loadSelection(payload.scenarioSelection)
-    projectDocument.loadDocument(payload.project)
-    setMapScene(null)
-    setChartScene(null)
+    workspaceDraft.hydrate(payload)
     appendNotices([
       {
         level: 'success',

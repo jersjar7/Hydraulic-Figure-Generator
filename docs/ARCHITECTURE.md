@@ -89,6 +89,13 @@ infrastructure directly.
   workspace-specific branches to the Export Collection. Draft codecs load only
   when draft behavior needs them, so adding workspaces does not inflate the
   startup bundle.
+- `features/figures/workspaceDraftRepository.ts` retains one validated,
+  serialized working draft per figure workspace for the current browser
+  session. `useWorkspaceDraftRetention` binds a mounted workspace to that
+  repository, captures its latest editable snapshot on navigation, and
+  hydrates it when the workspace mounts again. The repository stores no React
+  state, canvases, or generated hydraulic scenes. Export-figure ownership and
+  folder persistence are separate layers built on the same draft contract.
 - `features/figure-sets/` owns production-view navigation. Figure-specific
   recipes expand valid selections and generate previews inside their owning
   feature; they do not add batch branches to `App.tsx`.
