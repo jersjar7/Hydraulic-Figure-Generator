@@ -104,6 +104,12 @@ infrastructure directly.
   image artifacts but cannot become editable retroactively. Opening a snapshot
   in its owning workspace is an application-navigation concern layered on top
   of this ownership contract.
+- `features/project-workspace/stageReportFigureDraft.ts` implements that launch
+  concern without workspace-specific branches. It resolves the owning entry in
+  the figure-workspace registry, lazy-loads its codec, verifies ownership and
+  schema compatibility, parses the source, stages it in the session repository,
+  and only then navigates. Launching uses the artifact as a starting point; the
+  source artifact in the Export Collection remains immutable.
 - `features/figure-sets/` owns production-view navigation. Figure-specific
   recipes expand valid selections and generate previews inside their owning
   feature; they do not add batch branches to `App.tsx`.

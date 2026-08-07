@@ -12,11 +12,17 @@ import { ReportFigurePreview } from './ReportFigurePreview'
 import { ReportWorkspaceRow } from './ReportWorkspaceRow'
 
 export function ReportAssemblyWorkspace() {
-  const { reportAssembly, projectLifecycle } = useHydraulicProjectWorkspace()
+  const {
+    reportAssembly,
+    projectLifecycle,
+    openReportFigureDraft,
+  } = useHydraulicProjectWorkspace()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [progress, setProgress] = useState({ completed: 0, total: 0 })
   const [status, setStatus] = useState('')
+  const [openingId, setOpeningId] = useState<string | null>(null)
+  const [openError, setOpenError] = useState('')
   const figures = useMemo(
     () => flattenReportFigures(reportAssembly.document),
     [reportAssembly.document],
@@ -49,6 +55,17 @@ export function ReportAssemblyWorkspace() {
   const remove = (figureId: string) => {
     reportAssembly.removeFigure(figureId)
     if (selectedId === figureId) setSelectedId(null)
+  }
+  const openAsDraft = async (figure: ReportFigureArtifact) => {
+    if (openingId) return
+    setOpeningId(figure.id)
+    setOpenError('')
+    try {
+      await openReportFigureDraft(figure)
+    } catch (error) {
+      setOpenError(error instanceof Error ? error.message : String(error))
+      setOpeningId(null)
+    }
   }
 
   return (
@@ -97,7 +114,10 @@ export function ReportAssemblyWorkspace() {
                 group={group}
                 groupIndex={index}
                 groupCount={reportAssembly.document.groups.length}
-                onOpen={(figure) => setSelectedId(figure.id)}
+                onOpen={(figure) => {
+                  setOpenError('')
+                  setSelectedId(figure.id)
+                }}
                 onRemove={remove}
                 onMoveFigure={(sourceId, targetId) => reportAssembly.moveFigure(group.workspaceId, sourceId, targetId)}
                 onMoveFigureBy={(figureId, delta) => reportAssembly.moveFigureBy(group.workspaceId, figureId, delta)}
@@ -107,7 +127,17 @@ export function ReportAssemblyWorkspace() {
             ))}
           </div>
         </div>
-        {selected ? <ReportFigurePreview figure={selected as ReportFigureArtifact} onChange={(update) => reportAssembly.updateFigure(selected.id, update)} onRemove={() => remove(selected.id)} onClose={() => setSelectedId(null)} /> : null}
+        {selected ? (
+          <ReportFigurePreview
+            figure={selected as ReportFigureArtifact}
+            onChange={(update) => reportAssembly.updateFigure(selected.id, update)}
+            onOpenDraft={() => void openAsDraft(selected)}
+            opening={openingId === selected.id}
+            openError={openError}
+            onRemove={() => remove(selected.id)}
+            onClose={() => setSelectedId(null)}
+          />
+        ) : null}
       </FigureEditorShell>
     </>
   )

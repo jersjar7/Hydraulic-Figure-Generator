@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useMemo,
   useState,
   type ReactNode,
@@ -21,6 +22,7 @@ import {
 import { createWorkspaceDraftRepository } from '../figures/workspaceDraftRepository'
 import type { AppWorkspaceId } from './hydraulicProjectWorkspaceContext'
 import { HydraulicProjectWorkspaceContext } from './hydraulicProjectWorkspaceContext'
+import { stageReportFigureDraft } from './stageReportFigureDraft'
 
 export function HydraulicProjectWorkspaceProvider({
   children,
@@ -59,6 +61,12 @@ export function HydraulicProjectWorkspaceProvider({
     activeWorkspaceId: activeFigureId,
     setActiveWorkspace: setActiveFigureId,
   })
+  const openReportFigureDraft = useCallback(async (
+    figure: Parameters<typeof stageReportFigureDraft>[0],
+  ) => {
+    const workspaceId = await stageReportFigureDraft(figure, workspaceDrafts)
+    setActiveFigureId(workspaceId)
+  }, [workspaceDrafts])
 
   return (
     <HydraulicProjectWorkspaceContext.Provider
@@ -70,6 +78,7 @@ export function HydraulicProjectWorkspaceProvider({
         reportAssembly,
         hydraulicProfiles,
         workspaceDrafts,
+        openReportFigureDraft,
         projectLifecycle,
       }}
     >

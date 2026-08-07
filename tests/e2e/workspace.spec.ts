@@ -362,6 +362,9 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
   const download = await downloadPromise
   expect(download.suggestedFilename()).toMatch(/Hydraulic_Profile_10_47\.png/)
 
+  await page.getByRole('tab', { name: 'Scenario', exact: true }).click()
+  await page.getByLabel('Condition label').fill('Later workspace edit')
+
   await page.getByLabel('Workspace', { exact: true }).selectOption('report-assembly')
   await expect(page.getByRole('heading', { name: 'Hydraulic Profiles & Sections' })).toBeVisible()
   await page.getByRole('button', { name: /Preview Hydraulic Cross Section/ }).click()
@@ -371,6 +374,19 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
   const wordPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export Word' }).click()
   expect((await wordPromise).suggestedFilename()).toBe('Hydraulic_Figure_Report.docx')
+
+  await page.getByRole('button', { name: /Preview Hydraulic Cross Section/ }).click()
+  await page.getByRole('button', { name: 'Use as starting point' }).click()
+  await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
+    'hydraulic-profiles-sections',
+  )
+  await expect(page.getByLabel('Condition label')).toHaveValue(
+    'Proposed Conditions',
+  )
+  await page.getByRole('tab', { name: 'Review', exact: true }).click()
+  await expect(page.getByLabel('Profile station')).toHaveValue(
+    'profile-section-1',
+  )
 })
 
 test('SMS Summary and Profile Values text files feed the profile parser', async ({ page }) => {

@@ -79,6 +79,13 @@ requires this field so a future workspace cannot silently export an image that
 loses its editable source. Use `null` only when migrating a legacy artifact
 that never had a source draft.
 
+No additional Export Collection routing is required for a registered workspace.
+The shared `stageReportFigureDraft` flow resolves the registry entry and uses
+its lazy draft codec automatically. Keep that codec backward-compatible when a
+workspace can safely migrate old editable snapshots; otherwise incrementing its
+schema version will make older artifacts remain image-only until an explicit
+migration is added.
+
 ## 4. Test It
 
 Before registration, add:

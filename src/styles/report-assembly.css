@@ -305,6 +305,34 @@
   resize: vertical;
 }
 
+.report-preview-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.report-preview-actions .button {
+  width: 100%;
+}
+
+.report-preview-error {
+  margin: 0;
+  padding: 8px;
+  color: #8f1f1f;
+  background: #fff2f2;
+  border: 1px solid #e7b5b5;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.report-preview-draft-status {
+  margin: 0;
+  color: #5d6e7e;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 @media (max-width: 760px) {
   .report-assembly-toolbar { flex-wrap: wrap; }
   .report-title-field { width: 100%; margin-left: 0; order: 5; }
