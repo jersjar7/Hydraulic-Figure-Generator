@@ -259,6 +259,7 @@ test('folder project saves and restores profiles with the Export Collection', as
   await expect(page.getByLabel('Site 6 FRA: Saved')).toBeVisible()
 
   await page.getByLabel('Workspace', { exact: true }).selectOption('report-assembly')
+  await expect(page.getByLabel('Site 6 FRA: Unsaved changes')).toBeVisible()
   await page.getByLabel('Document title').fill('Site 6 Hydraulic Report')
   await expect(page.getByLabel('Site 6 FRA: Unsaved changes')).toBeVisible()
   await page.getByRole('button', { name: 'Save project' }).click()
@@ -275,7 +276,7 @@ test('folder project saves and restores profiles with the Export Collection', as
     'hydraulic-profiles-sections',
   )
   await expect(page.getByLabel('Condition label')).toHaveValue('Proposed Conditions')
-  await expect(page.getByLabel('Site 6 FRA: Saved')).toBeVisible()
+  await expect(page.getByLabel('Site 6 FRA: Unsaved changes')).toBeVisible()
   await page.getByRole('tab', { name: 'Summary', exact: true }).click()
   await expect(page.getByLabel('SMS Summary Table')).toHaveValue(PROFILE_SUMMARY)
   await page.getByRole('tab', { name: 'Profile', exact: true }).click()

@@ -117,6 +117,12 @@ infrastructure directly.
   Updating replaces the artifact contents while preserving its ID, creation
   time, workspace band, and report order; saving as new creates an independent
   artifact and links subsequent updates to that copy.
+- `useWorkspaceEditingSession` coordinates draft storage, persisted edit links,
+  input-recovery references, and open-in-workspace navigation. The root project
+  provider composes that coordinator with folder adapters instead of owning
+  those state machines directly. Project dirty-state fingerprints include the
+  active workspace as well as persisted documents, so the next reopening
+  location cannot change without an explicit save.
 - Browser security prevents silently reopening H5 source files. The workspace
   session therefore stores scenario labels and source filenames, resets the
   in-memory hydraulic engine on project open, and presents the missing files in

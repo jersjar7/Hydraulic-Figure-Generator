@@ -37,6 +37,16 @@ function persistedActiveWorkspace(
     : availableWorkspaceIds[0] ?? requested
 }
 
+function projectFingerprint(
+  workspaces: Pick<ProjectWorkspaceFolderBinding, 'workspaceId' | 'fingerprint'>[],
+  activeWorkspaceId: string,
+) {
+  return JSON.stringify({
+    activeWorkspaceId,
+    workspaces: projectWorkspaceFingerprint(workspaces),
+  })
+}
+
 export function useHydraulicProjectLifecycle({
   workspaces,
   availableWorkspaceIds,
@@ -46,8 +56,8 @@ export function useHydraulicProjectLifecycle({
   now = () => new Date().toISOString(),
 }: Options) {
   const fingerprint = useMemo(
-    () => projectWorkspaceFingerprint(workspaces),
-    [workspaces],
+    () => projectFingerprint(workspaces, activeWorkspaceId),
+    [activeWorkspaceId, workspaces],
   )
   const initialFingerprint = useRef(fingerprint)
   const [project, setProject] = useState<OpenedHydraulicProject | null>(null)
@@ -124,11 +134,11 @@ export function useHydraulicProjectLifecycle({
       const opened = await openHydraulicProjectFolder({ storage, directory, workspaces })
       opened.hydrations.forEach((hydration) => hydration.apply())
       setProject({ directory: opened.directory, manifest: opened.manifest })
-      setSavedFingerprint(projectWorkspaceFingerprint(opened.hydrations))
       const workspaceId = persistedActiveWorkspace(
         availableWorkspaceIds,
         opened.manifest.activeWorkspaceId,
       ) as AppWorkspaceId
+      setSavedFingerprint(projectFingerprint(opened.hydrations, workspaceId))
       setActiveWorkspace(workspaceId)
       setDialog(null)
       return true
