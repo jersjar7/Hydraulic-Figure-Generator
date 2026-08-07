@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
 } from 'react'
@@ -28,6 +29,7 @@ export function useWorkspaceDraftRetention<
   const restoreErrorRef = useRef(onRestoreError)
   const setupRevisionRef = useRef(0)
   const restoredRef = useRef(false)
+  const skipFirstCaptureRef = useRef(false)
   snapshotRef.current = snapshot
   hydrateRef.current = hydrate
   restoreErrorRef.current = onRestoreError
@@ -44,6 +46,7 @@ export function useWorkspaceDraftRetention<
         const restored = workspaceDrafts.restore(module)
         if (restored) {
           restoredRef.current = true
+          skipFirstCaptureRef.current = true
           snapshotRef.current = restored
           hydrateRef.current(restored)
         }
@@ -64,6 +67,14 @@ export function useWorkspaceDraftRetention<
       })
     }
   }, [capture, module, workspaceDrafts])
+
+  useEffect(() => {
+    if (skipFirstCaptureRef.current) {
+      skipFirstCaptureRef.current = false
+      return
+    }
+    capture()
+  }, [capture, snapshot])
 
   return { capture }
 }

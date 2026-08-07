@@ -19,6 +19,7 @@ import { reportAssemblyFolderAdapter } from '../project-lifecycle/reportAssembly
 import { useHydraulicProjectLifecycle } from '../project-lifecycle/useHydraulicProjectLifecycle'
 import {
   DEFAULT_FIGURE_WORKSPACE,
+  FIGURE_WORKSPACES,
 } from '../figures/workspaceRegistry'
 import { createWorkspaceDraftRepository } from '../figures/workspaceDraftRepository'
 import type { AppWorkspaceId } from './hydraulicProjectWorkspaceContext'
@@ -32,6 +33,8 @@ import {
 } from '../../application/report-assembly/reportFigureEditSession'
 import type { ReportFigureArtifact } from '../../core/types'
 import type { FigureId } from '../figures/workspaceRegistry'
+import { workspaceSessionFolderAdapter } from '../project-lifecycle/workspaceSessionFolderAdapter'
+import { createWorkspaceSessionProjectState } from '../project-lifecycle/workspaceSessionProjectFile'
 
 export function HydraulicProjectWorkspaceProvider({
   children,
@@ -41,14 +44,25 @@ export function HydraulicProjectWorkspaceProvider({
   const [activeFigureId, setActiveFigureId] = useState<AppWorkspaceId>(
     DEFAULT_FIGURE_WORKSPACE.id,
   )
-  const [workspaceDrafts] = useState(createWorkspaceDraftRepository)
+  const [draftRevision, setDraftRevision] = useState(0)
+  const [workspaceDrafts] = useState(() => createWorkspaceDraftRepository(
+    [],
+    () => setDraftRevision((revision) => revision + 1),
+  ))
   const [reportFigureEditTargets, setReportFigureEditTargets] =
     useState<ReportFigureEditTargets>({})
   const projectSession = useProjectSession()
+  const {
+    inputReferences,
+    loadInputReferences,
+    reset: resetProjectSession,
+  } = projectSession
   const projectDocument = useHydraulicProjectDocument()
   const reportAssembly = useReportAssembly()
   const hydraulicProfiles = useHydraulicProfileDocument()
-  const persistedWorkspaces = useMemo(() => [
+  const persistedWorkspaces = useMemo(() => {
+    void draftRevision
+    return [
     bindProjectWorkspace({
       adapter: hydraulicProfileFolderAdapter,
       state: hydraulicProfiles.snapshot,
@@ -61,14 +75,40 @@ export function HydraulicProjectWorkspaceProvider({
       hydrate: reportAssembly.load,
       createInitialState: createReportAssemblyDocument,
     }),
-  ], [
+    bindProjectWorkspace({
+      adapter: workspaceSessionFolderAdapter,
+      state: {
+        drafts: workspaceDrafts.entries(),
+        reportFigureEditTargets,
+        hydraulicInputs: inputReferences,
+      },
+      hydrate: (session) => {
+        resetProjectSession()
+        workspaceDrafts.replace(session.drafts)
+        setReportFigureEditTargets(session.reportFigureEditTargets)
+        loadInputReferences(session.hydraulicInputs)
+      },
+      createInitialState: createWorkspaceSessionProjectState,
+    }),
+  ]
+  }, [
+    draftRevision,
     hydraulicProfiles.hydrate,
     hydraulicProfiles.snapshot,
     reportAssembly.document,
     reportAssembly.load,
+    reportFigureEditTargets,
+    inputReferences,
+    loadInputReferences,
+    resetProjectSession,
+    workspaceDrafts,
   ])
   const projectLifecycle = useHydraulicProjectLifecycle({
     workspaces: persistedWorkspaces,
+    availableWorkspaceIds: [
+      ...FIGURE_WORKSPACES.map((workspace) => workspace.id),
+      'report-assembly',
+    ],
     activeWorkspaceId: activeFigureId,
     setActiveWorkspace: setActiveFigureId,
   })

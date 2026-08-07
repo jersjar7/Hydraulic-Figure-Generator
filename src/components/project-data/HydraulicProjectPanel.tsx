@@ -74,6 +74,7 @@ export function HydraulicProjectPanel({
       collapsed={collapsed}
       busy={busy}
       scenarios={projectSession.scenarios}
+      missingInputReferences={projectSession.missingInputReferences}
       scenarioRoles={scenarioRoles}
       baselineId={projectSession.baselineId}
       comparisonId={projectSession.comparisonId}

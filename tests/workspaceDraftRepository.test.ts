@@ -86,4 +86,24 @@ describe('workspace draft repository', () => {
     repository.clear()
     assert.deepEqual(repository.entries(), [])
   })
+
+  it('notifies only for material changes and replaces a saved collection', () => {
+    let changes = 0
+    const repository = createWorkspaceDraftRepository([], () => { changes += 1 })
+    const current = { title: 'Current', count: 3 }
+
+    repository.capture(draftModule, current)
+    repository.capture(draftModule, current)
+    assert.equal(changes, 1)
+
+    repository.replace([createWorkspaceDraftSnapshot(draftModule, {
+      title: 'Restored',
+      count: 8,
+    })])
+    assert.equal(changes, 2)
+    assert.deepEqual(repository.restore(draftModule), {
+      title: 'Restored',
+      count: 8,
+    })
+  })
 })

@@ -65,8 +65,9 @@ this module by the application workspace layer.
 
 Inside the workspace component, bind the current serializable snapshot and its
 hydration function with `useWorkspaceDraftRetention`. The shared repository
-captures the draft when navigation unmounts the workspace and restores it when
-the engineer returns. Keep generated canvases, previews, transient notices, and
+captures material draft changes, includes them in folder saves, and restores
+them when the engineer returns or reopens the project. Keep generated canvases,
+previews, transient notices, and
 open-panel state outside the draft; they are runtime output or editor chrome,
 not the editable figure document.
 
@@ -92,6 +93,13 @@ that creates the current `NewReportFigure`; the shared control owns artifact
 linking, replacement, duplication, and unlinking. Do not implement
 workspace-specific update state. Batch actions may continue adding independent
 artifacts, but must never replace a linked single figure as a side effect.
+
+H5 binaries remain outside the folder project because browser file access is
+permission-scoped. New H5-backed workspaces must use the shared project session
+so the folder can retain source filenames and the Models workflow can request
+those files after reopening. Do not serialize engine arrays into a workspace
+draft. Text and geometry inputs that are already portable should be stored
+through a folder adapter or the validated draft schema.
 
 ## 4. Test It
 

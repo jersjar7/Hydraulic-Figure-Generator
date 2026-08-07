@@ -8,10 +8,12 @@ import type {
 } from '../../core/types'
 import { FileDrop } from '../FileDrop'
 import type { ScenarioRoleOption } from './projectWorkflowTypes'
+import type { HydraulicInputReference } from '../../features/project-lifecycle/workspaceSessionProjectFile'
 
 type ModelsWorkspaceProps = {
   busy: boolean
   scenarios: ConditionData[]
+  missingInputReferences?: readonly HydraulicInputReference[]
   scenarioRoles?: readonly ScenarioRoleOption[]
   baselineId: ConditionKey
   comparisonId: ConditionKey
@@ -176,6 +178,7 @@ function RunSelect({
 export function ModelsWorkspace({
   busy,
   scenarios,
+  missingInputReferences = [],
   scenarioRoles,
   baselineId,
   comparisonId,
@@ -213,6 +216,22 @@ export function ModelsWorkspace({
           testId="h5-file-drop"
           onFiles={onH5Files}
         />
+        {missingInputReferences.length > 0 ? (
+          <div className="input-recovery-note" role="status">
+            <strong>Re-add local H5 files</strong>
+            <span>Project settings were restored. Source files stay outside the project folder.</span>
+            <ul>
+              {missingInputReferences.map((input) => (
+                <li key={input.scenarioKey}>
+                  {input.scenarioLabel}: {[
+                    input.geometryFileName,
+                    input.datasetFileName,
+                  ].filter(Boolean).join(' + ') || 'geometry + datasets'}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <div className="condition-list">
           {scenarios.length === 0 ? (
             <p className="empty-note">No hydraulic scenarios loaded.</p>

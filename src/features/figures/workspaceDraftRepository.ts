@@ -20,6 +20,7 @@ export function createWorkspaceDraftSnapshot<WorkspaceId extends string, Draft>(
 
 export function createWorkspaceDraftRepository(
   initialDrafts: readonly StoredWorkspaceDraft[] = [],
+  onChange: () => void = () => undefined,
 ) {
   const drafts = new Map(
     initialDrafts.map((draft) => [draft.workspaceId, { ...draft }]),
@@ -31,7 +32,13 @@ export function createWorkspaceDraftRepository(
       draft: Draft,
     ) {
       const stored = createWorkspaceDraftSnapshot(module, draft)
+      const current = drafts.get(module.workspaceId)
+      if (
+        current?.schemaVersion === stored.schemaVersion &&
+        current.source === stored.source
+      ) return { ...current }
       drafts.set(module.workspaceId, stored)
+      onChange()
       return { ...stored }
     },
     restore<WorkspaceId extends string, Draft>(
@@ -47,10 +54,28 @@ export function createWorkspaceDraftRepository(
       return module.parseDraft(stored.source)
     },
     remove(workspaceId: string) {
-      drafts.delete(workspaceId)
+      if (drafts.delete(workspaceId)) onChange()
     },
     clear() {
+      if (drafts.size === 0) return
       drafts.clear()
+      onChange()
+    },
+    replace(nextDrafts: readonly StoredWorkspaceDraft[]) {
+      const next = new Map(
+        nextDrafts.map((draft) => [draft.workspaceId, { ...draft }]),
+      )
+      const changed = next.size !== drafts.size || [...next].some(
+        ([workspaceId, draft]) => {
+          const current = drafts.get(workspaceId)
+          return current?.schemaVersion !== draft.schemaVersion ||
+            current.source !== draft.source
+        },
+      )
+      if (!changed) return
+      drafts.clear()
+      next.forEach((draft, workspaceId) => drafts.set(workspaceId, draft))
+      onChange()
     },
     entries() {
       return [...drafts.values()].map((draft) => ({ ...draft }))

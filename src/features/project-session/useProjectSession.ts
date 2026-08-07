@@ -11,6 +11,7 @@ import type {
   ScenarioRole,
 } from '../../core/types'
 import type { ScenarioSelection } from './scenarioSelection'
+import type { HydraulicInputReference } from '../project-lifecycle/workspaceSessionProjectFile'
 
 export type { ScenarioSelection } from './scenarioSelection'
 
@@ -59,6 +60,9 @@ export function useProjectSession() {
     Record<ConditionKey, number>
   >({})
   const savedLabelsRef = useRef<Record<ConditionKey, string>>({})
+  const [expectedInputs, setExpectedInputs] = useState<
+    readonly HydraulicInputReference[]
+  >([])
 
   const scenarios = useMemo(
     () => {
@@ -68,6 +72,22 @@ export function useProjectSession() {
     },
     [dataVersion, engine],
   )
+
+  const currentInputReferences = useMemo<HydraulicInputReference[]>(() =>
+    scenarios.map((scenario) => ({
+      scenarioKey: scenario.key,
+      scenarioLabel: scenario.label,
+      geometryFileName: scenario.geometryFileName ?? '',
+      datasetFileName: scenario.datasetFileName ?? '',
+    })),
+  [scenarios])
+  const inputReferences = currentInputReferences.length > 0
+    ? currentInputReferences
+    : expectedInputs
+  const missingInputReferences = inputReferences.filter((expected) => {
+    const loaded = scenarios.find((scenario) => scenario.key === expected.scenarioKey)
+    return !loaded?.geometryFileName || !loaded.datasetFileName
+  })
 
   useEffect(() => {
     const ids = scenarios.map((scenario) => scenario.key)
@@ -178,9 +198,17 @@ export function useProjectSession() {
     [engine],
   )
 
+  const loadInputReferences = useCallback(
+    (references: readonly HydraulicInputReference[]) => {
+      setExpectedInputs(references.map((reference) => ({ ...reference })))
+    },
+    [],
+  )
+
   const reset = useCallback(() => {
     engine.reset()
     savedLabelsRef.current = {}
+    setExpectedInputs([])
     setBaselineId('EX')
     setComparisonId('PR')
     setAssessmentId('EX')
@@ -195,12 +223,15 @@ export function useProjectSession() {
     comparisonId,
     assessmentId,
     runByScenario,
+    inputReferences,
+    missingInputReferences,
     ingest,
     removeCondition,
     renameCondition,
     changeRole,
     changeRun,
     loadSelection,
+    loadInputReferences,
     reset,
   }
 }

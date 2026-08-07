@@ -70,9 +70,8 @@ infrastructure directly.
 - `features/project-lifecycle/` owns the explicit New/Open/Save lifecycle,
   dirty-state comparison, and unsaved-change protection. Folder I/O remains
   behind `ProjectFolderStoragePort`; the browser adapter is the only layer that
-  touches the File System Access API. Hydraulic Profiles & Sections is the
-  first workspace adapter, with additional workspaces added as independent
-  persistence slices.
+  touches the File System Access API. Workspace adapters persist profile inputs,
+  the Export Collection, and the shared editable workspace session.
 - Folder projects write `project.hfg.json` last, after their editable input and
   workspace documents. This keeps the manifest from claiming a partially
   completed save. Derived canvas scenes are regenerated from persisted inputs.
@@ -92,8 +91,8 @@ infrastructure directly.
 - `features/figures/workspaceDraftRepository.ts` retains one validated,
   serialized working draft per figure workspace for the current browser
   session. `useWorkspaceDraftRetention` binds a mounted workspace to that
-  repository, captures its latest editable snapshot on navigation, and
-  hydrates it when the workspace mounts again. The repository stores no React
+  repository, captures its latest editable snapshot as it changes and on
+  navigation, and hydrates it when the workspace mounts again. The repository stores no React
   state, canvases, or generated hydraulic scenes. Export-figure ownership and
   folder persistence are separate layers built on the same draft contract.
 - Export Collection schema version 2 stores an immutable `WorkspaceDraftSnapshot`
@@ -110,13 +109,19 @@ infrastructure directly.
   schema compatibility, parses the source, stages it in the session repository,
   and only then navigates. Launching uses the artifact as a starting point; the
   source artifact in the Export Collection remains immutable.
-- Slice 5 links an opened artifact to its workspace through an in-session,
-  per-workspace edit target. `ReportFigureExportActions` owns the generic
+- An opened artifact is linked to its workspace through a per-workspace edit
+  target. `workspace-session.hfg.json` persists those links together with the
+  latest registered workspace drafts, so an engineer can reopen the folder and
+  continue editing the same exported artifact. `ReportFigureExportActions` owns the generic
   **Update exported figure**, **Save as new figure**, and unlink controls.
   Updating replaces the artifact contents while preserving its ID, creation
   time, workspace band, and report order; saving as new creates an independent
-  artifact and links subsequent updates to that copy. These edit links are
-  intentionally not folder-persisted until the project-recovery slice.
+  artifact and links subsequent updates to that copy.
+- Browser security prevents silently reopening H5 source files. The workspace
+  session therefore stores scenario labels and source filenames, resets the
+  in-memory hydraulic engine on project open, and presents the missing files in
+  the Models workflow. Profile text and parsed shapefile overlays are portable
+  project content and restore directly.
 - `features/figure-sets/` owns production-view navigation. Figure-specific
   recipes expand valid selections and generate previews inside their owning
   feature; they do not add batch branches to `App.tsx`.

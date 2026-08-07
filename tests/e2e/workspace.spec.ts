@@ -237,9 +237,12 @@ test('folder project saves and restores profiles with the Export Collection', as
   await page.getByLabel('Project name').fill('Site 6 FRA')
   await page.getByRole('button', { name: 'Choose location' }).click()
   await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
+    'fra-wse-difference',
+  )
+  await page.getByLabel('Workspace', { exact: true }).selectOption(
     'hydraulic-profiles-sections',
   )
-  await expect(page.getByLabel('Site 6 FRA: Saved')).toBeVisible()
+  await expect(page.getByLabel('Site 6 FRA: Unsaved changes')).toBeVisible()
 
   await page.getByRole('tab', { name: 'Summary', exact: true }).click()
   await page.getByLabel('SMS Summary Table').fill(PROFILE_SUMMARY)
@@ -433,7 +436,9 @@ test('one profile generation exposes every detected station and batch export', a
   await page.getByLabel('SMS Summary Table').fill(TWO_SECTION_PROFILE_SUMMARY)
   await page.getByRole('tab', { name: 'Profile', exact: true }).click()
   await page.getByLabel('SMS Profile Values').fill(TWO_SECTION_PROFILE_VALUES)
-  await expect(page.getByTestId('generate-hydraulic-profile')).toHaveText('Generate 2 cross sections')
+  await expect(page.getByTestId('generate-hydraulic-profile')).toHaveText(
+    /^(Re)?generate 2 cross sections$/,
+  )
 
   await page.getByTestId('generate-hydraulic-profile').click()
   await expect(page.getByRole('tab', { name: '1+00' })).toHaveAttribute('aria-selected', 'true')

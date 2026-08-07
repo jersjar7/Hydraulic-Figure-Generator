@@ -8,6 +8,7 @@ import type {
   StationedAssessmentLineCollection,
   WseAssessmentLineCollection,
 } from '../../core/types'
+import type { HydraulicInputReference } from '../../features/project-lifecycle/workspaceSessionProjectFile'
 import type {
   AssessmentLinesReviewPanelProps,
 } from '../../features/assessment-lines/AssessmentLinesReviewPanel'
@@ -37,6 +38,7 @@ export type ProjectDataPanelProps = {
   collapsed: boolean
   busy: boolean
   scenarios: ConditionData[]
+  missingInputReferences?: readonly HydraulicInputReference[]
   scenarioRoles?: readonly ScenarioRoleOption[]
   baselineId: ConditionKey
   comparisonId: ConditionKey

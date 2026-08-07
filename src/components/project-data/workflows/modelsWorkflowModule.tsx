@@ -32,6 +32,7 @@ export const modelsWorkflowModule: ProjectWorkflowModule<ProjectWorkflowContext>
       <ModelsWorkspace
         busy={context.busy}
         scenarios={context.scenarios}
+        missingInputReferences={context.missingInputReferences}
         scenarioRoles={context.scenarioRoles}
         baselineId={context.baselineId}
         comparisonId={context.comparisonId}

@@ -16,6 +16,11 @@ import {
 import { hydraulicProfileFolderAdapter } from '../src/features/project-lifecycle/hydraulicProfileFolderAdapter'
 import { bindProjectWorkspace } from '../src/features/project-lifecycle/projectWorkspaceFolderAdapter'
 import { reportAssemblyFolderAdapter } from '../src/features/project-lifecycle/reportAssemblyFolderAdapter'
+import { workspaceSessionFolderAdapter } from '../src/features/project-lifecycle/workspaceSessionFolderAdapter'
+import {
+  createWorkspaceSessionProjectState,
+  type WorkspaceSessionProjectState,
+} from '../src/features/project-lifecycle/workspaceSessionProjectFile'
 
 type MemoryDirectory = {
   name: string
@@ -92,11 +97,15 @@ function bindings({
   reportState = report(),
   hydrateProfile = () => undefined,
   hydrateReport = () => undefined,
+  sessionState = createWorkspaceSessionProjectState(),
+  hydrateSession = () => undefined,
 }: {
   profileState?: HydraulicProfileProjectState
   reportState?: ReportAssemblyDocument
   hydrateProfile?: (state: HydraulicProfileProjectState) => void
   hydrateReport?: (state: ReportAssemblyDocument) => void
+  sessionState?: WorkspaceSessionProjectState
+  hydrateSession?: (state: WorkspaceSessionProjectState) => void
 } = {}) {
   return [
     bindProjectWorkspace({
@@ -110,6 +119,12 @@ function bindings({
       state: reportState,
       hydrate: hydrateReport,
       createInitialState: createReportAssemblyDocument,
+    }),
+    bindProjectWorkspace({
+      adapter: workspaceSessionFolderAdapter,
+      state: sessionState,
+      hydrate: hydrateSession,
+      createInitialState: createWorkspaceSessionProjectState,
     }),
   ]
 }
@@ -131,12 +146,14 @@ describe('multi-workspace hydraulic project folders', () => {
       'inputs/profiles/profile-values.txt',
       'workspaces/hydraulic-profiles.hydfig.json',
       'workspaces/export-collection.hydreport.json',
+      'workspaces/workspace-session.hfg.json',
       'project.hfg.json',
     ])
     assert.equal(opened.manifest.activeWorkspaceId, 'report-assembly')
     assert.deepEqual(Object.keys(opened.manifest.workspaces), [
       'hydraulic-profiles-sections',
       'report-assembly',
+      'workspace-session',
     ])
   })
 
@@ -152,6 +169,7 @@ describe('multi-workspace hydraulic project folders', () => {
     })
     let loadedProfile: HydraulicProfileProjectState | null = null
     let loadedReport: ReportAssemblyDocument | null = null
+    let loadedSession: WorkspaceSessionProjectState | null = null
     const opened = await openHydraulicProjectFolder({
       storage: storage.port,
       directory: created.directory,
@@ -160,6 +178,17 @@ describe('multi-workspace hydraulic project folders', () => {
         reportState: report('Temporary Report'),
         hydrateProfile: (state) => { loadedProfile = state },
         hydrateReport: (state) => { loadedReport = state },
+        sessionState: {
+          drafts: [],
+          reportFigureEditTargets: {},
+          hydraulicInputs: [{
+            scenarioKey: 'EX',
+            scenarioLabel: 'Existing',
+            geometryFileName: 'EX-Geo.h5',
+            datasetFileName: 'EX-Datasets.h5',
+          }],
+        },
+        hydrateSession: (state) => { loadedSession = state },
       }),
     })
     opened.hydrations.forEach((item) => item.apply())
@@ -167,6 +196,7 @@ describe('multi-workspace hydraulic project folders', () => {
     assert.equal(loadedProfile?.conditionLabel, 'Existing Conditions')
     assert.equal(loadedReport?.title, 'Site 6 Report')
     assert.equal(loadedReport?.groups[0].figures[0].caption, 'Existing-condition cross section.')
+    assert.deepEqual(loadedSession, createWorkspaceSessionProjectState())
   })
 
   it('preserves unknown manifest workspaces while saving known workspaces', async () => {

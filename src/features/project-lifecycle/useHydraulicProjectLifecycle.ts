@@ -17,6 +17,7 @@ export type ProjectLifecycleDialog = 'welcome' | 'new' | null
 
 type Options = {
   workspaces: ProjectWorkspaceFolderBinding[]
+  availableWorkspaceIds: readonly AppWorkspaceId[]
   activeWorkspaceId: AppWorkspaceId
   setActiveWorkspace(workspaceId: AppWorkspaceId): void
   storage?: ProjectFolderStoragePort
@@ -28,16 +29,17 @@ function errorMessage(error: unknown) {
 }
 
 function persistedActiveWorkspace(
-  workspaces: ProjectWorkspaceFolderBinding[],
+  availableWorkspaceIds: readonly AppWorkspaceId[],
   requested: string,
 ) {
-  return workspaces.some(({ workspaceId }) => workspaceId === requested)
+  return availableWorkspaceIds.includes(requested as AppWorkspaceId)
     ? requested
-    : workspaces[0]?.workspaceId ?? requested
+    : availableWorkspaceIds[0] ?? requested
 }
 
 export function useHydraulicProjectLifecycle({
   workspaces,
+  availableWorkspaceIds,
   activeWorkspaceId,
   setActiveWorkspace,
   storage = browserProjectFolderStoragePort,
@@ -84,7 +86,10 @@ export function useHydraulicProjectLifecycle({
         mode: 'readwrite',
       })
       if (!parent) return false
-      const persistedWorkspaceId = persistedActiveWorkspace(workspaces, activeWorkspaceId)
+      const persistedWorkspaceId = persistedActiveWorkspace(
+        availableWorkspaceIds,
+        activeWorkspaceId,
+      )
       const opened = await createHydraulicProjectFolder({
         storage,
         parent,
@@ -104,7 +109,7 @@ export function useHydraulicProjectLifecycle({
     } finally {
       setBusy(false)
     }
-  }, [activeWorkspaceId, fingerprint, now, setActiveWorkspace, storage, workspaces])
+  }, [activeWorkspaceId, availableWorkspaceIds, fingerprint, now, setActiveWorkspace, storage, workspaces])
 
   const openProject = useCallback(async () => {
     if (!confirmDiscard()) return false
@@ -121,7 +126,7 @@ export function useHydraulicProjectLifecycle({
       setProject({ directory: opened.directory, manifest: opened.manifest })
       setSavedFingerprint(projectWorkspaceFingerprint(opened.hydrations))
       const workspaceId = persistedActiveWorkspace(
-        workspaces,
+        availableWorkspaceIds,
         opened.manifest.activeWorkspaceId,
       ) as AppWorkspaceId
       setActiveWorkspace(workspaceId)
@@ -134,7 +139,7 @@ export function useHydraulicProjectLifecycle({
     } finally {
       setBusy(false)
     }
-  }, [confirmDiscard, setActiveWorkspace, storage, workspaces])
+  }, [availableWorkspaceIds, confirmDiscard, setActiveWorkspace, storage, workspaces])
 
   const saveProject = useCallback(async () => {
     if (!project) {
@@ -149,7 +154,10 @@ export function useHydraulicProjectLifecycle({
         directory: project.directory,
         manifest: project.manifest,
         workspaces,
-        activeWorkspaceId: persistedActiveWorkspace(workspaces, activeWorkspaceId),
+        activeWorkspaceId: persistedActiveWorkspace(
+          availableWorkspaceIds,
+          activeWorkspaceId,
+        ),
         timestamp: now(),
       })
       setProject({ ...project, manifest })
@@ -161,7 +169,7 @@ export function useHydraulicProjectLifecycle({
     } finally {
       setBusy(false)
     }
-  }, [activeWorkspaceId, fingerprint, now, project, storage, workspaces])
+  }, [activeWorkspaceId, availableWorkspaceIds, fingerprint, now, project, storage, workspaces])
 
   return {
     project,

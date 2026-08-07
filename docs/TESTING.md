@@ -33,7 +33,8 @@ project data. They cover:
 - Mesh-spacing tolerance behavior.
 - Current project-file round trips.
 - Folder-project manifest validation, ordered writes, separate SMS input files,
-  explicit dirty state, and Hydraulic Profiles & Sections restoration.
+  workspace-draft and export-edit recovery, explicit dirty state, and Hydraulic
+  Profiles & Sections restoration.
 - Supported legacy project migration.
 - Rejection of future, wrong-figure, malformed, and unsafe project files.
 - Assessment-line contour stitching, directed centerline stationing, ambiguous
