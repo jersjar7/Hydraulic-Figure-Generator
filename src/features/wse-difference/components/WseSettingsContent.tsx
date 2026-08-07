@@ -5,6 +5,7 @@ import type {
   FigureElementPanelKey,
   FigureSettings,
 } from '../../../core/types'
+import type { ReactNode } from 'react'
 import type { SettingsSectionKey } from '../workspaceConfiguration'
 import type { useWseAnnotationController } from '../useWseAnnotationController'
 import type { useWseFigureElementController } from '../useWseFigureElementController'
@@ -42,7 +43,7 @@ type Props = {
   onCenterlineDirectionChange(direction: CenterlineDirection): void
   onStartStationChange(station: number): void
   onDryDepthChange(dryDepth: number): void
-  onAddToExport(): void
+  exportActions: ReactNode
   onDownload(): void | Promise<void>
 }
 
@@ -70,7 +71,7 @@ export function WseSettingsContent({
   onCenterlineDirectionChange,
   onStartStationChange,
   onDryDepthChange,
-  onAddToExport,
+  exportActions,
   onDownload,
 }: Props) {
   const context: WseSettingsSectionContext = {
@@ -127,8 +128,8 @@ export function WseSettingsContent({
       actions: annotationController.actions,
     },
     export: {
+      actions: exportActions,
       canDownload: sceneReady,
-      onAddToExport,
       onDownload,
     },
   }

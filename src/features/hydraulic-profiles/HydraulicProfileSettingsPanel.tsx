@@ -1,4 +1,5 @@
 import { Download, Images } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { ControlSection } from '../../components/ControlSection'
 import { CompactFieldGrid } from '../../components/settings/CompactFieldGrid'
 import type {
@@ -22,9 +23,9 @@ type Props = {
   profileSection: HydraulicProfileSection | null
   canDownload: boolean
   datasetConfiguration: HydraulicProfileDatasetConfiguration | null
+  exportActions: ReactNode
   onSettingsChange(update: (settings: HydraulicProfileFigureSettings) => HydraulicProfileFigureSettings): void
   onDatasetConfigurationChange(configuration: HydraulicProfileDatasetConfiguration): void
-  onAddToExport(): void
   generatedCount: number
   onAddAllToExport(): void
   onDownload(): void
@@ -60,9 +61,9 @@ export function HydraulicProfileSettingsPanel({
   profileSection,
   canDownload,
   datasetConfiguration,
+  exportActions,
   onSettingsChange,
   onDatasetConfigurationChange,
-  onAddToExport,
   generatedCount,
   onAddAllToExport,
   onDownload,
@@ -134,7 +135,7 @@ export function HydraulicProfileSettingsPanel({
         </> : null}
         {section === 'export' ? <>
           {generatedCount > 1 ? <button className="button primary full" type="button" disabled={!canDownload} onClick={onAddAllToExport}><Images size={17} /> Add all {generatedCount} stations to export</button> : null}
-          <button className={`button ${generatedCount > 1 ? 'secondary' : 'primary'} full`} type="button" disabled={!canDownload} onClick={onAddToExport}><Images size={17} /> Add current station to export</button>
+          {exportActions}
           <button className="button secondary full" type="button" disabled={!canDownload} onClick={onDownload}><Download size={17} /> Download PNG</button>
         </> : null}
       </div>

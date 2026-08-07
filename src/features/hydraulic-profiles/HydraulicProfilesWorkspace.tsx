@@ -32,6 +32,7 @@ import { HydraulicProfileInputPanel } from './HydraulicProfileInputPanel'
 import { HydraulicProfileSettingsPanel } from './HydraulicProfileSettingsPanel'
 import { HYDRAULIC_PROFILE_WORKSPACE_SETTINGS } from './hydraulicProfileSettingsSections'
 import { hydraulicProfileWorkspaceDraft } from './hydraulicProfileWorkspaceDraft'
+import { ReportFigureExportActions } from '../project-workspace/ReportFigureExportActions'
 
 export function HydraulicProfilesWorkspace() {
   const {
@@ -136,19 +137,13 @@ export function HydraulicProfilesWorkspace() {
     }
   }
 
-  const addToExport = () => {
-    if (!scene) return
+  const createExportFigure = () => {
+    if (!scene) return null
     const workspaceDraft = createWorkspaceDraftSnapshot(
       hydraulicProfileWorkspaceDraft,
       { ...hydraulicProfiles.snapshot, selectedSectionId: scene.section.id },
     )
-    const figure = reportAssembly.addFigure(
-      createHydraulicProfileReportFigure({ scene, settings }, workspaceDraft),
-    )
-    appendNotices([{
-      level: 'success',
-      text: `${figure.title} was added to the Export Collection.`,
-    }])
+    return createHydraulicProfileReportFigure({ scene, settings }, workspaceDraft)
   }
 
   const addAllToExport = () => {
@@ -259,7 +254,16 @@ export function HydraulicProfilesWorkspace() {
           datasetConfiguration={dataset.configuration}
           onSettingsChange={setSettings}
           onDatasetConfigurationChange={setDatasetConfiguration}
-          onAddToExport={addToExport}
+          exportActions={
+            <ReportFigureExportActions
+              workspaceId={hydraulicProfileFigure.id}
+              canExport={Boolean(scene)}
+              createFigure={createExportFigure}
+              addLabel="Add current station to export"
+              addVariant={scenes.length > 1 ? 'secondary' : 'primary'}
+              onSuccess={(text) => appendNotices([{ level: 'success', text }])}
+            />
+          }
           generatedCount={scenes.length}
           onAddAllToExport={addAllToExport}
           onDownload={() => { if (scene) downloadHydraulicProfilePng(scene, settings) }}

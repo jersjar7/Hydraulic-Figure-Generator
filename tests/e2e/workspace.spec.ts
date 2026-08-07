@@ -387,6 +387,17 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
   await expect(page.getByLabel('Profile station')).toHaveValue(
     'profile-section-1',
   )
+  await page.getByRole('tab', { name: 'Layout', exact: true }).click()
+  await page.getByLabel('Figure title').fill('Updated Hydraulic Cross Section')
+  await page.getByRole('tab', { name: 'Export', exact: true }).click()
+  await page.getByRole('button', { name: 'Update exported figure' }).click()
+  await expect(page.getByRole('option', { name: 'Export Collection (1)' })).toBeAttached()
+  await page.getByRole('button', { name: 'Save as new figure' }).click()
+  await expect(page.getByRole('option', { name: 'Export Collection (2)' })).toBeAttached()
+  await page.getByLabel('Workspace', { exact: true }).selectOption('report-assembly')
+  await expect(page.getByRole('button', {
+    name: /Preview Updated Hydraulic Cross Section/,
+  })).toHaveCount(2)
 })
 
 test('SMS Summary and Profile Values text files feed the profile parser', async ({ page }) => {

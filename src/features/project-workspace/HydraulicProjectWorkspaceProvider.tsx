@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -23,6 +24,14 @@ import { createWorkspaceDraftRepository } from '../figures/workspaceDraftReposit
 import type { AppWorkspaceId } from './hydraulicProjectWorkspaceContext'
 import { HydraulicProjectWorkspaceContext } from './hydraulicProjectWorkspaceContext'
 import { stageReportFigureDraft } from './stageReportFigureDraft'
+import {
+  linkReportFigureEditTarget as linkEditTarget,
+  pruneReportFigureEditTargets,
+  unlinkReportFigureEditTarget as unlinkEditTarget,
+  type ReportFigureEditTargets,
+} from '../../application/report-assembly/reportFigureEditSession'
+import type { ReportFigureArtifact } from '../../core/types'
+import type { FigureId } from '../figures/workspaceRegistry'
 
 export function HydraulicProjectWorkspaceProvider({
   children,
@@ -33,6 +42,8 @@ export function HydraulicProjectWorkspaceProvider({
     DEFAULT_FIGURE_WORKSPACE.id,
   )
   const [workspaceDrafts] = useState(createWorkspaceDraftRepository)
+  const [reportFigureEditTargets, setReportFigureEditTargets] =
+    useState<ReportFigureEditTargets>({})
   const projectSession = useProjectSession()
   const projectDocument = useHydraulicProjectDocument()
   const reportAssembly = useReportAssembly()
@@ -61,12 +72,25 @@ export function HydraulicProjectWorkspaceProvider({
     activeWorkspaceId: activeFigureId,
     setActiveWorkspace: setActiveFigureId,
   })
+  const linkReportFigureEditTarget = useCallback((figure: ReportFigureArtifact) => {
+    setReportFigureEditTargets((current) => linkEditTarget(current, figure))
+  }, [])
+  const unlinkReportFigureEditTarget = useCallback((workspaceId: FigureId) => {
+    setReportFigureEditTargets((current) => unlinkEditTarget(current, workspaceId))
+  }, [])
   const openReportFigureDraft = useCallback(async (
     figure: Parameters<typeof stageReportFigureDraft>[0],
   ) => {
     const workspaceId = await stageReportFigureDraft(figure, workspaceDrafts)
+    linkReportFigureEditTarget(figure)
     setActiveFigureId(workspaceId)
-  }, [workspaceDrafts])
+  }, [linkReportFigureEditTarget, workspaceDrafts])
+
+  useEffect(() => {
+    setReportFigureEditTargets((current) =>
+      pruneReportFigureEditTargets(reportAssembly.document, current),
+    )
+  }, [reportAssembly.document])
 
   return (
     <HydraulicProjectWorkspaceContext.Provider
@@ -78,6 +102,9 @@ export function HydraulicProjectWorkspaceProvider({
         reportAssembly,
         hydraulicProfiles,
         workspaceDrafts,
+        reportFigureEditTargets,
+        linkReportFigureEditTarget,
+        unlinkReportFigureEditTarget,
         openReportFigureDraft,
         projectLifecycle,
       }}

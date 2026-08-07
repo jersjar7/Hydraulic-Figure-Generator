@@ -7,7 +7,7 @@ import {
   Settings2,
   SlidersHorizontal,
 } from 'lucide-react'
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { FigureElementsPanel } from '../../components/FigureElementsPanel'
 import { CenterlineStationingToolPanel } from '../stationing/CenterlineStationingToolPanel'
 import {
@@ -41,8 +41,8 @@ export type WseSettingsSectionContext = {
   stationing: ComponentProps<typeof CenterlineStationingToolPanel>
   annotations: ComponentProps<typeof AnnotationSettingsPanel>
   export: {
+    actions: ReactNode
     canDownload: boolean
-    onAddToExport: () => void
     onDownload: () => void | Promise<void>
   }
 }

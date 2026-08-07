@@ -23,6 +23,67 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.report-figure-export-actions {
+  display: grid;
+  gap: 7px;
+}
+
+.report-figure-edit-target {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 7px;
+  color: #23435f;
+  background: var(--blue-soft);
+  border: 1px solid #b8d6eb;
+  border-radius: 5px;
+}
+
+.report-figure-edit-target span {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.report-figure-edit-target small {
+  color: #557087;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.report-figure-edit-target strong {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-figure-edit-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+}
+
+.report-figure-edit-actions .button {
+  min-width: 0;
+  min-height: 34px;
+  padding: 5px 7px;
+  line-height: 1.15;
+  white-space: normal;
+}
+
+.report-figure-export-error {
+  padding: 6px 7px;
+  color: var(--red);
+  background: var(--red-soft);
+  border: 1px solid #e9bcbc;
+  border-radius: 5px;
+  font-size: 10px;
+}
+
 .color-field input[type="color"] {
   width: 100%;
   height: 34px;

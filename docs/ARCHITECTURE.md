@@ -110,6 +110,13 @@ infrastructure directly.
   schema compatibility, parses the source, stages it in the session repository,
   and only then navigates. Launching uses the artifact as a starting point; the
   source artifact in the Export Collection remains immutable.
+- Slice 5 links an opened artifact to its workspace through an in-session,
+  per-workspace edit target. `ReportFigureExportActions` owns the generic
+  **Update exported figure**, **Save as new figure**, and unlink controls.
+  Updating replaces the artifact contents while preserving its ID, creation
+  time, workspace band, and report order; saving as new creates an independent
+  artifact and links subsequent updates to that copy. These edit links are
+  intentionally not folder-persisted until the project-recovery slice.
 - `features/figure-sets/` owns production-view navigation. Figure-specific
   recipes expand valid selections and generate previews inside their owning
   feature; they do not add batch branches to `App.tsx`.

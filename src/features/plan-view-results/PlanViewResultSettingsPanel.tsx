@@ -1,5 +1,5 @@
-import { Download, FileJson, Images } from 'lucide-react'
-import type { ComponentProps } from 'react'
+import { Download, FileJson } from 'lucide-react'
+import type { ComponentProps, ReactNode } from 'react'
 import { ControlSection } from '../../components/ControlSection'
 import { FigureElementsPanel } from '../../components/FigureElementsPanel'
 import { ColorRampSelect } from '../../components/settings/ColorRampSelect'
@@ -27,13 +27,13 @@ type Props = {
   elements: ReturnType<typeof useMapElementController<PlanViewResultSettings>>
   stationing: ComponentProps<typeof CenterlineStationingToolPanel>
   canDownload: boolean
+  exportActions: ReactNode
   onSettingsChange<Key extends keyof PlanViewResultSettings>(
     key: Key,
     value: PlanViewResultSettings[Key],
   ): void
   onResultParameterChange(paramName: string): void
   onActiveElementChange(element: FigureElementPanelKey): void
-  onAddToExport(): void
   onDownload(): void
 }
 
@@ -222,10 +222,10 @@ export function PlanViewResultSettingsPanel(props: Props) {
     elements,
     stationing,
     canDownload,
+    exportActions,
     onSettingsChange,
     onResultParameterChange,
     onActiveElementChange,
-    onAddToExport,
     onDownload,
   } = props
   const selectedOutput = resultOptions.find(
@@ -319,15 +319,7 @@ export function PlanViewResultSettingsPanel(props: Props) {
           and must be re-added.
         </span>
       </div>
-      <button
-        className="button primary full"
-        type="button"
-        disabled={!canDownload}
-        onClick={onAddToExport}
-      >
-        <Images size={17} aria-hidden="true" />
-        Add to export
-      </button>
+      {exportActions}
       <button
         className="button secondary full"
         type="button"

@@ -2,12 +2,12 @@ import {
   ArrowLeftRight,
   Download,
   Eye,
-  Images,
   Map,
   MousePointer2,
   Trash2,
   X,
 } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { ControlSection } from '../../components/ControlSection'
 import type {
   CrossSectionLine,
@@ -28,6 +28,7 @@ type Props = {
   selectedLine: CrossSectionLine | null
   drawing: boolean
   canDownload: boolean
+  exportActions: ReactNode
   onSettingsChange(
     update: (settings: CrossSectionFigureSettings) => CrossSectionFigureSettings,
   ): void
@@ -37,7 +38,6 @@ type Props = {
   onFlipViewSide(): void
   onClearLine(): void
   onShowMap(): void
-  onAddToExport(): void
   onDownload(): void
 }
 
@@ -106,6 +106,7 @@ export function CrossSectionSettingsPanel({
   selectedLine,
   drawing,
   canDownload,
+  exportActions,
   onSettingsChange,
   onAssessmentLineChange,
   onStartDrawing,
@@ -113,7 +114,6 @@ export function CrossSectionSettingsPanel({
   onFlipViewSide,
   onClearLine,
   onShowMap,
-  onAddToExport,
   onDownload,
 }: Props) {
   const update = <Key extends keyof CrossSectionFigureSettings>(
@@ -372,15 +372,7 @@ export function CrossSectionSettingsPanel({
 
       {section === 'export' ? (
         <div className="cross-settings-stack">
-          <button
-            className="button primary full"
-            type="button"
-            disabled={!canDownload}
-            onClick={onAddToExport}
-          >
-            <Images size={17} aria-hidden="true" />
-            Add to export
-          </button>
+          {exportActions}
           <button
             className="button secondary full"
             type="button"

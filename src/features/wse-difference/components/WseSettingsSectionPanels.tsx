@@ -1,7 +1,6 @@
 import {
   Download,
   FileJson,
-  Images,
 } from 'lucide-react'
 import { ControlSection } from '../../../components/ControlSection'
 import { FigureElementsPanel } from '../../../components/FigureElementsPanel'
@@ -54,15 +53,7 @@ export function ExportSection({ context }: Props) {
           files remain local and must be re-added.
         </span>
       </div>
-      <button
-        className="button primary full"
-        type="button"
-        disabled={!context.export.canDownload}
-        onClick={context.export.onAddToExport}
-      >
-        <Images size={17} aria-hidden="true" />
-        Add to export
-      </button>
+      {context.export.actions}
       <button
         className="button secondary full"
         type="button"

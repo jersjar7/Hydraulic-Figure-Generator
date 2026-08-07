@@ -64,6 +64,30 @@ export function updateReportFigure(
   }
 }
 
+export function replaceReportFigure(
+  document: ReportAssemblyDocument,
+  replacement: ReportFigureArtifact,
+): ReportAssemblyDocument {
+  const existing = flattenReportFigures(document).find(
+    (figure) => figure.id === replacement.id,
+  )
+  if (!existing) {
+    throw new Error('The exported figure is no longer in the Export Collection.')
+  }
+  if (existing.workspaceId !== replacement.workspaceId) {
+    throw new Error('An exported figure cannot be moved to another workspace.')
+  }
+  return {
+    ...document,
+    groups: document.groups.map((group) => ({
+      ...group,
+      figures: group.figures.map((figure) => figure.id === replacement.id
+        ? replacement
+        : figure),
+    })),
+  }
+}
+
 function moveBefore<T>(items: T[], sourceIndex: number, targetIndex: number) {
   if (sourceIndex === targetIndex || sourceIndex < 0 || targetIndex < 0) return items
   const next = [...items]
@@ -138,7 +162,7 @@ export function flattenReportFigures(document: ReportAssemblyDocument) {
 
 export function createReportFigure(
   input: NewReportFigure,
-  id = globalThis.crypto?.randomUUID?.() ?? `figure-${Date.now()}-${Math.random()}`,
+  id: string = globalThis.crypto?.randomUUID?.() ?? `figure-${Date.now()}-${Math.random()}`,
   createdAt = new Date().toISOString(),
 ): ReportFigureArtifact {
   if (
@@ -159,4 +183,14 @@ export function createReportFigure(
     id,
     createdAt,
   }
+}
+
+export function createReplacementReportFigure(
+  existing: ReportFigureArtifact,
+  input: NewReportFigure,
+): ReportFigureArtifact {
+  if (existing.workspaceId !== input.workspaceId) {
+    throw new Error('An exported figure cannot be replaced by another workspace.')
+  }
+  return createReportFigure(input, existing.id, existing.createdAt)
 }

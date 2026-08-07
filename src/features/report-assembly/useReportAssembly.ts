@@ -9,6 +9,7 @@ import {
   moveReportWorkspace,
   moveReportWorkspaceBy,
   removeReportFigure,
+  replaceReportFigure,
   updateReportFigure,
 } from '../../application/report-assembly/reportAssembly'
 import type {
@@ -31,6 +32,8 @@ export function useReportAssembly() {
     addFigure,
     removeFigure: useCallback((figureId: string) =>
       setDocument((current) => removeReportFigure(current, figureId)), []),
+    replaceFigure: useCallback((figure: ReturnType<typeof createReportFigure>) =>
+      setDocument((current) => replaceReportFigure(current, figure)), []),
     updateFigure: useCallback((figureId: string, update: { title?: string; caption?: string }) =>
       setDocument((current) => updateReportFigure(current, figureId, update)), []),
     moveFigure: useCallback((workspaceId: string, sourceId: string, targetId: string) =>

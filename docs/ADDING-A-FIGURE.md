@@ -86,6 +86,13 @@ workspace can safely migrate old editable snapshots; otherwise incrementing its
 schema version will make older artifacts remain image-only until an explicit
 migration is added.
 
+Render single-figure export controls with the shared
+`ReportFigureExportActions`. Supply the registered workspace ID and a callback
+that creates the current `NewReportFigure`; the shared control owns artifact
+linking, replacement, duplication, and unlinking. Do not implement
+workspace-specific update state. Batch actions may continue adding independent
+artifacts, but must never replace a linked single figure as a side effect.
+
 ## 4. Test It
 
 Before registration, add:

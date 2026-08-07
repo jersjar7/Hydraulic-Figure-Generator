@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import '../../App.css'
 import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspaceScaffold'
 import { HydraulicProjectPanel } from '../../components/project-data/HydraulicProjectPanel'
@@ -52,6 +45,7 @@ import { PlanViewWorkspaceMap } from './PlanViewWorkspaceMap'
 import { usePlanViewStationing } from './usePlanViewStationing'
 import { planViewResultWorkspaceDraft } from './planViewResultWorkspaceDraft'
 import { useCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
+import { ReportFigureExportActions } from '../project-workspace/ReportFigureExportActions'
 
 const SCENARIO_ROLES: readonly ScenarioRoleOption[] = [
   { role: 'baseline', label: 'Scenario', required: true },
@@ -63,7 +57,7 @@ type WorkspaceSettingsSectionKey =
   | PlanViewFigureDocumentSettingsSectionKey
 
 export function PlanViewResultWorkspace() {
-  const { projectSession, projectDocument, reportAssembly } = useHydraulicProjectWorkspace()
+  const { projectSession, projectDocument } = useHydraulicProjectWorkspace()
   const { engine, scenarios, baselineId, runByScenario } = projectSession
   const { overlays, setOverlays, loadDocument, resetDocument } = projectDocument
   const runIndex = runByScenario[baselineId] ?? 0
@@ -349,18 +343,17 @@ export function PlanViewResultWorkspace() {
     })
   }
 
-  const addToExport = () => {
-    if (!scene || !canvasRef.current) return
+  const createExportFigure = () => {
+    if (!scene || !canvasRef.current) return null
     const title = `${scene.condition.label} - ${scene.result.label}`
     const run = scene.selection ? ` for ${scene.selection.run.name}` : ''
-    reportAssembly.addFigure(createCanvasReportFigure(canvasRef.current, {
+    return createCanvasReportFigure(canvasRef.current, {
       workspaceId: planViewResultFigure.id,
       workspaceLabel: planViewResultFigure.label,
       title,
       caption: `${scene.result.label}${run}, ${scene.condition.label}.`,
       workspaceDraft: draftRetention.capture(),
-    }))
-    appendNotices([{ level: 'success', text: `${title} was added to the Export Collection.` }])
+    })
   }
 
   return (
@@ -465,7 +458,14 @@ export function PlanViewResultWorkspace() {
             onSettingsChange={updateSettings}
             onResultParameterChange={changeResult}
             onActiveElementChange={setActiveElement}
-            onAddToExport={addToExport}
+            exportActions={
+              <ReportFigureExportActions
+                workspaceId={planViewResultFigure.id}
+                canExport={Boolean(scene && canvasRef.current)}
+                createFigure={createExportFigure}
+                onSuccess={(text) => appendNotices([{ level: 'success', text }])}
+              />
+            }
             onDownload={download}
           />
         ) : productionMode === 'set' ? (

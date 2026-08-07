@@ -43,9 +43,10 @@ import { useCrossSectionSelection } from './useCrossSectionSelection'
 import { CROSS_SECTION_WORKSPACE_SETTINGS } from './crossSectionSettingsSections'
 import { downloadCrossSectionPng } from './exportCrossSection'
 import { useCrossSectionDraftRetention } from './useCrossSectionDraftRetention'
+import { ReportFigureExportActions } from '../project-workspace/ReportFigureExportActions'
 
 export function CrossSectionWorkspace() {
-  const { projectSession, projectDocument, reportAssembly } = useHydraulicProjectWorkspace()
+  const { projectSession, projectDocument } = useHydraulicProjectWorkspace()
   const {
     engine,
     baselineId,
@@ -316,16 +317,15 @@ export function CrossSectionWorkspace() {
     downloadCrossSectionPng(chartScene, settings)
   }
 
-  const addToExport = () => {
-    if (!chartScene || !canvasRef.current) return
-    const figure = reportAssembly.addFigure(createCrossSectionReportFigure(
+  const createExportFigure = () => {
+    if (!chartScene || !canvasRef.current) return null
+    return createCrossSectionReportFigure(
       canvasRef.current,
       chartScene,
       baselineLabel,
       comparisonLabel,
       workspaceDraft.capture(),
-    ))
-    appendNotices([{ level: 'success', text: `${figure.title} was added to the Export Collection.` }])
+    )
   }
 
   const resetProject = () => {
@@ -470,7 +470,14 @@ export function CrossSectionWorkspace() {
           }}
           onClearLine={selection.clearSelectedLine}
           onShowMap={() => selection.setView('map')}
-          onAddToExport={addToExport}
+          exportActions={
+            <ReportFigureExportActions
+              workspaceId={crossSectionFigure.id}
+              canExport={Boolean(chartScene && canvasRef.current)}
+              createFigure={createExportFigure}
+              onSuccess={(text) => appendNotices([{ level: 'success', text }])}
+            />
+          }
           onDownload={downloadChart}
         />
       }

@@ -4,10 +4,12 @@ import {
   addReportFigure,
   createReportAssemblyDocument,
   createReportFigure,
+  createReplacementReportFigure,
   flattenReportFigures,
   moveReportFigure,
   moveReportWorkspace,
   removeReportFigure,
+  replaceReportFigure,
   updateReportFigure,
 } from '../src/application/report-assembly/reportAssembly'
 import {
@@ -67,6 +69,60 @@ describe('cross-workspace report assembly', () => {
     assert.equal(document.groups[0].figures[0].caption, 'Reviewed caption')
     assert.deepEqual(parseReportAssembly(serializeReportAssembly(document)), document)
     assert.equal(removeReportFigure(document, 'profile-1').groups.length, 0)
+  })
+
+  it('replaces an exported figure without changing its identity or order', () => {
+    const first = figure('profile-1', 'profiles', 'Profiles')
+    const second = figure('profile-2', 'profiles', 'Profiles')
+    let document = addReportFigure(createReportAssemblyDocument(), first)
+    document = addReportFigure(document, second)
+    const replacement = createReplacementReportFigure(first, {
+      workspaceId: 'profiles',
+      workspaceLabel: 'Profiles',
+      title: 'Updated profile',
+      caption: 'Updated caption',
+      imageDataUrl: 'data:image/png;base64,AQ==',
+      widthPx: 1600,
+      heightPx: 900,
+      workspaceDraft: {
+        workspaceId: 'profiles',
+        schemaVersion: 1,
+        source: JSON.stringify({ title: 'Updated profile' }),
+      },
+    })
+
+    document = replaceReportFigure(document, replacement)
+
+    assert.deepEqual(
+      document.groups[0].figures.map((item) => item.id),
+      ['profile-1', 'profile-2'],
+    )
+    assert.equal(document.groups[0].figures[0].createdAt, first.createdAt)
+    assert.equal(document.groups[0].figures[0].title, 'Updated profile')
+    assert.equal(document.groups[0].figures[0].imageDataUrl, 'data:image/png;base64,AQ==')
+    assert.equal(first.title, 'profile-1')
+  })
+
+  it('rejects replacement from another workspace or for a removed figure', () => {
+    const existing = figure('profile-1', 'profiles', 'Profiles')
+    const foreign = {
+      ...existing,
+      workspaceId: 'maps',
+      workspaceDraft: {
+        ...existing.workspaceDraft!,
+        workspaceId: 'maps',
+      },
+    }
+    const document = addReportFigure(createReportAssemblyDocument(), existing)
+
+    assert.throws(
+      () => replaceReportFigure(document, foreign),
+      /cannot be moved to another workspace/,
+    )
+    assert.throws(
+      () => replaceReportFigure(document, { ...existing, id: 'removed' }),
+      /no longer in the Export Collection/,
+    )
   })
 
   it('migrates version 1 collections as legacy non-editable figures', () => {

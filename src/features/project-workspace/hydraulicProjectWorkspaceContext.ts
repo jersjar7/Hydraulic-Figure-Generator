@@ -8,6 +8,7 @@ import type { useHydraulicProfileDocument } from '../hydraulic-profiles/useHydra
 import type { useHydraulicProjectLifecycle } from '../project-lifecycle/useHydraulicProjectLifecycle'
 import type { WorkspaceDraftRepository } from '../figures/workspaceDraftRepository'
 import type { ReportFigureArtifact } from '../../core/types'
+import type { ReportFigureEditTargets } from '../../application/report-assembly/reportFigureEditSession'
 
 export type AppWorkspaceId = FigureId | typeof REPORT_ASSEMBLY_WORKSPACE_ID
 
@@ -19,6 +20,9 @@ export type HydraulicProjectWorkspaceValue = {
   reportAssembly: ReturnType<typeof useReportAssembly>
   hydraulicProfiles: ReturnType<typeof useHydraulicProfileDocument>
   workspaceDrafts: WorkspaceDraftRepository
+  reportFigureEditTargets: ReportFigureEditTargets
+  linkReportFigureEditTarget(figure: ReportFigureArtifact): void
+  unlinkReportFigureEditTarget(workspaceId: FigureId): void
   openReportFigureDraft(figure: ReportFigureArtifact): Promise<void>
   projectLifecycle: ReturnType<typeof useHydraulicProjectLifecycle>
 }
