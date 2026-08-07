@@ -80,8 +80,15 @@ infrastructure directly.
   registry; `features/tools/editorToolModule.ts` defines editor-tool metadata
   and activation contracts.
 - `features/figures/workspaceRegistry.ts` is the single figure manifest. It
-  associates headless modules with lazy React workspaces and derives figure
-  IDs, picker entries, routing, and extension coverage.
+  associates headless modules with lazy React workspaces and lazy versioned
+  workspace draft codecs, then derives figure IDs, picker entries, routing,
+  and extension coverage. Every figure-producing workspace owns a
+  `WorkspaceDraftModule` that creates, serializes, and validates its editable
+  document through the feature's established project schema. Runtime draft
+  retention and restoration bind to this contract without adding
+  workspace-specific branches to the Export Collection. Draft codecs load only
+  when draft behavior needs them, so adding workspaces does not inflate the
+  startup bundle.
 - `features/figure-sets/` owns production-view navigation. Figure-specific
   recipes expand valid selections and generate previews inside their owning
   feature; they do not add batch branches to `App.tsx`.

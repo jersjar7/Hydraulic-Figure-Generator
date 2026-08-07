@@ -9,6 +9,7 @@ objects.
 Create `src/features/<figure-name>/` with:
 
 - A headless figure definition implementing `FigureModule`.
+- A versioned workspace draft module implementing `WorkspaceDraftModule`.
 - A React workspace component.
 - Figure-specific defaults and settings types when they are not shared.
 - Rendering and export adapters.
@@ -30,10 +31,14 @@ do not place new layer implementations directly in the registry.
 ## 2. Register It
 
 Register the headless definition and lazy React workspace together in
-`features/figures/workspaceRegistry.ts` with `defineFigureWorkspace`. This is
+`features/figures/workspaceRegistry.ts` with `defineFigureWorkspace`. Pass the
+lazy workspace-owned draft-module loader alongside the figure definition. This is
 the only workspace manifest: routing, the picker, figure metadata, and extension
-tests are derived from it. Keep the headless figure definition free of React so
-engineering tests can still import it directly.
+tests are derived from it. Registration fails its extension contract when the
+draft ID does not match the figure ID or its versioned create, serialize, and
+parse functions are missing. Lazy loading keeps future workspace codecs out of
+the startup bundle. Keep the headless figure definition and draft
+codec free of React so engineering tests can still import them directly.
 
 Reusable project inputs belong in a project-workflow module. Figure-only
 controls belong in a settings-section module. Canvas behavior belongs in an
@@ -52,6 +57,11 @@ Any schema change requires:
 - A project version increment.
 - Explicit validation and migration in `projectFile.ts`.
 - A current round-trip test and a previous-version migration test.
+
+The draft module must reuse that workspace's validated project parser and
+serializer. Do not introduce an Export Collection-specific copy of the schema.
+React runtime bindings for retaining and hydrating drafts are composed from
+this module by the application workspace layer.
 
 ## 4. Test It
 

@@ -8,9 +8,9 @@ import { useHydraulicProjectDocument } from '../project-document/useHydraulicPro
 import { useProjectSession } from '../project-session/useProjectSession'
 import { useReportAssembly } from '../report-assembly/useReportAssembly'
 import {
-  createInitialHydraulicProfileDocument,
   useHydraulicProfileDocument,
 } from '../hydraulic-profiles/useHydraulicProfileDocument'
+import { createInitialHydraulicProfileDocument } from '../hydraulic-profiles/hydraulicProfileDocument'
 import { hydraulicProfileFolderAdapter } from '../project-lifecycle/hydraulicProfileFolderAdapter'
 import { bindProjectWorkspace } from '../project-lifecycle/projectWorkspaceFolderAdapter'
 import { reportAssemblyFolderAdapter } from '../project-lifecycle/reportAssemblyFolderAdapter'

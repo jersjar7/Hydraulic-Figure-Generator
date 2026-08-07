@@ -6,20 +6,8 @@ import {
 } from 'react'
 import type { HydraulicProfileDatasetConfiguration } from '../../core/types'
 import type { HydraulicProfileFigureSettings } from './hydraulicProfileSettings'
-import { createDefaultHydraulicProfileSettings } from './hydraulicProfileSettings'
 import type { HydraulicProfileProjectState } from './hydraulicProfileProjectFile'
-import { createHydraulicProfilePresetConfiguration } from './hydraulicProfilePresets'
-
-export function createInitialHydraulicProfileDocument(): HydraulicProfileProjectState {
-  return {
-    conditionLabel: 'Proposed Conditions',
-    summaryText: '',
-    profileText: '',
-    datasetConfiguration: createHydraulicProfilePresetConfiguration('proposed'),
-    selectedSectionId: '',
-    settings: createDefaultHydraulicProfileSettings(),
-  }
-}
+import { createInitialHydraulicProfileDocument } from './hydraulicProfileDocument'
 
 export function useHydraulicProfileDocument() {
   const [snapshot, setSnapshot] = useState(createInitialHydraulicProfileDocument)

@@ -8,12 +8,20 @@ export const FIGURE_WORKSPACES = [
   defineFigureWorkspace(
     wseDifferenceFigure,
     () =>
+      import('../wse-difference/wseWorkspaceDraft').then(
+        (module) => module.wseWorkspaceDraft,
+      ),
+    () =>
       import('../wse-difference/WseDifferenceWorkspace').then((module) => ({
         default: module.WseDifferenceWorkspace,
       })),
   ),
   defineFigureWorkspace(
     crossSectionFigure,
+    () =>
+      import('../cross-section/crossSectionWorkspaceDraft').then(
+        (module) => module.crossSectionWorkspaceDraft,
+      ),
     () =>
       import('../cross-section/CrossSectionWorkspace').then((module) => ({
         default: module.CrossSectionWorkspace,
@@ -22,12 +30,20 @@ export const FIGURE_WORKSPACES = [
   defineFigureWorkspace(
     planViewResultFigure,
     () =>
+      import('../plan-view-results/planViewResultWorkspaceDraft').then(
+        (module) => module.planViewResultWorkspaceDraft,
+      ),
+    () =>
       import('../plan-view-results/PlanViewResultWorkspace').then((module) => ({
         default: module.PlanViewResultWorkspace,
       })),
   ),
   defineFigureWorkspace(
     hydraulicProfileFigure,
+    () =>
+      import('../hydraulic-profiles/hydraulicProfileWorkspaceDraft').then(
+        (module) => module.hydraulicProfileWorkspaceDraft,
+      ),
     () =>
       import('../hydraulic-profiles/HydraulicProfilesWorkspace').then((module) => ({
         default: module.HydraulicProfilesWorkspace,

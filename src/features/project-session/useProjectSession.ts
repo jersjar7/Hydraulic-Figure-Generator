@@ -10,14 +10,9 @@ import type {
   ConditionKey,
   ScenarioRole,
 } from '../../core/types'
+import type { ScenarioSelection } from './scenarioSelection'
 
-export type ScenarioSelection = {
-  baselineId: ConditionKey
-  comparisonId: ConditionKey
-  assessmentId: ConditionKey
-  runByScenario: Record<ConditionKey, number>
-  labels?: Record<ConditionKey, string>
-}
+export type { ScenarioSelection } from './scenarioSelection'
 
 type ScenarioRoles = Pick<
   ScenarioSelection,

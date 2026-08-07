@@ -4,6 +4,7 @@ import type { FigureRenderLayer } from '../../src/core/map/renderPipeline'
 import type { FigureModule } from '../../src/features/figures/figureModule'
 import type { FigureSettingsSectionModule } from '../../src/features/figures/settingsSectionModule'
 import type { EditorToolModule } from '../../src/features/tools/editorToolModule'
+import type { WorkspaceDraftModule } from '../../src/features/figures/workspaceDraftModule'
 
 function assertNonEmpty(value: string, field: string) {
   assert.ok(value.trim(), `${field} must not be empty`)
@@ -70,6 +71,10 @@ export function assertFigureModuleContract<
 type RegisteredWorkspace = {
   id: string
   figure: { id: string }
+  draft: {
+    workspaceId: string
+    load: unknown
+  }
   Workspace: unknown
 }
 
@@ -88,7 +93,27 @@ export function assertWorkspaceRegistryContract(
       `Workspace ${workspace.id} must use its figure module id`,
     )
     assert.ok(workspace.Workspace, `Workspace ${workspace.id} needs a component`)
+    assert.equal(
+      workspace.id,
+      workspace.draft.workspaceId,
+      `Workspace ${workspace.id} must use a matching draft module id`,
+    )
+    assert.equal(typeof workspace.draft.load, 'function')
   }
+}
+
+export function assertWorkspaceDraftContract(
+  module: WorkspaceDraftModule<string, unknown>,
+  workspaceId: string,
+) {
+  assert.equal(module.workspaceId, workspaceId)
+  assert.ok(
+    Number.isInteger(module.schemaVersion) && module.schemaVersion > 0,
+    `Workspace ${workspaceId} needs a positive draft schema version`,
+  )
+  assert.equal(typeof module.createInitialDraft, 'function')
+  assert.equal(typeof module.serializeDraft, 'function')
+  assert.equal(typeof module.parseDraft, 'function')
 }
 
 export function assertEditorToolContract<Tool extends EditorToolModule>(

@@ -14,14 +14,19 @@ import {
   assertProjectWorkflowContract,
   assertRenderLayerContract,
   assertSettingsSectionContract,
+  assertWorkspaceDraftContract,
   assertWorkspaceRegistryContract,
 } from './support/extensionContracts'
 
 describe('extension contracts', () => {
-  it('accepts every registered figure workspace', () => {
+  it('accepts every registered figure workspace', async () => {
     assertWorkspaceRegistryContract(FIGURE_WORKSPACES)
     for (const workspace of FIGURE_WORKSPACES) {
       assertFigureModuleContract(workspace.figure)
+      assertWorkspaceDraftContract(
+        await workspace.draft.load(),
+        workspace.id,
+      )
       for (const input of workspace.figure.editor.inputs) {
         assert.equal(
           hasProjectWorkflowForInput(input),
