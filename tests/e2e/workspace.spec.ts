@@ -162,6 +162,9 @@ test('folder project saves and restores profiles with the Export Collection', as
     ;(window as Window & {
       showDirectoryPicker?: (options: { id: string }) => Promise<MemoryDirectory>
     }).showDirectoryPicker = async ({ id }) => {
+      if (id.length > 32) {
+        throw new TypeError('Directory picker IDs cannot exceed 32 characters.')
+      }
       if (id.includes('new-project')) return root
       const project = [...root.children.values()][0]
       if (!project) throw new DOMException('Missing project', 'NotFoundError')

@@ -80,7 +80,7 @@ export function useHydraulicProjectLifecycle({
     setError('')
     try {
       const parent = await storage.pickDirectory({
-        id: 'hydraulic-figure-generator-new-project',
+        id: 'hfg-new-project',
         mode: 'readwrite',
       })
       if (!parent) return false
@@ -112,7 +112,7 @@ export function useHydraulicProjectLifecycle({
     setError('')
     try {
       const directory = await storage.pickDirectory({
-        id: 'hydraulic-figure-generator-open-project',
+        id: 'hfg-open-project',
         mode: 'readwrite',
       })
       if (!directory) return false
