@@ -24,6 +24,10 @@ The shared contract kit validates figure modules, editor tools, settings
 sections, project workflows, and render-layer registries before their
 feature-specific tests run.
 
+`workspaceDraftCompatibility.test.ts` also requires every registry entry that
+declares legacy migration to parse an oldest-supported-version fixture. A new
+migrating workspace cannot land by documentation alone.
+
 ## Checked-In Regression Tests
 
 Tests directly under `tests/` use the Node.js test runner and require no

@@ -31,8 +31,10 @@ do not place new layer implementations directly in the registry.
 ## 2. Register It
 
 Register the headless definition and lazy React workspace together in
-`features/figures/workspaceRegistry.ts` with `defineFigureWorkspace`. Pass the
-lazy workspace-owned draft-module loader alongside the figure definition. This is
+`features/figures/workspaceRegistry.ts` with `defineFigureWorkspace`. Follow the
+copyable contract in `docs/FIGURE-WORKSPACE-TEMPLATE.md` and declare folder
+draft, editable export, input recovery, and draft compatibility capabilities.
+Pass the lazy workspace-owned draft-module loader alongside the figure definition. This is
 the only workspace manifest: routing, the picker, figure metadata, and extension
 tests are derived from it. Registration fails its extension contract when the
 draft ID does not match the figure ID or its versioned create, serialize, and

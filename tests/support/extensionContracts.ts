@@ -77,6 +77,15 @@ type RegisteredWorkspace = {
     load: unknown
   }
   Workspace: unknown
+  capabilities: {
+    folderDraft: unknown
+    editableExport: unknown
+    inputRecovery: unknown
+    draftCompatibility: {
+      mode: unknown
+      oldestVersion?: unknown
+    }
+  }
 }
 
 export function assertWorkspaceRegistryContract(
@@ -100,6 +109,34 @@ export function assertWorkspaceRegistryContract(
       `Workspace ${workspace.id} must use a matching draft module id`,
     )
     assert.equal(typeof workspace.draft.load, 'function')
+    assert.equal(
+      workspace.capabilities.folderDraft,
+      true,
+      `Workspace ${workspace.id} must participate in folder draft persistence`,
+    )
+    assert.equal(
+      workspace.capabilities.editableExport,
+      true,
+      `Workspace ${workspace.id} must support editable Export Collection figures`,
+    )
+    assert.ok(
+      workspace.capabilities.inputRecovery === 'portable' ||
+      workspace.capabilities.inputRecovery === 'reselect-hydraulic-files',
+      `Workspace ${workspace.id} needs an input-recovery policy`,
+    )
+    const compatibility = workspace.capabilities.draftCompatibility
+    assert.ok(
+      compatibility.mode === 'current-only' ||
+      compatibility.mode === 'migrates-legacy',
+      `Workspace ${workspace.id} needs a draft-compatibility policy`,
+    )
+    if (compatibility.mode === 'migrates-legacy') {
+      assert.ok(
+        Number.isInteger(compatibility.oldestVersion) &&
+        Number(compatibility.oldestVersion) > 0,
+        `Workspace ${workspace.id} needs a positive oldest draft version`,
+      )
+    }
   }
 }
 
