@@ -283,7 +283,7 @@ export function PlanViewResultWorkspace() {
     stationing.clearSelection()
     setScene(null)
   }
-  useWorkspaceDraftRetention({
+  const draftRetention = useWorkspaceDraftRetention({
     module: planViewResultWorkspaceDraft,
     snapshot,
     hydrate: hydrateDraft,
@@ -358,6 +358,7 @@ export function PlanViewResultWorkspace() {
       workspaceLabel: planViewResultFigure.label,
       title,
       caption: `${scene.result.label}${run}, ${scene.condition.label}.`,
+      workspaceDraft: draftRetention.capture(),
     }))
     appendNotices([{ level: 'success', text: `${title} was added to the Export Collection.` }])
   }

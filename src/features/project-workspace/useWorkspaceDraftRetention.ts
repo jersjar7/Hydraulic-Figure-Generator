@@ -33,7 +33,7 @@ export function useWorkspaceDraftRetention<
   restoreErrorRef.current = onRestoreError
 
   const capture = useCallback(() => {
-    workspaceDrafts.capture(module, snapshotRef.current)
+    return workspaceDrafts.capture(module, snapshotRef.current)
   }, [module, workspaceDrafts])
 
   useLayoutEffect(() => {

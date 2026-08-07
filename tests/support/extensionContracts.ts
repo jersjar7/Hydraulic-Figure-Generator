@@ -5,6 +5,7 @@ import type { FigureModule } from '../../src/features/figures/figureModule'
 import type { FigureSettingsSectionModule } from '../../src/features/figures/settingsSectionModule'
 import type { EditorToolModule } from '../../src/features/tools/editorToolModule'
 import type { WorkspaceDraftModule } from '../../src/features/figures/workspaceDraftModule'
+import { createWorkspaceDraftSnapshot } from '../../src/features/figures/workspaceDraftRepository'
 
 function assertNonEmpty(value: string, field: string) {
   assert.ok(value.trim(), `${field} must not be empty`)
@@ -114,6 +115,13 @@ export function assertWorkspaceDraftContract(
   assert.equal(typeof module.createInitialDraft, 'function')
   assert.equal(typeof module.serializeDraft, 'function')
   assert.equal(typeof module.parseDraft, 'function')
+  const snapshot = createWorkspaceDraftSnapshot(
+    module,
+    module.createInitialDraft(),
+  )
+  assert.equal(snapshot.workspaceId, workspaceId)
+  assert.equal(snapshot.schemaVersion, module.schemaVersion)
+  assert.doesNotThrow(() => module.parseDraft(snapshot.source))
 }
 
 export function assertEditorToolContract<Tool extends EditorToolModule>(

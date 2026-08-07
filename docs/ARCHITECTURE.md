@@ -96,6 +96,14 @@ infrastructure directly.
   hydrates it when the workspace mounts again. The repository stores no React
   state, canvases, or generated hydraulic scenes. Export-figure ownership and
   folder persistence are separate layers built on the same draft contract.
+- Export Collection schema version 2 stores an immutable `WorkspaceDraftSnapshot`
+  with each newly generated `ReportFigureArtifact`. The snapshot is serialized
+  when the engineer chooses **Add to export**, so later edits to the live
+  workspace cannot change an existing report figure's editable source. Legacy
+  version-1 collections migrate with `workspaceDraft: null`; they remain valid
+  image artifacts but cannot become editable retroactively. Opening a snapshot
+  in its owning workspace is an application-navigation concern layered on top
+  of this ownership contract.
 - `features/figure-sets/` owns production-view navigation. Figure-specific
   recipes expand valid selections and generate previews inside their owning
   feature; they do not add batch branches to `App.tsx`.

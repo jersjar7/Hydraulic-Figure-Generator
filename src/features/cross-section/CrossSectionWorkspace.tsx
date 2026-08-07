@@ -318,7 +318,13 @@ export function CrossSectionWorkspace() {
 
   const addToExport = () => {
     if (!chartScene || !canvasRef.current) return
-    const figure = reportAssembly.addFigure(createCrossSectionReportFigure(canvasRef.current, chartScene, baselineLabel, comparisonLabel))
+    const figure = reportAssembly.addFigure(createCrossSectionReportFigure(
+      canvasRef.current,
+      chartScene,
+      baselineLabel,
+      comparisonLabel,
+      workspaceDraft.capture(),
+    ))
     appendNotices([{ level: 'success', text: `${figure.title} was added to the Export Collection.` }])
   }
 

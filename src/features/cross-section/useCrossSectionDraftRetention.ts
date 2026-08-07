@@ -56,11 +56,11 @@ export function useCrossSectionDraftRetention({
     invalidateFigures()
   }
 
-  useWorkspaceDraftRetention({
+  const retention = useWorkspaceDraftRetention({
     module: crossSectionWorkspaceDraft,
     snapshot,
     hydrate,
   })
 
-  return { snapshot, hydrate }
+  return { snapshot, hydrate, capture: retention.capture }
 }

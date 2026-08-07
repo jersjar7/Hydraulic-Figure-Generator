@@ -1,14 +1,22 @@
+import type { WorkspaceDraftSnapshot } from '../../core/types'
 import type { WorkspaceDraftModule } from './workspaceDraftModule'
 
-export type StoredWorkspaceDraft = {
-  workspaceId: string
-  schemaVersion: number
-  source: string
-}
+export type StoredWorkspaceDraft = WorkspaceDraftSnapshot
 
 export type WorkspaceDraftRepository = ReturnType<
   typeof createWorkspaceDraftRepository
 >
+
+export function createWorkspaceDraftSnapshot<WorkspaceId extends string, Draft>(
+  module: WorkspaceDraftModule<WorkspaceId, Draft>,
+  draft: Draft,
+): WorkspaceDraftSnapshot {
+  return {
+    workspaceId: module.workspaceId,
+    schemaVersion: module.schemaVersion,
+    source: module.serializeDraft(draft),
+  }
+}
 
 export function createWorkspaceDraftRepository(
   initialDrafts: readonly StoredWorkspaceDraft[] = [],
@@ -22,11 +30,7 @@ export function createWorkspaceDraftRepository(
       module: WorkspaceDraftModule<WorkspaceId, Draft>,
       draft: Draft,
     ) {
-      const stored: StoredWorkspaceDraft = {
-        workspaceId: module.workspaceId,
-        schemaVersion: module.schemaVersion,
-        source: module.serializeDraft(draft),
-      }
+      const stored = createWorkspaceDraftSnapshot(module, draft)
       drafts.set(module.workspaceId, stored)
       return { ...stored }
     },

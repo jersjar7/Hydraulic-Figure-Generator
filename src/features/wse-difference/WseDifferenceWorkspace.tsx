@@ -109,7 +109,7 @@ export function WseDifferenceWorkspace() {
     setElementDragging,
   } = editorUi
   const [scene, setScene] = useState<WseDifferenceScene | null>(null)
-  const draftSnapshot = useWseDraftRetention({
+  const workspaceDraft = useWseDraftRetention({
     projectSession, projectDocument, figureDocument,
     assessmentWorkflow, stationingSource, setScene,
   })
@@ -333,6 +333,7 @@ export function WseDifferenceWorkspace() {
       workspaceLabel: ACTIVE_FIGURE.label,
       title,
       caption: `${title}, ${scene.proposed.run.name} minus ${scene.existing.run.name}.`,
+      workspaceDraft: workspaceDraft.capture(),
     }))
     appendNotices([{ level: 'success', text: `${title} was added to the Export Collection.` }])
   }
@@ -344,7 +345,7 @@ export function WseDifferenceWorkspace() {
     assessmentWorkflow,
     stationingSource,
     editorUi,
-    snapshot: draftSnapshot,
+    snapshot: workspaceDraft.snapshot,
     setScene,
     appendNotices,
   })

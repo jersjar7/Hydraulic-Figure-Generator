@@ -24,6 +24,11 @@ function figure(id: string, workspaceId: string, workspaceLabel: string) {
     imageDataUrl: 'data:image/png;base64,AA==',
     widthPx: 1200,
     heightPx: 900,
+    workspaceDraft: {
+      workspaceId,
+      schemaVersion: 1,
+      source: JSON.stringify({ title: id }),
+    },
   }, id, '2026-08-05T12:00:00.000Z')
 }
 
@@ -64,6 +69,49 @@ describe('cross-workspace report assembly', () => {
     assert.equal(removeReportFigure(document, 'profile-1').groups.length, 0)
   })
 
+  it('migrates version 1 collections as legacy non-editable figures', () => {
+    const current = addReportFigure(
+      createReportAssemblyDocument(),
+      figure('profile-1', 'profiles', 'Profiles'),
+    )
+    const legacy = {
+      ...current,
+      version: 1,
+      groups: current.groups.map((group) => ({
+        ...group,
+        figures: group.figures.map(({ workspaceDraft: _draft, ...item }) => item),
+      })),
+    }
+
+    const migrated = parseReportAssembly(JSON.stringify(legacy))
+
+    assert.equal(migrated.version, 2)
+    assert.equal(migrated.groups[0].figures[0].workspaceDraft, null)
+  })
+
+  it('keeps each exported workspace draft isolated from later edits', () => {
+    const draft = {
+      workspaceId: 'profiles',
+      schemaVersion: 1,
+      source: JSON.stringify({ title: 'First title' }),
+    }
+    const first = createReportFigure({
+      workspaceId: 'profiles',
+      workspaceLabel: 'Profiles',
+      title: 'profile-1',
+      caption: 'Profile caption',
+      imageDataUrl: 'data:image/png;base64,AA==',
+      widthPx: 1200,
+      heightPx: 900,
+      workspaceDraft: draft,
+    })
+    draft.source = JSON.stringify({ title: 'Second title' })
+
+    assert.deepEqual(JSON.parse(first.workspaceDraft.source), {
+      title: 'First title',
+    })
+  })
+
   it('rejects malformed or duplicate persisted figures', () => {
     const document = addReportFigure(
       createReportAssemblyDocument(),
@@ -79,5 +127,28 @@ describe('cross-workspace report assembly', () => {
       figures: [{ ...duplicate.groups[0].figures[0], workspaceId: 'maps' }],
     })
     assert.throws(() => parseReportAssembly(JSON.stringify(duplicate)), /malformed figure/)
+    const mismatchedDraft = structuredClone(document)
+    mismatchedDraft.groups[0].figures[0].workspaceDraft!.workspaceId = 'maps'
+    assert.throws(
+      () => parseReportAssembly(JSON.stringify(mismatchedDraft)),
+      /malformed workspace draft/,
+    )
+  })
+
+  it('rejects an export draft owned by another workspace', () => {
+    assert.throws(() => createReportFigure({
+      workspaceId: 'profiles',
+      workspaceLabel: 'Profiles',
+      title: 'Profile',
+      caption: 'Profile caption',
+      imageDataUrl: 'data:image/png;base64,AA==',
+      widthPx: 1200,
+      heightPx: 900,
+      workspaceDraft: {
+        workspaceId: 'maps',
+        schemaVersion: 1,
+        source: '{}',
+      },
+    }), /does not match its report figure/)
   })
 })

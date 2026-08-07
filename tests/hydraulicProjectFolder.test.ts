@@ -66,7 +66,7 @@ function profile(conditionLabel = 'Existing Conditions'): HydraulicProfileProjec
 
 function report(title = 'Site 6 Report'): ReportAssemblyDocument {
   return {
-    version: 1,
+    version: 2,
     title,
     groups: [{
       workspaceId: 'hydraulic-profiles-sections',
@@ -81,6 +81,7 @@ function report(title = 'Site 6 Report'): ReportAssemblyDocument {
         widthPx: 1200,
         heightPx: 900,
         createdAt: '2026-08-06T08:00:00.000Z',
+        workspaceDraft: null,
       }],
     }],
   }

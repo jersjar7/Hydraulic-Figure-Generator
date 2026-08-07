@@ -1,4 +1,4 @@
-import type { NewReportFigure } from '../../core/types'
+import type { NewReportFigure, WorkspaceDraftSnapshot } from '../../core/types'
 import { hydraulicProfileFigure } from './hydraulicProfileFigure'
 import {
   renderHydraulicProfileDocument,
@@ -7,6 +7,7 @@ import {
 
 export function createHydraulicProfileReportFigure(
   document: HydraulicProfileRenderDocument,
+  workspaceDraft: WorkspaceDraftSnapshot,
 ): NewReportFigure {
   const canvas = window.document.createElement('canvas')
   renderHydraulicProfileDocument(canvas, document)
@@ -19,5 +20,6 @@ export function createHydraulicProfileReportFigure(
     imageDataUrl: canvas.toDataURL('image/png'),
     widthPx: canvas.width,
     heightPx: canvas.height,
+    workspaceDraft,
   }
 }

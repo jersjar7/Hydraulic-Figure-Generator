@@ -70,6 +70,15 @@ the engineer returns. Keep generated canvases, previews, transient notices, and
 open-panel state outside the draft; they are runtime output or editor chrome,
 not the editable figure document.
 
+Every **Add to export** path must also attach a `WorkspaceDraftSnapshot` made
+with `createWorkspaceDraftSnapshot` or the bound retention hook's `capture`
+function. Capture at the same moment as the PNG. Batch exports must adjust any
+selection stored in the snapshot for each generated figure (for example, each
+hydraulic-profile artifact stores its own station ID). The report contract
+requires this field so a future workspace cannot silently export an image that
+loses its editable source. Use `null` only when migrating a legacy artifact
+that never had a source draft.
+
 ## 4. Test It
 
 Before registration, add:

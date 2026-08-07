@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { defineWorkspaceDraftModule } from '../src/features/figures/workspaceDraftModule'
-import { createWorkspaceDraftRepository } from '../src/features/figures/workspaceDraftRepository'
+import {
+  createWorkspaceDraftRepository,
+  createWorkspaceDraftSnapshot,
+} from '../src/features/figures/workspaceDraftRepository'
 
 const draftModule = defineWorkspaceDraftModule({
   workspaceId: 'test-workspace',
@@ -21,6 +24,16 @@ const draftModule = defineWorkspaceDraftModule({
 })
 
 describe('workspace draft repository', () => {
+  it('creates an immutable serialized snapshot at a point in time', () => {
+    const editable = { title: 'First', count: 1 }
+    const first = createWorkspaceDraftSnapshot(draftModule, editable)
+    editable.title = 'Second'
+    const second = createWorkspaceDraftSnapshot(draftModule, editable)
+
+    assert.deepEqual(JSON.parse(first.source), { title: 'First', count: 1 })
+    assert.deepEqual(JSON.parse(second.source), { title: 'Second', count: 1 })
+  })
+
   it('captures and restores a validated workspace-owned draft', () => {
     const repository = createWorkspaceDraftRepository()
     const draft = { title: 'Edited figure', count: 4 }

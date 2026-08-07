@@ -27,7 +27,7 @@ export function useWseDraftRetention({
   assessmentWorkflow,
   stationingSource,
   setScene,
-}: Options): WseProjectState {
+}: Options) {
   const assessment = assessmentWorkflow.state
   const snapshot: WseProjectState = {
     document: figureDocument.document,
@@ -53,7 +53,7 @@ export function useWseDraftRetention({
     },
   }
 
-  useWorkspaceDraftRetention({
+  const retention = useWorkspaceDraftRetention({
     module: wseWorkspaceDraft,
     snapshot,
     hydrate: (draft) => {
@@ -69,5 +69,5 @@ export function useWseDraftRetention({
     },
   })
 
-  return snapshot
+  return { snapshot, capture: retention.capture }
 }

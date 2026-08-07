@@ -19,6 +19,7 @@ import type {
   IngestNotice,
 } from '../../core/types'
 import { FigurePicker } from '../figures/FigurePicker'
+import { createWorkspaceDraftSnapshot } from '../figures/workspaceDraftRepository'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { useWorkspaceDraftRetention } from '../project-workspace/useWorkspaceDraftRetention'
 import { ProjectSaveStatus } from '../project-lifecycle/ProjectSaveStatus'
@@ -137,8 +138,12 @@ export function HydraulicProfilesWorkspace() {
 
   const addToExport = () => {
     if (!scene) return
+    const workspaceDraft = createWorkspaceDraftSnapshot(
+      hydraulicProfileWorkspaceDraft,
+      { ...hydraulicProfiles.snapshot, selectedSectionId: scene.section.id },
+    )
     const figure = reportAssembly.addFigure(
-      createHydraulicProfileReportFigure({ scene, settings }),
+      createHydraulicProfileReportFigure({ scene, settings }, workspaceDraft),
     )
     appendNotices([{
       level: 'success',
@@ -149,8 +154,18 @@ export function HydraulicProfilesWorkspace() {
   const addAllToExport = () => {
     if (scenes.length === 0) return
     scenes.forEach((generatedScene) => {
+      const workspaceDraft = createWorkspaceDraftSnapshot(
+        hydraulicProfileWorkspaceDraft,
+        {
+          ...hydraulicProfiles.snapshot,
+          selectedSectionId: generatedScene.section.id,
+        },
+      )
       reportAssembly.addFigure(
-        createHydraulicProfileReportFigure({ scene: generatedScene, settings }),
+        createHydraulicProfileReportFigure(
+          { scene: generatedScene, settings },
+          workspaceDraft,
+        ),
       )
     })
     appendNotices([{

@@ -1,3 +1,5 @@
+import type { WorkspaceDraftSnapshot } from './workspaceDraft'
+
 export type ReportFigureArtifact = {
   id: string
   workspaceId: string
@@ -8,6 +10,7 @@ export type ReportFigureArtifact = {
   widthPx: number
   heightPx: number
   createdAt: string
+  workspaceDraft: WorkspaceDraftSnapshot | null
 }
 
 export type ReportWorkspaceGroup = {
@@ -17,7 +20,7 @@ export type ReportWorkspaceGroup = {
 }
 
 export type ReportAssemblyDocument = {
-  version: 1
+  version: 2
   title: string
   groups: ReportWorkspaceGroup[]
 }

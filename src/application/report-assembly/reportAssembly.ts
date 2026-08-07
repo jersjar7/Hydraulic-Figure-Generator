@@ -5,7 +5,7 @@ import type {
 } from '../../core/types'
 
 export function createReportAssemblyDocument(): ReportAssemblyDocument {
-  return { version: 1, title: 'Hydraulic Figure Report', groups: [] }
+  return { version: 2, title: 'Hydraulic Figure Report', groups: [] }
 }
 
 export function addReportFigure(
@@ -141,5 +141,22 @@ export function createReportFigure(
   id = globalThis.crypto?.randomUUID?.() ?? `figure-${Date.now()}-${Math.random()}`,
   createdAt = new Date().toISOString(),
 ): ReportFigureArtifact {
-  return { ...input, id, createdAt }
+  if (
+    input.workspaceDraft &&
+    (
+      input.workspaceDraft.workspaceId !== input.workspaceId ||
+      !Number.isInteger(input.workspaceDraft.schemaVersion) ||
+      input.workspaceDraft.schemaVersion < 1
+    )
+  ) {
+    throw new Error('The workspace draft does not match its report figure.')
+  }
+  return {
+    ...input,
+    workspaceDraft: input.workspaceDraft
+      ? { ...input.workspaceDraft }
+      : null,
+    id,
+    createdAt,
+  }
 }
