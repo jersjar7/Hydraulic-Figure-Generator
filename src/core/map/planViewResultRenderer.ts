@@ -130,8 +130,11 @@ export async function renderPlanViewResultDocument(
         settings.contourInterval,
         scale.interval,
       ),
-      settings.contourColor,
-      settings.contourWidth,
+      {
+        color: settings.contourColor,
+        width: settings.contourWidth,
+        pattern: settings.contourPattern,
+      },
     )
   }
   if (showsMesh) {
@@ -140,9 +143,12 @@ export async function renderPlanViewResultDocument(
       localX,
       localY,
       scene.projected.tris,
-      settings.meshLineColor,
-      settings.meshLineWidth,
-      settings.meshLineOpacity,
+      {
+        color: settings.meshLineColor,
+        width: settings.meshLineWidth,
+        opacity: settings.meshLineOpacity,
+        pattern: settings.meshLinePattern,
+      },
     )
   }
   if (settings.showOverlays) {

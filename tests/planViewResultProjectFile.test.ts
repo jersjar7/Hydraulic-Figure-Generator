@@ -18,6 +18,8 @@ describe('plan-view result project files', () => {
         resultParameter: 'Froude',
         ramp: 'froude' as const,
         legendMax: 2,
+        contourPattern: 'dotted' as const,
+        meshLinePattern: 'dashed' as const,
         elementPositions: {
           ...createDefaultPlanViewResultSettings().elementPositions,
           title: {

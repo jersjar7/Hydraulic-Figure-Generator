@@ -21,6 +21,10 @@ describe('hydraulic figure project files', () => {
         assessmentLabelFontSize: 18,
         assessmentLabelOffset: 28,
         assessmentLabelSide: 'alternate',
+        differenceOutlineColor: '#223344',
+        differenceOutlineWidth: 2.5,
+        differenceOutlinePattern: 'dashed',
+        showDifferenceOutlines: true,
         basemapOpacity: 0.5,
         centerlineStationing: {
           visible: true,

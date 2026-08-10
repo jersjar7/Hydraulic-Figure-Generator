@@ -167,26 +167,6 @@ export function CalculationSettingsPanel({
           </select>
         </label>
       </div>
-      <Toggle
-        label="WSE difference outlines"
-        checked={settings.showDifferenceOutlines}
-        onChange={(checked) =>
-          onSettingsChange('showDifferenceOutlines', checked)
-        }
-      />
-      <label className="field color-field">
-        <span>Outline color</span>
-        <input
-          type="color"
-          value={settings.differenceOutlineColor}
-          onChange={(event) =>
-            onSettingsChange(
-              'differenceOutlineColor',
-              event.target.value,
-            )
-          }
-        />
-      </label>
     </ControlSection>
   )
 }

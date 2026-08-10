@@ -1,4 +1,14 @@
-import type { FigureSettings, ProjectedGeometry } from '../types'
+import type {
+  ContourLineStyle,
+  FigureSettings,
+  MeshLineStyle,
+  ProjectedGeometry,
+} from '../types'
+import {
+  classificationBreaks,
+  resolveClassificationScale,
+  strokeDashSegments,
+} from '../cartography'
 import {
   DEFAULT_COLOR_RAMP_BY_USE,
   colorRampColor,
@@ -39,9 +49,12 @@ export function differenceBandCount(
   maxAbsolute: number,
   interval: number | null,
 ) {
-  return interval && interval > 0
-    ? Math.max(1, Math.min(80, Math.round((2 * maxAbsolute) / interval)))
-    : 8
+  return resolveClassificationScale({
+    minimum: -maxAbsolute,
+    maximum: maxAbsolute,
+    requestedInterval: interval,
+    fallbackBandCount: 8,
+  }).bandCount
 }
 
 export function differenceBreaks(
@@ -49,11 +62,7 @@ export function differenceBreaks(
   interval: number | null,
 ) {
   const bandCount = differenceBandCount(maxAbsolute, interval)
-  return Array.from(
-    { length: Math.max(0, bandCount - 1) },
-    (_, index) =>
-      -maxAbsolute + ((index + 1) * 2 * maxAbsolute) / bandCount,
-  )
+  return classificationBreaks(-maxAbsolute, maxAbsolute, bandCount)
 }
 
 type ScalarVertex = {
@@ -214,13 +223,13 @@ export function drawContourLevels(
   triangles: Uint32Array,
   values: Float32Array,
   levels: number[],
-  color: string,
-  width = 1.5,
+  style: ContourLineStyle,
 ) {
   if (levels.length === 0) return
   context.save()
-  context.strokeStyle = color
-  context.lineWidth = width
+  context.strokeStyle = style.color
+  context.lineWidth = Math.max(0.25, style.width)
+  context.setLineDash(strokeDashSegments(style.pattern, style.width))
   context.globalAlpha = 0.9
   context.lineCap = 'round'
   context.lineJoin = 'round'
@@ -272,14 +281,13 @@ export function drawMeshElements(
   localX: Float64Array,
   localY: Float64Array,
   triangles: Uint32Array,
-  color: string,
-  width: number,
-  opacity: number,
+  style: MeshLineStyle,
 ) {
   context.save()
-  context.strokeStyle = color
-  context.lineWidth = Math.max(0.25, width)
-  context.globalAlpha = Math.max(0, Math.min(1, opacity))
+  context.strokeStyle = style.color
+  context.lineWidth = Math.max(0.25, style.width)
+  context.globalAlpha = Math.max(0, Math.min(1, style.opacity))
+  context.setLineDash(strokeDashSegments(style.pattern, style.width))
   context.lineJoin = 'round'
   context.beginPath()
   for (let triangle = 0; triangle < triangles.length; triangle += 3) {
@@ -301,7 +309,7 @@ export function drawValidBoundary(
   localY: Float64Array,
   triangles: Uint32Array,
   values: Float32Array,
-  color: string,
+  style: ContourLineStyle,
 ) {
   const edges = new Map<
     string,
@@ -327,8 +335,9 @@ export function drawValidBoundary(
   }
 
   context.save()
-  context.strokeStyle = color
-  context.lineWidth = 1.5
+  context.strokeStyle = style.color
+  context.lineWidth = Math.max(0.25, style.width)
+  context.setLineDash(strokeDashSegments(style.pattern, style.width))
   context.globalAlpha = 0.9
   context.lineCap = 'round'
   context.lineJoin = 'round'

@@ -17,6 +17,8 @@ export function createDefaultFigureSettings(): FigureSettings {
     assessmentLabelOffset: 28,
     assessmentLabelSide: 'alternate',
     differenceOutlineColor: '#111111',
+    differenceOutlineWidth: 1.5,
+    differenceOutlinePattern: 'solid',
     showDifferenceOutlines: true,
     showWetDry: true,
     showOverlays: true,

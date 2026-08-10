@@ -9,7 +9,7 @@ import type { WseSettingsSectionContext } from '../wseSettingsSections'
 import { AnnotationSettingsPanel } from './AnnotationSettingsPanel'
 import { CalculationSettingsPanel } from './CalculationSettingsPanel'
 import { FrameSettingsPanel } from './FrameSettingsPanel'
-import { LegendSettingsPanel } from './LegendSettingsPanel'
+import { CartographySettingsPanel } from './CartographySettingsPanel'
 
 type Props = {
   context: WseSettingsSectionContext
@@ -19,8 +19,8 @@ export function CalculationSection({ context }: Props) {
   return <CalculationSettingsPanel {...context.calculation} />
 }
 
-export function LegendSection({ context }: Props) {
-  return <LegendSettingsPanel {...context.legend} />
+export function CartographySection({ context }: Props) {
+  return <CartographySettingsPanel {...context.cartography} />
 }
 
 export function FrameSection({ context }: Props) {

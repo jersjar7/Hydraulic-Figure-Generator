@@ -66,6 +66,16 @@ export const planViewResultFigure = {
         },
       },
       {
+        id: 'map-cartography',
+        bindings: {
+          settingsSection: 'cartography',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+        },
+      },
+      {
         id: 'frame-view',
         bindings: {
           settingsSection: 'frame',

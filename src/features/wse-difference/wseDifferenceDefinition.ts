@@ -5,9 +5,9 @@ export const WSE_DIFFERENCE_SETTINGS_SECTIONS = [
     title: 'Map calculation',
   },
   {
-    key: 'legend',
-    label: 'Legend',
-    title: 'Legend and colors',
+    key: 'cartography',
+    label: 'Cartography',
+    title: 'Cartography',
   },
   {
     key: 'frame',

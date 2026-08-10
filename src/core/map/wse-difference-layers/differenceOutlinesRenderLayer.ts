@@ -26,7 +26,11 @@ export const differenceOutlinesRenderLayer: FigureRenderLayer<WseDifferenceLayer
           scene.projected.tris,
           scene.diff,
           differenceBreaks(legendBound, settings.legendInterval),
-          settings.differenceOutlineColor,
+          {
+            color: settings.differenceOutlineColor,
+            width: settings.differenceOutlineWidth,
+            pattern: settings.differenceOutlinePattern,
+          },
         )
         drawValidBoundary(
           context,
@@ -34,7 +38,11 @@ export const differenceOutlinesRenderLayer: FigureRenderLayer<WseDifferenceLayer
           coordinates.localY,
           scene.projected.tris,
           scene.diff,
-          settings.differenceOutlineColor,
+          {
+            color: settings.differenceOutlineColor,
+            width: settings.differenceOutlineWidth,
+            pattern: settings.differenceOutlinePattern,
+          },
         )
       })
     },

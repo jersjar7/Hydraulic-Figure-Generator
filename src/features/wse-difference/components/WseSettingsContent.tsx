@@ -2,6 +2,7 @@ import type {
   CenterlineStationTick,
   CenterlineCandidate,
   CenterlineDirection,
+  CartographySettings,
   FigureElementPanelKey,
   FigureSettings,
 } from '../../../core/types'
@@ -36,6 +37,7 @@ type Props = {
   figureElements: ReturnType<typeof useWseFigureElementController>
   annotationController: ReturnType<typeof useWseAnnotationController>
   updateSettings: UpdateSettings
+  onCartographyChange(value: CartographySettings): void
   onActiveElementChange(key: FigureElementPanelKey): void
   onStationLabelSelect(id: string | null): void
   onCenterlineChange(id: string): void
@@ -64,6 +66,7 @@ export function WseSettingsContent({
   figureElements,
   annotationController,
   updateSettings,
+  onCartographyChange,
   onActiveElementChange,
   onStationLabelSelect,
   onCenterlineChange,
@@ -81,8 +84,9 @@ export function WseSettingsContent({
       onSettingsChange: updateSettings,
       onDryDepthChange,
     },
-    legend: {
+    cartography: {
       settings,
+      onCartographyChange,
       onSettingsChange: updateSettings,
     },
     frame: {

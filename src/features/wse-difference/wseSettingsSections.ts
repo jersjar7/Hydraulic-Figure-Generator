@@ -18,14 +18,14 @@ import {
 import { AnnotationSettingsPanel } from './components/AnnotationSettingsPanel'
 import { CalculationSettingsPanel } from './components/CalculationSettingsPanel'
 import { FrameSettingsPanel } from './components/FrameSettingsPanel'
-import { LegendSettingsPanel } from './components/LegendSettingsPanel'
+import { CartographySettingsPanel } from './components/CartographySettingsPanel'
 import {
   AnnotationsSection,
   CalculationSection,
   ElementsSection,
   ExportSection,
   FrameSection,
-  LegendSection,
+  CartographySection,
   StationingSection,
 } from './components/WseSettingsSectionPanels'
 import {
@@ -35,7 +35,7 @@ import {
 
 export type WseSettingsSectionContext = {
   calculation: ComponentProps<typeof CalculationSettingsPanel>
-  legend: ComponentProps<typeof LegendSettingsPanel>
+  cartography: ComponentProps<typeof CartographySettingsPanel>
   frame: ComponentProps<typeof FrameSettingsPanel>
   elements: ComponentProps<typeof FigureElementsPanel>
   stationing: ComponentProps<typeof CenterlineStationingToolPanel>
@@ -49,7 +49,7 @@ export type WseSettingsSectionContext = {
 
 const COMPONENTS = {
   calculation: CalculationSection,
-  legend: LegendSection,
+  cartography: CartographySection,
   frame: FrameSection,
   elements: ElementsSection,
   stationing: StationingSection,
@@ -59,7 +59,7 @@ const COMPONENTS = {
 
 const ICONS = {
   calculation: Settings2,
-  legend: Palette,
+  cartography: Palette,
   frame: SlidersHorizontal,
   elements: MapPin,
   stationing: Milestone,

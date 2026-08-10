@@ -203,6 +203,8 @@ export function settings(
     assessmentStationLabelOffset: ranged(0, 120),
     assessmentStationLabelSide: oneOf(['left', 'right', 'alternate']),
     differenceOutlineColor: text,
+    differenceOutlineWidth: ranged(0.25, 8),
+    differenceOutlinePattern: oneOf(['solid', 'dashed', 'dotted']),
     showDifferenceOutlines: bool,
     showWetDry: bool,
     showOverlays: bool,

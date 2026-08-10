@@ -66,6 +66,18 @@ export const FIGURE_TOOL_CAPABILITIES = defineFigureToolCapabilities([
     minimumInteraction: 'panel',
   },
   {
+    id: 'map-cartography',
+    label: 'Map cartography',
+    requiredBindings: [
+      'settings',
+      'state',
+      'render',
+      'persistence',
+      'interaction',
+    ],
+    minimumInteraction: 'panel',
+  },
+  {
     id: 'frame-view',
     label: 'Frame and view',
     requiredBindings: [

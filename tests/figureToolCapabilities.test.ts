@@ -41,6 +41,7 @@ describe('figure tool capability registry', () => {
             'hydraulic-models',
             'map-overlays',
             'assessment-lines',
+            'map-cartography',
             'frame-view',
             'figure-elements',
             'centerline-stationing',
@@ -64,6 +65,7 @@ describe('figure tool capability registry', () => {
           [
             'hydraulic-models',
             'map-overlays',
+            'map-cartography',
             'frame-view',
             'figure-elements',
             'centerline-stationing',

@@ -2,6 +2,10 @@ import type {
   PlanViewResultScene,
   PlanViewResultSettings,
 } from '../types'
+import {
+  resolveClassificationScale,
+  resolveContourLevels,
+} from '../cartography'
 
 export type ScalarResultScale = {
   minimum: number
@@ -23,18 +27,12 @@ export function resolveScalarResultScale(
   const maximum = requestedMaximum > minimum
     ? requestedMaximum
     : minimum + scene.autoInterval
-  let interval =
-    settings.scalarLegendInterval && settings.scalarLegendInterval > 0
-      ? settings.scalarLegendInterval
-      : scene.autoInterval
-  if ((maximum - minimum) / interval > 80) {
-    interval = (maximum - minimum) / 80
-  }
-  const bandCount = Math.max(
-    1,
-    Math.min(80, Math.ceil((maximum - minimum) / interval)),
-  )
-  return { minimum, maximum, interval, bandCount }
+  return resolveClassificationScale({
+    minimum,
+    maximum,
+    requestedInterval: settings.scalarLegendInterval,
+    fallbackInterval: scene.autoInterval,
+  })
 }
 
 export function scalarContourLevels(
@@ -43,18 +41,10 @@ export function scalarContourLevels(
   requestedInterval: number | null,
   fallbackInterval: number,
 ) {
-  let interval =
-    requestedInterval && requestedInterval > 0
-      ? requestedInterval
-      : fallbackInterval
-  if ((maximum - minimum) / interval > 160) {
-    interval = (maximum - minimum) / 160
-  }
-  if (!Number.isFinite(interval) || interval <= 0) return []
-  const first = Math.ceil(minimum / interval) * interval
-  const levels: number[] = []
-  for (let level = first; level <= maximum + interval * 1e-8; level += interval) {
-    levels.push(level)
-  }
-  return levels
+  return resolveContourLevels(
+    minimum,
+    maximum,
+    requestedInterval,
+    fallbackInterval,
+  )
 }

@@ -1,5 +1,6 @@
 import type { FigureSettings } from './figureSettings'
 import type { ScalarColorRampKey } from '../colorRamps'
+import type { StrokePattern } from './cartography'
 import type {
   ConditionData,
   ProjectedGeometry,
@@ -64,7 +65,9 @@ export type PlanViewResultSettings = FigureSettings & {
   contourInterval: number | null
   contourColor: string
   contourWidth: number
+  contourPattern: StrokePattern
   meshLineColor: string
   meshLineWidth: number
   meshLineOpacity: number
+  meshLinePattern: StrokePattern
 }

@@ -11,7 +11,7 @@ import { PLAN_VIEW_RESULT_SETTINGS_SECTIONS } from './planViewResultDefinition'
 
 const ICONS = {
   result: Layers3,
-  legend: Palette,
+  cartography: Palette,
   frame: Frame,
   elements: MapPin,
   stationing: Milestone,

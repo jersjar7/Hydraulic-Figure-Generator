@@ -51,6 +51,7 @@ describe('figure module registry', () => {
       [
         'hydraulic-models',
         'map-overlays',
+        'map-cartography',
         'frame-view',
         'figure-elements',
         'centerline-stationing',
@@ -66,7 +67,7 @@ describe('figure module registry', () => {
       ),
       [
         'result',
-        'legend',
+        'cartography',
         'frame',
         'elements',
         'stationing',
@@ -103,7 +104,7 @@ describe('figure module registry', () => {
       ),
       [
         'calculation',
-        'legend',
+        'cartography',
         'frame',
         'elements',
         'stationing',

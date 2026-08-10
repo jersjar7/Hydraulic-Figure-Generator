@@ -15,7 +15,7 @@ describe('settings section module registry', () => {
       WSE_SETTINGS_SECTIONS.map((section) => section.key),
       [
         'calculation',
-        'legend',
+        'cartography',
         'frame',
         'elements',
         'stationing',

@@ -53,9 +53,10 @@ Workspace abbreviations used below:
 | WSE comparison calculation | Full | Full | N/A | N/A | Calculations are intentionally figure-specific and should remain behind hydraulic use cases. |
 | Dry-depth threshold | Full | Full | N/A | N/A | Same concept, currently exposed by separate panels and settings types. |
 | Scalar-result selection | N/A | N/A | Full | N/A | Includes Topography, Mesh Elements, Topography + Mesh Elements, depth, WSE, velocity, Froude, and shear stress when present. |
-| Color ramp | Full | N/A | Full | N/A | Shared ramp catalog, but the surrounding classification controls and settings schemas differ. |
-| Editable classification bounds/interval | Full | N/A | Full | N/A | WSE uses a symmetric difference bound and interval; Plan uses minimum, maximum, and interval. |
-| Contour lines | WSE difference-class outlines | N/A | Full scalar contours | N/A | Similar presentation but different semantics. They need one cartographic style contract with explicit contour source/mode. |
+| Color ramp | Full | N/A | Full | N/A | Shared catalog and cartography panel; each workspace supplies its accepted ramps and default. |
+| Editable classification bounds/interval | Full | N/A | Full | N/A | Shared contract adapts symmetric WSE bounds and ranged Plan bounds without merging their hydraulics. |
+| Contour lines | WSE class boundaries | N/A | Scalar isolines | N/A | Shared color, width, and pattern controls retain an explicit contour mode in each workspace adapter. |
+| Mesh line style | N/A | N/A | Full | N/A | Shared cartography contract controls color, width, opacity, and pattern for applicable Plan outputs. |
 | Newly wet/dry classification | Full | N/A | N/A | N/A | WSE-specific hydraulic layer and legend key. |
 | Basemap frame/view | Full | Map selection view only | Full | N/A | WSE and Plan share orientation, rotation, zoom, aerial opacity, pan, and reset controls. |
 | Shapefile display toggle | Full | Selection map only | Full | N/A | Overlay data is shared; output-level visibility is not expressed consistently. |
@@ -153,8 +154,8 @@ assessment-specific.
 
 ## Main Duplication And Consistency Gaps
 
-1. Map legends, chart legends, color classification, contour style, and chart
-   line styles use parallel contracts with inconsistent capability depth.
+1. Map and chart legends plus chart line styles still use parallel contracts;
+   map classification, contour, and mesh styling now use shared cartography.
 2. Figure Set behavior is mature in Plan and all-station generation exists in
    Profiles, but there is no common batch-production contract presented to
    every workspace.

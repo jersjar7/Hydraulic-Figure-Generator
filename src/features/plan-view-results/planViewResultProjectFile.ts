@@ -24,8 +24,10 @@ import {
 import { isPlanViewGeometryOutput } from '../../core/hydraulics/planViewGeometryResults'
 import type { PersistedCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 import { parseStationLabelOverrides } from '../../core/projectFiles/settingsValidation'
+import { assertValidCartographySettings } from '../../core/cartography'
+import { planViewCartographySettings } from './planViewCartography'
 
-export const PLAN_VIEW_RESULT_PROJECT_VERSION = 8
+export const PLAN_VIEW_RESULT_PROJECT_VERSION = 9
 
 export type PlanViewResultProjectState = {
   settings: PlanViewResultSettings
@@ -203,6 +205,10 @@ function hydrateSettings(value: unknown): PlanViewResultSettings {
   ) {
     throw new Error('Plan-view result settings contain invalid values.')
   }
+  assertValidCartographySettings(
+    planViewCartographySettings(settings),
+    'Plan-view result settings',
+  )
   return settings
 }
 
@@ -287,6 +293,7 @@ export function parsePlanViewResultProject(
     parsed.version !== 5 &&
     parsed.version !== 6 &&
     parsed.version !== 7 &&
+    parsed.version !== 8 &&
     parsed.version !== PLAN_VIEW_RESULT_PROJECT_VERSION
   ) {
     throw new Error(

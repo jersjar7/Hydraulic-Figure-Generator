@@ -144,6 +144,8 @@ describe('Plan-View Hydraulic Results production baseline', () => {
     assert.equal(settings.legendMax, null)
     assert.equal(settings.showContours, true)
     assert.equal(settings.contourColor, '#111827')
+    assert.equal(settings.contourPattern, 'solid')
+    assert.equal(settings.meshLinePattern, 'solid')
   })
 
   it('renders classified values, contours, and report elements in both frames', async () => {

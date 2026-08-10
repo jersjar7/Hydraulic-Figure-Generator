@@ -31,9 +31,8 @@ import { useCenterlineStationingSource } from '../stationing/useCenterlineStatio
 import { useWseDraftRetention } from './useWseDraftRetention'
 import { ReportFigureExportActions } from '../project-workspace/ReportFigureExportActions'
 import { createWseReportFigure } from './wseReportAdapter'
-
+import { withWseCartographySettings } from './wseCartography'
 const ACTIVE_FIGURE = wseDifferenceFigure
-
 export function WseDifferenceWorkspace() {
   const { projectSession, projectDocument } = useHydraulicProjectWorkspace()
   const figureDocument = useWseFigureDocument()
@@ -195,7 +194,6 @@ export function WseDifferenceWorkspace() {
   ) => {
     setSettings((current) => ({ ...current, [key]: value }))
   }
-
   const projectInputs = createHydraulicProjectInputActions({
     assessmentId: assessmentScenarioId,
     overlays,
@@ -463,6 +461,8 @@ export function WseDifferenceWorkspace() {
           figureElements={figureElements}
           annotationController={annotationController}
           updateSettings={updateSettings}
+          onCartographyChange={(cartography) => setSettings((current) =>
+            withWseCartographySettings(current, cartography))}
           onActiveElementChange={setActiveElement}
           onStationLabelSelect={setSelectedStationLabelId}
           onCenterlineChange={stationingSourceActions.changeActiveCenterline}

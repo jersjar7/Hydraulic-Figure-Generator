@@ -4,18 +4,12 @@ import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspace
 import { HydraulicProjectPanel } from '../../components/project-data/HydraulicProjectPanel'
 import type { ScenarioRoleOption } from '../../components/project-data/projectWorkflowTypes'
 import type {
-  FigureElementPanelKey,
-  IngestNotice,
-  MapElementBounds,
-  PlanViewResultScene,
-  PlanViewResultSettings,
+  CartographySettings, FigureElementPanelKey, IngestNotice,
+  MapElementBounds, PlanViewResultScene, PlanViewResultSettings,
 } from '../../core/types'
 import { FigurePicker } from '../figures/FigurePicker'
 import { createCanvasReportFigure } from '../figures/canvasReportFigure'
-import {
-  FigureProductionModeSwitcher,
-  type FigureProductionMode,
-} from '../figure-sets/FigureProductionModeSwitcher'
+import { FigureProductionModeSwitcher, type FigureProductionMode } from '../figure-sets/FigureProductionModeSwitcher'
 import { useFittedCanvasAspect } from '../figures/useFittedCanvasAspect'
 import { useMapElementController } from '../figures/useMapElementController'
 import { createHydraulicProjectInputActions } from '../project-workspace/hydraulicProjectInputActions'
@@ -48,6 +42,7 @@ import { usePlanViewResultSelection } from './usePlanViewResultSelection'
 import { usePlanViewAnnotations } from './usePlanViewAnnotations'
 import { usePlanViewMapInteractions } from './usePlanViewMapInteractions'
 import { usePlanViewWorkspacePersistence } from './usePlanViewWorkspacePersistence'
+import { withPlanViewCartographySettings } from './planViewCartography'
 
 const SCENARIO_ROLES: readonly ScenarioRoleOption[] = [
   { role: 'baseline', label: 'Scenario', required: true },
@@ -236,15 +231,17 @@ export function PlanViewResultWorkspace() {
     interacting: mapInteractions.dragging,
   })
 
+  const replaceSettings = (next: PlanViewResultSettings) => {
+    setSettings(next)
+    if (editingFigureSetItemId) figureSet.updateItemSettings(editingFigureSetItemId, next)
+  }
   const updateSettings = <Key extends keyof PlanViewResultSettings>(
     key: Key,
     value: PlanViewResultSettings[Key],
-  ) => {
-    const next = { ...settings, [key]: value }
-    setSettings(next)
-    if (editingFigureSetItemId) {
-      figureSet.updateItemSettings(editingFigureSetItemId, next)
-    }
+  ) => replaceSettings({ ...settings, [key]: value })
+
+  const updateCartography = (cartography: CartographySettings) => {
+    replaceSettings(withPlanViewCartographySettings(settings, cartography))
   }
 
   const changeResult = (paramName: string) => {
@@ -455,6 +452,7 @@ export function PlanViewResultWorkspace() {
             annotations={annotations.controller}
             canDownload={Boolean(scene)}
             onSettingsChange={updateSettings}
+            onCartographyChange={updateCartography}
             onResultParameterChange={changeResult}
             onActiveElementChange={setActiveElement}
             exportActions={

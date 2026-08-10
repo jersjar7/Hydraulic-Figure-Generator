@@ -1,6 +1,7 @@
 import type { MapElementPositions, MapElementStyles } from './figureElements'
 import type { CenterlineStationingSettings } from './stationing'
 import type { ColorRampKey } from '../colorRamps'
+import type { StrokePattern } from './cartography'
 
 export type FigureSettings = {
   orientation: 'landscape' | 'portrait'
@@ -15,6 +16,8 @@ export type FigureSettings = {
   assessmentLabelOffset: number
   assessmentLabelSide: 'left' | 'right' | 'alternate'
   differenceOutlineColor: string
+  differenceOutlineWidth: number
+  differenceOutlinePattern: StrokePattern
   showDifferenceOutlines: boolean
   showWetDry: boolean
   showOverlays: boolean
