@@ -113,13 +113,22 @@ export function upsertWseExtremaCallouts({
 
   for (const extremum of available) {
     if (seen.has(extremum.kind)) continue
+    const labelPoint = defaultExtremumLabelPoint(
+      extremum,
+      bounds,
+      settings,
+    )
     next.push({
       id: ids.get(extremum.kind) ?? createId(),
       kind: 'leader',
       hydraulicExtremum: extremum.kind,
       points: [
         extremum.point,
-        defaultExtremumLabelPoint(extremum, bounds, settings),
+        labelPoint,
+      ],
+      defaultPoints: [
+        { ...extremum.point },
+        { ...labelPoint },
       ],
       text: formatWseExtremumLabel(extremum.kind, extremum.value),
       color: extremum.kind === 'max-rise' ? '#b42318' : '#175cd3',
@@ -129,6 +138,8 @@ export function upsertWseExtremaCallouts({
       rotation: defaults.rotation,
       dashed: defaults.dashed,
       background: true,
+      locked: false,
+      leaderVisible: true,
     })
   }
 

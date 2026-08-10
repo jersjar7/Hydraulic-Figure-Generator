@@ -96,6 +96,31 @@ describe('hydraulic figure project files', () => {
           },
         },
       },
+      annotations: [
+        {
+          id: 'result-callout',
+          kind: 'result',
+          points: [
+            { x: 10, y: 20 },
+            { x: 30, y: 40 },
+          ],
+          defaultPoints: [
+            { x: 8, y: 18 },
+            { x: 28, y: 38 },
+          ],
+          text: 'Difference: +0.25 ft',
+          color: '#111111',
+          fillColor: '#ffffff',
+          lineWidth: 2,
+          fontSize: 18,
+          rotation: 0,
+          dashed: false,
+          background: true,
+          locked: true,
+          leaderVisible: false,
+          resultField: 'difference',
+        },
+      ],
     })
 
     const loaded = parseHydraulicFigureProject(JSON.stringify(saved))
@@ -115,6 +140,47 @@ describe('hydraulic figure project files', () => {
       loaded.assessment,
       saved.figures['fra-wse-difference'].assessment,
     )
+    assert.deepEqual(
+      loaded.annotations,
+      saved.figures['fra-wse-difference'].annotations,
+    )
+  })
+
+  it('loads version 14 callouts with visible, unlocked creation baselines', () => {
+    const points = [
+      { x: 10, y: 20 },
+      { x: 30, y: 40 },
+    ]
+    const loaded = parseHydraulicFigureProject(
+      JSON.stringify({
+        version: 14,
+        activeFigure: 'fra-wse-difference',
+        project: {},
+        figures: {
+          'fra-wse-difference': {
+            annotations: [
+              {
+                id: 'legacy-leader',
+                kind: 'leader',
+                points,
+                text: 'Legacy',
+                color: '#111111',
+                fillColor: '#ffffff',
+                lineWidth: 2,
+                fontSize: 18,
+                rotation: 0,
+                dashed: false,
+                background: true,
+              },
+            ],
+          },
+        },
+      }),
+    )
+
+    assert.deepEqual(loaded.annotations?.[0].defaultPoints, points)
+    assert.equal(loaded.annotations?.[0].locked ?? false, false)
+    assert.equal(loaded.annotations?.[0].leaderVisible ?? true, true)
   })
 
   it('migrates the flat version 13 layout into normalized project state', () => {

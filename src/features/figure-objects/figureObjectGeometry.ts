@@ -23,7 +23,12 @@ function movablePointIndexes(
   object: FigureObject,
   target: FigureObjectDragTarget,
 ) {
-  if (target.type === 'point') return [target.pointIndex]
+  if (target.type === 'point') {
+    return object.anchor?.fixed &&
+      object.anchor.pointIndex === target.pointIndex
+      ? []
+      : [target.pointIndex]
+  }
   return object.points
     .map((_, index) => index)
     .filter(

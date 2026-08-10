@@ -152,20 +152,22 @@ export function drawAnnotations(
       (annotation.kind === 'leader' || annotation.kind === 'result') &&
       points[1]
     ) {
-      context.beginPath()
-      context.moveTo(points[0].x, points[0].y)
-      context.lineTo(points[1].x, points[1].y)
-      context.stroke()
-      context.setLineDash([])
-      context.beginPath()
-      context.arc(
-        points[0].x,
-        points[0].y,
-        Math.max(4, annotation.lineWidth * 1.5),
-        0,
-        Math.PI * 2,
-      )
-      context.fill()
+      if (annotation.leaderVisible !== false) {
+        context.beginPath()
+        context.moveTo(points[0].x, points[0].y)
+        context.lineTo(points[1].x, points[1].y)
+        context.stroke()
+        context.setLineDash([])
+        context.beginPath()
+        context.arc(
+          points[0].x,
+          points[0].y,
+          Math.max(4, annotation.lineWidth * 1.5),
+          0,
+          Math.PI * 2,
+        )
+        context.fill()
+      }
       annotationTextBox(context, annotation, points[1])
     } else if (annotation.kind === 'text') {
       annotationTextBox(context, annotation, points[0])
@@ -222,7 +224,11 @@ export function drawAnnotationSelection(
     )
     context.stroke()
     context.restore()
-    if (!annotation.hydraulicExtremum) {
+    if (
+      annotation.leaderVisible !== false &&
+      !annotation.hydraulicExtremum &&
+      !annotation.locked
+    ) {
       drawSelectionHandle(context, points[0])
     }
   } else if (annotation.kind === 'text') {
@@ -337,7 +343,10 @@ export function hitTestAnnotation(
       (annotation.kind === 'leader' || annotation.kind === 'result') &&
       points[1]
     ) {
-      if (Math.hypot(x - points[0].x, y - points[0].y) <= 16) {
+      if (
+        annotation.leaderVisible !== false &&
+        Math.hypot(x - points[0].x, y - points[0].y) <= 16
+      ) {
         return { id: annotation.id, part: 'start' }
       }
       if (pointInAnnotationTextBox(annotation, pointer, points[1])) {
@@ -357,6 +366,8 @@ export function hitTestAnnotation(
     }
     if (
       points[1] &&
+      ((annotation.kind !== 'leader' && annotation.kind !== 'result') ||
+        annotation.leaderVisible !== false) &&
       pointToSegmentDistance(pointer, points[0], points[1]) <=
         Math.max(10, annotation.lineWidth + 6)
     ) {

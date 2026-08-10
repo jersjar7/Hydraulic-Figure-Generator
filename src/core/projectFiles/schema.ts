@@ -12,7 +12,7 @@ import type {
 } from '../types'
 import { WSE_DIFFERENCE_FIGURE_ID } from '../figureIds'
 
-export const PROJECT_FILE_VERSION = 14
+export const PROJECT_FILE_VERSION = 15
 export const PROJECT_FIGURE = WSE_DIFFERENCE_FIGURE_ID
 
 type PartialElementStyles = {

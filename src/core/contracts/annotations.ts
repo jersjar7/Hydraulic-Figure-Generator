@@ -33,6 +33,9 @@ export type MapAnnotation = {
   rotation: number
   dashed: boolean
   background: boolean
+  locked?: boolean
+  leaderVisible?: boolean
+  defaultPoints?: MapCoordinate[]
   resultField?: ResultLabelField
   hydraulicExtremum?: WseExtremumKind
 }
@@ -48,4 +51,3 @@ export type AnnotationDefaults = {
   background: boolean
   resultField: ResultLabelField
 }
-

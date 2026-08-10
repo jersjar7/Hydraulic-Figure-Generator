@@ -6,19 +6,21 @@ export type FigureObjectAdapter<Item> = Readonly<{
 }>
 
 export function updateAdaptedFigureObject<Item>(
-  items: readonly Item[],
+  items: Item[],
   id: string,
   adapter: FigureObjectAdapter<Item>,
   update: (object: FigureObject) => FigureObject,
 ): Item[] {
-  return items.map((item, index) => {
+  let changed = false
+  const updatedItems = items.map((item, index) => {
     const object = adapter.toFigureObject(item, index)
     if (object.id !== id) return item
     const updated = update(object)
-    return Object.is(updated, object)
-      ? item
-      : adapter.fromFigureObject(item, updated)
+    if (Object.is(updated, object)) return item
+    changed = true
+    return adapter.fromFigureObject(item, updated)
   })
+  return changed ? updatedItems : items
 }
 
 export function appendAdaptedFigureObject<Item>(

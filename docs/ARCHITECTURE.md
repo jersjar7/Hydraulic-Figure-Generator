@@ -152,9 +152,11 @@ infrastructure directly.
   adapter, keyboard, and command composition. Workspace adapters project their
   persisted objects into this shape and write edits back; the kernel never owns
   a cross-workspace document or global object positions.
-- WSE text annotations are the first kernel adopter. Their saved
-  `MapAnnotation` schema remains unchanged, while canvas drag completion is
-  committed to the existing bounded undo/redo history as one command.
+- WSE text, leader, and automatic-result annotations use the kernel. Callout
+  labels and anchors have separate drag targets, hydraulic extrema expose a
+  fixed anchor, and each completed drag enters the bounded undo/redo history as
+  one command. Feature-specific duplicate, nudge, remove, and reset decisions
+  live in `wseAnnotationSelectionOperations.ts`, outside the React controller.
 - `components/project-data/projectWorkflowRegistry.ts` maps declared workspace
   input capabilities to independent Models, Layers, Assess, and Review workflow
   modules with their own status and view adapters.
@@ -259,16 +261,19 @@ image bitmaps remain render-local.
 
 ## Persistence
 
-Saved project version 14 has an `activeFigure` discriminator, shared `project`
+Saved project version 15 has an `activeFigure` discriminator, shared `project`
 state, and a `figures` record containing versioned figure-specific state. Load
 all project JSON through `parseHydraulicFigureProject`; never cast parsed JSON
 directly into application types. Add an explicit migration and regression test
 whenever the persisted shape changes.
 
-Version 13 and earlier flat files migrate into the normalized version 14
-project. Version 12 stores scenario role IDs, per-scenario run selections, and
-user scenario labels. Version 11 Existing/Proposed run selections migrate to
-Baseline `EX`, Comparison `PR`, and assessment source `EX`.
+Version 15 persists anchored-callout visibility, position locks, and reset
+baselines. Version 14 callouts migrate visible and unlocked, with their saved
+points used as the reset baseline. Version 13 and earlier flat files migrate
+into the normalized version 14 project. Version 12 stores scenario role IDs,
+per-scenario run selections, and user scenario labels. Version 11
+Existing/Proposed run selections migrate to Baseline `EX`, Comparison `PR`, and
+assessment source `EX`.
 
 The Plan-View workspace stores figure-set specifications, per-item settings,
 captions, order, inclusion, and document assembly settings in its version 3

@@ -45,6 +45,21 @@ export function annotation(
     )
   }
 
+  let defaultPoints
+  if (input.defaultPoints !== undefined) {
+    if (!Array.isArray(input.defaultPoints)) {
+      throw new Error(`${path}.defaultPoints must be an array.`)
+    }
+    defaultPoints = input.defaultPoints.map((point, index) =>
+      coordinate(point, `${path}.defaultPoints[${index}]`),
+    )
+    if (defaultPoints.length < minimumPoints) {
+      throw new Error(
+        `${path}.defaultPoints requires at least ${minimumPoints} points.`,
+      )
+    }
+  }
+
   const result = shape(input, path, {
     id: nonemptyText,
     kind: oneOf(['text', 'leader', 'arrow', 'line', 'result']),
@@ -56,6 +71,8 @@ export function annotation(
     rotation: finite,
     dashed: bool,
     background: bool,
+    locked: bool,
+    leaderVisible: bool,
     resultField: oneOf([
       'summary',
       'difference',
@@ -71,6 +88,14 @@ export function annotation(
     ...(result as Omit<MapAnnotation, 'points'>),
     rotation: (result.rotation as number | undefined) ?? 0,
     points,
+    ...(kind === 'leader' || kind === 'result'
+      ? {
+          defaultPoints:
+            defaultPoints ?? points.map((point) => ({ ...point })),
+        }
+      : defaultPoints
+        ? { defaultPoints }
+        : {}),
   }
 }
 

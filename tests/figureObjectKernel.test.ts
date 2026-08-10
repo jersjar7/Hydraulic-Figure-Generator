@@ -131,6 +131,45 @@ describe('shared figure-object manipulation kernel', () => {
       { x: 20, y: 20 },
       { x: 70, y: 55 },
     ])
+    assert.equal(
+      moveFigureObjectInFrame(
+        leader,
+        { type: 'point', pointIndex: 0 },
+        { x: 25, y: 25 },
+        frameCoordinateAdapter,
+        { left: 0, top: 0, right: 100, bottom: 100 },
+      ),
+      leader,
+    )
+  })
+
+  it('adapts persisted callout lock and leader visibility state', () => {
+    const callout: MapAnnotation = {
+      ...annotation('leader-1'),
+      kind: 'leader',
+      points: [
+        { x: 10, y: 20 },
+        { x: 30, y: 40 },
+      ],
+      locked: true,
+      leaderVisible: false,
+    }
+    const object = mapAnnotationFigureObjectAdapter.toFigureObject(
+      callout,
+      2,
+    )
+
+    assert.equal(object.locked, true)
+    assert.equal(object.leader?.visible, false)
+    assert.equal(object.anchor?.pointIndex, 0)
+    assert.deepEqual(
+      mapAnnotationFigureObjectAdapter.fromFigureObject(callout, {
+        ...object,
+        locked: false,
+        leader: { ...object.leader!, visible: true },
+      }),
+      { ...callout, locked: false, leaderVisible: true },
+    )
   })
 
   it('adapts WSE text annotations without changing their persisted shape', () => {

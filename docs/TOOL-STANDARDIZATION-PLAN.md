@@ -59,10 +59,11 @@ render/export path, and adding a workspace requires an explicit tool manifest.
 **Status: foundation implemented.** The normalized object contract, immutable
 collection and geometry operations, map/plot/frame coordinate adapters,
 frame-clamped drag/nudge/duplicate behavior, external drag history commits,
-and shared keyboard controls are in place. WSE text annotations are the first
-production adopter without changing their persisted schema. Leader/result
-annotations, station labels, report elements, and chart objects remain scoped
-to the rollout phases below.
+and shared keyboard controls are in place. WSE text, leader, and automatic
+result annotations are production adopters. Anchored callouts now support
+independent endpoints, fixed extrema anchors, optional leaders, lock/reset,
+and one-command drag history. Station labels, report elements, and chart
+objects remain scoped to the rollout phases below.
 
 **Purpose:** provide one selection/drag foundation for every visual object.
 

@@ -5,6 +5,8 @@ export type AnnotationCapabilities = {
   resultField: boolean
   fill: boolean
   typography: boolean
+  leaderLine: boolean
+  positionLock: boolean
 }
 
 export function annotationCapabilities(
@@ -18,5 +20,11 @@ export function annotationCapabilities(
       annotation.kind === 'result' && !annotation.hydraulicExtremum,
     fill: content,
     typography: content,
+    leaderLine:
+      annotation.kind === 'leader' || annotation.kind === 'result',
+    positionLock:
+      annotation.kind === 'text' ||
+      annotation.kind === 'leader' ||
+      annotation.kind === 'result',
   }
 }

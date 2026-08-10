@@ -32,9 +32,15 @@ commands, and history support for live pointer previews.
 Do not store normalized objects globally or reuse one instance between
 workspaces. Reuse behavior and contracts, not figure-instance state.
 
-## First Adopter
+## Current Adopters
 
 WSE text annotations use the kernel for canvas dragging, nudge controls,
-keyboard arrows, duplication geometry, removal, and frame clamping. Their
-persisted `MapAnnotation` representation is unchanged, so existing project and
-editable-export files remain compatible.
+keyboard arrows, duplication geometry, removal, position locking, and frame
+clamping. Existing project and editable-export files remain compatible.
+
+WSE leader and automatic-result callouts use it for independent anchor and
+label dragging, fixed hydraulic-extremum anchors, leader visibility, position
+locking, creation-position reset, duplication, deletion, keyboard nudge, and
+one-command drag history. Project-file version 15 persists the new optional
+callout fields; version 14 callouts load visible and unlocked with their saved
+position as the reset baseline.

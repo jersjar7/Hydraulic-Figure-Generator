@@ -3,12 +3,14 @@ import type { ReactNode } from 'react'
 type NudgeButtonProps = {
   label: string
   icon: ReactNode
+  disabled?: boolean
   onClick(): void
 }
 
 export function NudgeButton({
   label,
   icon,
+  disabled = false,
   onClick,
 }: NudgeButtonProps) {
   return (
@@ -17,6 +19,7 @@ export function NudgeButton({
       type="button"
       title={label}
       aria-label={label}
+      disabled={disabled}
       onClick={onClick}
     >
       {icon}

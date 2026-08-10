@@ -134,6 +134,13 @@ export function AnnotationStyleEditor({ model, actions }: Props) {
           actions.updateAppearance({ dashed: checked })
         }
       />
+      {capabilities.leaderLine ? (
+        <Toggle
+          label="Leader line"
+          checked={model.selected.leaderVisible !== false}
+          onChange={actions.setSelectedLeaderVisible}
+        />
+      ) : null}
       {capabilities.typography ? (
         <Toggle
           label="Text background"

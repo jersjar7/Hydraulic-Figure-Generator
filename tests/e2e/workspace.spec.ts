@@ -575,6 +575,46 @@ test('synthetic SMS files upload and render a nonblank figure', async ({
       }),
     )
     .toBeGreaterThan(100)
+
+  await page.getByRole('tab', { name: 'Callouts', exact: true }).click()
+  await page.getByRole('button', { name: 'Leader callout' }).click()
+  const box = await canvas.boundingBox()
+  expect(box).not.toBeNull()
+  if (!box) return
+  const anchor = {
+    x: box.x + box.width * 0.42,
+    y: box.y + box.height * 0.55,
+  }
+  const label = {
+    x: box.x + box.width * 0.62,
+    y: box.y + box.height * 0.38,
+  }
+  await page.mouse.click(anchor.x, anchor.y)
+  await page.mouse.click(label.x, label.y)
+  await expect(page.getByText('Leader 1', { exact: true })).toBeVisible()
+
+  await page.mouse.move(label.x, label.y)
+  await page.mouse.down()
+  await page.mouse.move(label.x + 45, label.y + 30, { steps: 3 })
+  await page.mouse.up()
+  await expect(
+    page.getByRole('button', { name: 'Undo move leader annotation' }),
+  ).toBeEnabled()
+
+  await page.getByRole('tab', { name: 'Style', exact: true }).click()
+  const leaderToggle = page.getByRole('checkbox', { name: 'Leader line' })
+  await expect(leaderToggle).toBeChecked()
+  await page.getByText('Leader line', { exact: true }).click()
+  await expect(leaderToggle).not.toBeChecked()
+
+  await page.getByRole('tab', { name: 'Position', exact: true }).click()
+  const lockToggle = page.getByRole('checkbox', { name: 'Lock position' })
+  const resetPosition = page.getByRole('button', { name: 'Reset position' })
+  await page.getByText('Lock position', { exact: true }).click()
+  await expect(resetPosition).toBeDisabled()
+  await page.getByText('Lock position', { exact: true }).click()
+  await expect(lockToggle).not.toBeChecked()
+  await resetPosition.click()
 })
 
 test('loaded scenarios carry into the cross-section map-to-chart workflow', async ({

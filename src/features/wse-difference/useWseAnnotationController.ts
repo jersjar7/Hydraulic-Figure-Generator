@@ -11,10 +11,7 @@ import {
 } from '../../core/hydraulicEngine'
 import { detectWseDifferenceExtrema } from '../../application/hydraulics/detectWseDifferenceExtrema'
 import {
-  canvasPointToMap,
-  duplicateAnnotation,
   formatHydraulicResultLabel,
-  FRAMES,
   sampleHydraulicResult,
 } from '../../core/mapRenderer'
 import type {
@@ -36,27 +33,29 @@ import type {
   AnnotationPanelView,
   AnnotationPlacedView,
 } from './workspaceConfiguration'
-import {
-  defaultEditorView,
-} from './workspaceInteractions'
+import { defaultEditorView } from './workspaceInteractions'
 import { useAnnotationNavigation } from './useAnnotationNavigation'
 import {
   synchronizeWseExtremaAnnotations,
   upsertWseExtremaCallouts,
 } from './wseExtremaAnnotations'
 import {
-  removeAnnotation,
-  translateAnnotation,
   updateAnnotation,
 } from '../annotations/annotationCollection'
 import { useEditorCommandHistory } from '../editor-history/useEditorCommandHistory'
-import { mapAnnotationFigureObjectAdapter } from '../annotations/mapAnnotationFigureObject'
 import {
-  duplicateMapAnnotationFigureObject,
-  nudgeMapAnnotationFigureObjectCommand,
+  isAnchoredMapCallout,
+  resetMapAnnotationPositionCommand,
+  setMapAnnotationLockedCommand,
+  setMapCalloutLeaderVisibleCommand,
 } from '../annotations/mapAnnotationManipulation'
-import { removeAdaptedFigureObject } from '../figure-objects/figureObjectAdapter'
 import { useFigureObjectKeyboard } from '../figure-objects/useFigureObjectKeyboard'
+import {
+  defaultWseAnnotationPosition,
+  duplicateSelectedWseAnnotation,
+  nudgeSelectedWseAnnotationCommand,
+  removeSelectedWseAnnotation,
+} from './wseAnnotationSelectionOperations'
 
 type StateSetter<Value> = Dispatch<SetStateAction<Value>>
 
@@ -214,6 +213,13 @@ export function useWseAnnotationController({
       id,
       kind,
       points,
+      ...(kind === 'leader' || kind === 'result'
+        ? {
+            defaultPoints: points.map((point) => ({ ...point })),
+            locked: false,
+            leaderVisible: true,
+          }
+        : {}),
       text,
       color: annotationDefaults.color,
       fillColor: annotationDefaults.fillColor,
@@ -338,20 +344,11 @@ export function useWseAnnotationController({
 
   const deleteSelected = () => {
     if (!selectedId) return
-    const result =
-      selected?.kind === 'text'
-        ? (() => {
-            const removed = removeAdaptedFigureObject(
-              annotations,
-              selectedId,
-              mapAnnotationFigureObjectAdapter,
-            )
-            return {
-              annotations: removed.items,
-              selectedId: removed.selectedId,
-            }
-          })()
-        : removeAnnotation(annotations, selectedId)
+    const result = removeSelectedWseAnnotation(
+      annotations,
+      selectedId,
+      selected,
+    )
     executeAnnotationCommand({
       label: 'delete annotation',
       apply: () => result.annotations,
@@ -362,49 +359,17 @@ export function useWseAnnotationController({
 
   const duplicateSelected = () => {
     if (!selected) return
-    const frame = FRAMES[settings.orientation]
     const bounds = engine.commonBounds()
     const id = globalThis.crypto.randomUUID()
-    const copy =
-      selected.kind === 'text'
-        ? duplicateMapAnnotationFigureObject({
-            annotation: selected,
-            index: selectedIndex,
-            id,
-            bounds,
-            settings,
-          })
-        : (() => {
-            const origin = canvasPointToMap(
-              frame.width / 2,
-              frame.height / 2,
-              bounds,
-              settings,
-            )
-            const shifted = canvasPointToMap(
-              frame.width / 2 + 18,
-              frame.height / 2 + 18,
-              bounds,
-              settings,
-            )
-            return duplicateAnnotation(
-              selected,
-              id,
-              shifted.x - origin.x,
-              shifted.y - origin.y,
-            )
-          })()
-    if (copy.kind === 'result' && copy.resultField && scene) {
-      const sample = sampleHydraulicResult(
-        scene,
-        bounds,
-        settings,
-        copy.points[0],
-      )
-      if (sample) {
-        copy.text = formatHydraulicResultLabel(copy.resultField, sample)
-      }
-    }
+    const copy = duplicateSelectedWseAnnotation({
+      selected,
+      selectedIndex,
+      id,
+      bounds,
+      settings,
+      scene,
+      engine,
+    })
     executeAnnotationCommand({
       label: 'duplicate annotation',
       apply: (current) => [...current, copy],
@@ -418,46 +383,52 @@ export function useWseAnnotationController({
   }
 
   const nudgeSelected = (dx: number, dy: number) => {
-    if (!selectedId) return
-    const frame = FRAMES[settings.orientation]
+    if (!selected) return
     const bounds = engine.commonBounds()
-    if (selected?.kind === 'text') {
-      executeAnnotationCommand(
-        nudgeMapAnnotationFigureObjectCommand({
-          id: selectedId,
-          dx,
-          dy,
-          bounds,
-          settings,
-        }),
-      )
+    const command = nudgeSelectedWseAnnotationCommand({
+      selected,
+      dx,
+      dy,
+      bounds,
+      settings,
+    })
+    if (command) executeAnnotationCommand(command)
+  }
+
+  const setSelectedLocked = (locked: boolean) => {
+    if (
+      !selected ||
+      (selected.kind !== 'text' && !isAnchoredMapCallout(selected))
+    ) {
       return
     }
-    const center = canvasPointToMap(
-      frame.width / 2,
-      frame.height / 2,
-      bounds,
-      settings,
+    executeAnnotationCommand(
+      setMapAnnotationLockedCommand({ id: selected.id, locked }),
     )
-    const offset = canvasPointToMap(
-      frame.width / 2 + dx,
-      frame.height / 2 + dy,
-      bounds,
-      settings,
+  }
+
+  const setSelectedLeaderVisible = (visible: boolean) => {
+    if (!selected || !isAnchoredMapCallout(selected)) return
+    executeAnnotationCommand(
+      setMapCalloutLeaderVisibleCommand({ id: selected.id, visible }),
     )
-    executeAnnotationCommand({
-      label: 'nudge annotation',
-      apply: (current) =>
-        current.map((annotation) =>
-          annotation.id === selectedId
-            ? translateAnnotation(
-                annotation,
-                offset.x - center.x,
-                offset.y - center.y,
-              )
-            : annotation,
-        ),
+  }
+
+  const resetSelectedPosition = () => {
+    if (!selected || selected.locked) return
+    const points = defaultWseAnnotationPosition({
+      selected,
+      extrema,
+      bounds: engine.commonBounds(),
+      settings,
     })
+    if (!points) return
+    executeAnnotationCommand(
+      resetMapAnnotationPositionCommand({
+        id: selected.id,
+        points,
+      }),
+    )
   }
 
   const clearAnnotations = () => {
@@ -544,6 +515,9 @@ export function useWseAnnotationController({
     setEditorView,
     handleEditorTabKeyDown: navigation.handleEditorTabKeyDown,
     nudgeSelected,
+    setSelectedLocked,
+    setSelectedLeaderVisible,
+    resetSelectedPosition,
     duplicateSelected,
     deleteSelected,
     undo,

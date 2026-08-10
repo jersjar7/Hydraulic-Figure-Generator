@@ -21,6 +21,22 @@ const annotation = {
   background: true,
 }
 
+const callout = {
+  ...annotation,
+  id: 'callout-1',
+  kind: 'leader' as const,
+  points: [
+    { x: 1, y: 2 },
+    { x: 3, y: 4 },
+  ],
+  defaultPoints: [
+    { x: 1, y: 2 },
+    { x: 3, y: 4 },
+  ],
+  leaderVisible: true,
+  locked: false,
+}
+
 function createActions(): AnnotationPanelActions {
   return {
     choosePanelView: vi.fn(),
@@ -38,8 +54,13 @@ function createActions(): AnnotationPanelActions {
     setEditorView: vi.fn(),
     handleEditorTabKeyDown: vi.fn(),
     nudgeSelected: vi.fn(),
+    setSelectedLocked: vi.fn(),
+    setSelectedLeaderVisible: vi.fn(),
+    resetSelectedPosition: vi.fn(),
     duplicateSelected: vi.fn(),
     deleteSelected: vi.fn(),
+    undo: vi.fn(),
+    redo: vi.fn(),
   }
 }
 
@@ -74,6 +95,10 @@ function createModel(
     selected: null,
     selectedIndex: -1,
     listItemRefs: { current: new Map() },
+    canUndo: false,
+    canRedo: false,
+    undoLabel: null,
+    redoLabel: null,
     ...patch,
   }
 }
@@ -110,5 +135,57 @@ describe('AnnotationSettingsPanel', () => {
     await user.click(screen.getByRole('option'))
 
     expect(actions.selectPlaced).toHaveBeenCalledWith(annotation)
+  })
+
+  it('edits anchored callout leader visibility from the style view', async () => {
+    const user = userEvent.setup()
+    const actions = createActions()
+    render(
+      <AnnotationSettingsPanel
+        model={createModel({
+          annotations: [callout],
+          panelView: 'placed',
+          placedView: 'detail',
+          editorView: 'style',
+          selectedId: callout.id,
+          selected: callout,
+          selectedIndex: 0,
+          editor: callout,
+        })}
+        actions={actions}
+      />,
+    )
+
+    await user.click(screen.getByRole('checkbox', { name: 'Leader line' }))
+
+    expect(actions.setSelectedLeaderVisible).toHaveBeenCalledWith(false)
+  })
+
+  it('locks, nudges, and resets callout position from one compact view', async () => {
+    const user = userEvent.setup()
+    const actions = createActions()
+    render(
+      <AnnotationSettingsPanel
+        model={createModel({
+          annotations: [callout],
+          panelView: 'placed',
+          placedView: 'detail',
+          editorView: 'position',
+          selectedId: callout.id,
+          selected: callout,
+          selectedIndex: 0,
+          editor: callout,
+        })}
+        actions={actions}
+      />,
+    )
+
+    await user.click(screen.getByRole('checkbox', { name: 'Lock position' }))
+    await user.click(screen.getByRole('button', { name: 'Move annotation right' }))
+    await user.click(screen.getByRole('button', { name: 'Reset position' }))
+
+    expect(actions.setSelectedLocked).toHaveBeenCalledWith(true)
+    expect(actions.nudgeSelected).toHaveBeenCalledWith(10, 0)
+    expect(actions.resetSelectedPosition).toHaveBeenCalledOnce()
   })
 })

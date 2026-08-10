@@ -2,7 +2,10 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { createDefaultFigureSettings } from '../src/core/defaults'
 import type { HydraulicEngine } from '../src/core/hydraulicEngine'
-import { mapPointToCanvas } from '../src/core/mapRenderer'
+import {
+  hitTestAnnotation,
+  mapPointToCanvas,
+} from '../src/core/mapRenderer'
 import type {
   Bounds,
   MapAnnotation,
@@ -208,5 +211,175 @@ describe('WSE map tools', () => {
     assert.equal(committed[0].label, 'move text annotation')
     assert.deepEqual(committed[0].before[0].points, [{ x: 50, y: 50 }])
     assert.notDeepEqual(committed[0].after[0].points, [{ x: 50, y: 50 }])
+  })
+
+  it('moves anchored callout labels and endpoints independently', () => {
+    const settings = createDefaultFigureSettings()
+    const bounds: Bounds = { x0: 0, y0: 0, x1: 100, y1: 100 }
+    let annotations: MapAnnotation[] = [
+      {
+        id: 'leader-1',
+        kind: 'leader',
+        points: [
+          { x: 20, y: 20 },
+          { x: 80, y: 80 },
+        ],
+        defaultPoints: [
+          { x: 20, y: 20 },
+          { x: 80, y: 80 },
+        ],
+        text: 'Review location',
+        color: '#111111',
+        fillColor: '#ffffff',
+        lineWidth: 2,
+        fontSize: 18,
+        rotation: 0,
+        dashed: false,
+        background: true,
+      },
+    ]
+    const committed: MapAnnotation[][] = []
+    const createTool = () =>
+      createAnnotationMapTool({
+        tool: 'select',
+        annotations,
+        annotationStart: null,
+        defaults: {
+          text: 'Note',
+          color: '#111111',
+          fillColor: '#ffffff',
+          lineWidth: 2,
+          fontSize: 18,
+          rotation: 0,
+          dashed: false,
+          background: true,
+          resultField: 'summary',
+        },
+        scene: {} as WseDifferenceScene,
+        engine: {} as HydraulicEngine,
+        bounds,
+        settings,
+        setAnnotations: (value) => {
+          annotations =
+            typeof value === 'function' ? value(annotations) : value
+        },
+        commitAnnotationChange: (_before, after) => {
+          committed.push(after)
+        },
+        setSelectedId: () => {},
+        setAnnotationStart: () => {},
+        showPlacedAnnotation: () => {},
+        setDragging: () => {},
+        createAnnotation: () => annotations[0],
+        appendNotices: () => {},
+      })
+
+    const labelStart = mapPointToCanvas(
+      annotations[0].points[1],
+      bounds,
+      settings,
+    )
+    const labelDrag = createTool().begin({
+      screenPoint: labelStart,
+      mapPoint: annotations[0].points[1],
+    })
+    const labelEnd = { x: labelStart.x - 30, y: labelStart.y + 20 }
+    labelDrag?.session?.finish?.({
+      screenPoint: labelEnd,
+      mapPoint: annotations[0].points[1],
+    })
+
+    assert.deepEqual(annotations[0].points[0], { x: 20, y: 20 })
+    assert.notDeepEqual(annotations[0].points[1], { x: 80, y: 80 })
+
+    const anchorBefore = { ...annotations[0].points[0] }
+    const anchorStart = mapPointToCanvas(anchorBefore, bounds, settings)
+    const anchorDrag = createTool().begin({
+      screenPoint: anchorStart,
+      mapPoint: anchorBefore,
+    })
+    const anchorEnd = { x: anchorStart.x + 25, y: anchorStart.y }
+    anchorDrag?.session?.finish?.({
+      screenPoint: anchorEnd,
+      mapPoint: anchorBefore,
+    })
+
+    assert.notDeepEqual(annotations[0].points[0], anchorBefore)
+    assert.equal(committed.length, 2)
+    assert.equal(labelDrag?.session?.id, 'figure-object:leader-1')
+    assert.equal(anchorDrag?.session?.id, 'figure-object:leader-1')
+  })
+
+  it('selects locked callouts without dragging and ignores hidden leaders', () => {
+    const settings = createDefaultFigureSettings()
+    const bounds: Bounds = { x0: 0, y0: 0, x1: 100, y1: 100 }
+    const annotation: MapAnnotation = {
+      id: 'leader-locked',
+      kind: 'leader',
+      points: [
+        { x: 20, y: 20 },
+        { x: 80, y: 80 },
+      ],
+      text: 'Locked',
+      color: '#111111',
+      fillColor: '#ffffff',
+      lineWidth: 2,
+      fontSize: 18,
+      rotation: 0,
+      dashed: false,
+      background: true,
+      locked: true,
+      leaderVisible: false,
+    }
+    const label = mapPointToCanvas(annotation.points[1], bounds, settings)
+    const selected: Array<string | null> = []
+    const tool = createAnnotationMapTool({
+      tool: 'select',
+      annotations: [annotation],
+      annotationStart: null,
+      defaults: {
+        text: 'Note',
+        color: '#111111',
+        fillColor: '#ffffff',
+        lineWidth: 2,
+        fontSize: 18,
+        rotation: 0,
+        dashed: false,
+        background: true,
+        resultField: 'summary',
+      },
+      scene: {} as WseDifferenceScene,
+      engine: {} as HydraulicEngine,
+      bounds,
+      settings,
+      setAnnotations: () => {},
+      commitAnnotationChange: () => {},
+      setSelectedId: (id) => selected.push(id),
+      setAnnotationStart: () => {},
+      showPlacedAnnotation: () => {},
+      setDragging: () => {},
+      createAnnotation: () => annotation,
+      appendNotices: () => {},
+    })
+
+    const started = tool.begin({
+      screenPoint: label,
+      mapPoint: annotation.points[1],
+    })
+    const segment = mapPointToCanvas({ x: 50, y: 50 }, bounds, settings)
+
+    assert.equal(started?.handled, true)
+    assert.equal(started?.session, undefined)
+    assert.equal(selected.at(-1), annotation.id)
+    assert.equal(
+      hitTestAnnotation(
+        [annotation],
+        bounds,
+        settings,
+        segment.x,
+        segment.y,
+      ),
+      null,
+    )
   })
 })

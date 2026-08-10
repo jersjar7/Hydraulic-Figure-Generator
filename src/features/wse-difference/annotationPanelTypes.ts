@@ -83,6 +83,9 @@ export type AnnotationPanelActions = {
     view: AnnotationEditorView,
   ) => void
   nudgeSelected: (dx: number, dy: number) => void
+  setSelectedLocked: (locked: boolean) => void
+  setSelectedLeaderVisible: (visible: boolean) => void
+  resetSelectedPosition: () => void
   duplicateSelected: () => void
   deleteSelected: () => void
   undo: () => void

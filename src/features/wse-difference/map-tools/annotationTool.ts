@@ -19,6 +19,10 @@ import type {
   WseDifferenceScene,
 } from '../../../core/types'
 import { mapAnnotationFigureObjectAdapter } from '../../annotations/mapAnnotationFigureObject'
+import {
+  isAnchoredMapCallout,
+  mapAnnotationDragTarget,
+} from '../../annotations/mapAnnotationManipulation'
 import { updateAdaptedFigureObject } from '../../figure-objects/figureObjectAdapter'
 import {
   beginFigureObjectDrag,
@@ -104,7 +108,11 @@ export function createAnnotationMapTool({
           return { handled: true }
         }
 
-        if (annotation.kind === 'text') {
+        if (
+          annotation.kind === 'text' ||
+          isAnchoredMapCallout(annotation)
+        ) {
+          if (annotation.locked) return { handled: true }
           const context = createMapFigureObjectContext(bounds, settings)
           const originalAnnotations = annotations
           const objectIndex = annotations.findIndex(
@@ -115,18 +123,12 @@ export function createAnnotationMapTool({
               annotation,
               objectIndex,
             ),
-            { type: 'body' },
+            mapAnnotationDragTarget(annotation, hit.part),
             screenPoint,
           )
           let preview = originalAnnotations
           let moved = false
           const update = (point: { x: number; y: number }) => {
-            moved =
-              moved ||
-              Math.hypot(
-                point.x - drag.start.x,
-                point.y - drag.start.y,
-              ) > 0.5
             const nextObject = updateFigureObjectDrag(
               drag,
               point,
@@ -139,6 +141,16 @@ export function createAnnotationMapTool({
               annotation.id,
               mapAnnotationFigureObjectAdapter,
               () => nextObject,
+            )
+            const updated = preview.find(
+              (item) => item.id === annotation.id,
+            )
+            moved = Boolean(
+              updated?.points.some(
+                (item, index) =>
+                  item.x !== annotation.points[index]?.x ||
+                  item.y !== annotation.points[index]?.y,
+              ),
             )
             setAnnotations(preview)
           }
@@ -153,10 +165,22 @@ export function createAnnotationMapTool({
               finish: ({ screenPoint: point }) => {
                 update(point)
                 if (moved) {
+                  const finalized = preview.map((item) =>
+                    item.id === annotation.id
+                      ? updateDraggedResultAnnotation(
+                          item,
+                          hit.part,
+                          scene,
+                          engine,
+                          settings,
+                        )
+                      : item,
+                  )
+                  setAnnotations(finalized)
                   commitAnnotationChange(
                     originalAnnotations,
-                    preview,
-                    'move text annotation',
+                    finalized,
+                    `move ${annotation.kind} annotation`,
                   )
                 } else {
                   setAnnotations(originalAnnotations)

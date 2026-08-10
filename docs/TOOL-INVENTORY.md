@@ -113,10 +113,10 @@ though reusable collection and capability helpers exist under
 | --- | --- | --- | --- | --- | --- |
 | Select | Full | No | No | No | Selects and opens the placed-item editor. |
 | Text | Full | No | No | No | Editable text, color, fill, size, rotation, background, duplicate/delete, keyboard nudge, and canvas drag. WSE text movement now uses the shared figure-object kernel and undoable drag commit. |
-| Leader callout | Full | No | No | No | Text box and leader endpoints can be repositioned by dragging. |
+| Leader callout | Full | No | No | No | Kernel-backed independent label/anchor dragging, optional leader, position lock/reset, duplicate/delete, keyboard nudge, and undoable drag commit. |
 | Arrow | Full | No | No | No | Draggable line/endpoints with color, width, and dash controls. |
 | Straight line | Full | No | No | No | Draggable line/endpoints with color, width, and dash controls. |
-| Automatic result label | Full | No | No | No | Samples selected hydraulic fields and refreshes text when moved. |
+| Automatic result label | Full | No | No | No | Kernel-backed callout that samples hydraulic fields, refreshes when its anchor moves, and supports optional leader, lock/reset, duplicate/delete, and undoable manipulation. |
 | Max/min WSE callouts | Full | No | No | No | Creates editable maximum-rise and maximum-reduction result callouts. |
 | Undo/redo | Full | No | No | No | Bounded command history is implemented around WSE annotations. |
 
