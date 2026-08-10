@@ -73,6 +73,20 @@ describe('Plan-View Hydraulic Results production baseline', () => {
       settings: createDefaultPlanViewResultSettings(),
       overlays: [],
       centerlineStationing: [centerlineStationing],
+      annotations: [{
+        id: 'note-1',
+        kind: 'text',
+        points: [{ x: 50, y: 50 }],
+        text: 'Review bridge',
+        color: '#111111',
+        fillColor: '#ffffff',
+        lineWidth: 2,
+        fontSize: 18,
+        rotation: 0,
+        dashed: false,
+        background: true,
+      }],
+      selectedAnnotationId: 'note-1',
     })
     const published = createPlanViewResultRenderDocument({
       engine,
@@ -80,6 +94,8 @@ describe('Plan-View Hydraulic Results production baseline', () => {
       settings: createDefaultPlanViewResultSettings(),
       overlays: [],
       centerlineStationing: [centerlineStationing],
+      annotations: editor.layers.annotations,
+      selectedAnnotationId: 'note-1',
       mode: 'published',
     })
 
@@ -89,6 +105,9 @@ describe('Plan-View Hydraulic Results production baseline', () => {
       'station-40',
     )
     assert.equal(published.layers.centerlineStationing[0]?.selectedLabelId, null)
+    assert.equal(editor.selection.selectedAnnotationId, 'note-1')
+    assert.equal(published.selection.selectedAnnotationId, null)
+    assert.equal(published.layers.annotations[0]?.text, 'Review bridge')
   })
 
   it('keeps scalar result and contour defaults explicit', () => {

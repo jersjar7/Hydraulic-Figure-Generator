@@ -118,6 +118,7 @@ export function drawAnnotations(
   view: View,
 ) {
   for (const annotation of annotations) {
+    if (annotation.visible === false) continue
     const points = annotation.points.map((point) =>
       annotationScreenPoint(point, view),
     )
@@ -328,6 +329,7 @@ export function hitTestAnnotation(
 
   for (let index = annotations.length - 1; index >= 0; index -= 1) {
     const annotation = annotations[index]
+    if (annotation.visible === false) continue
     const points = annotation.points.map((point) =>
       annotationScreenPoint(point, view),
     )

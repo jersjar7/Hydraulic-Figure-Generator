@@ -33,6 +33,7 @@ export type MapAnnotation = {
   rotation: number
   dashed: boolean
   background: boolean
+  visible?: boolean
   locked?: boolean
   leaderVisible?: boolean
   defaultPoints?: MapCoordinate[]

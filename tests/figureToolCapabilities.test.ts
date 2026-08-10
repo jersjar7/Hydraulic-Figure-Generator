@@ -67,6 +67,7 @@ describe('figure tool capability registry', () => {
             'frame-view',
             'figure-elements',
             'centerline-stationing',
+            'annotations',
             'single-figure-export',
             'batch-figure-generation',
             'figure-document-export',

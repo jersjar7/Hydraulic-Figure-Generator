@@ -152,17 +152,19 @@ infrastructure directly.
   adapter, keyboard, and command composition. Workspace adapters project their
   persisted objects into this shape and write edits back; the kernel never owns
   a cross-workspace document or global object positions.
-- WSE text, leader, and automatic-result annotations use the kernel. Callout
-  labels and anchors have separate drag targets, hydraulic extrema expose a
-  fixed anchor, and each completed drag enters the bounded undo/redo history as
-  one command. Feature-specific duplicate, nudge, remove, and reset decisions
-  live in `wseAnnotationSelectionOperations.ts`, outside the React controller.
+- `features/annotations/` owns the shared Select, Text, Leader Callout, Arrow,
+  and Line registry, editor controller and panels, pointer tool, collection
+  operations, history commands, and render contract used by WSE Difference and
+  Plan-View. Callout labels and anchors have separate drag targets; visibility,
+  locking, layer order, duplicate/delete/reset, and undo/redo behave identically
+  in both workspaces. WSE automatic-result and extrema tools remain adapters on
+  top of the shared manual suite rather than hydraulic conditions in its core.
 - Centerline station labels use the same kernel through a stationing-owned
   adapter and pointer tool. Their hydraulic station remains a fixed map anchor,
   while an engineer-moved label is persisted as a normalized frame position
   with an optional edge-attached leader. WSE Difference and Plan-View bind the
   same interaction tool, so neither workspace owns station-label drag rules.
-- WSE project schema version 16 and Plan-View schema version 7 persist the
+- WSE project schema version 16 and Plan-View schema version 8 persist the
   frame-positioned label and leader contract. Legacy map-positioned labels are
   read unchanged and migrate to centerline-scoped IDs and frame coordinates
   the next time the engineer edits them.

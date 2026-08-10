@@ -71,6 +71,7 @@ export function annotation(
     rotation: finite,
     dashed: bool,
     background: bool,
+    visible: bool,
     locked: bool,
     leaderVisible: bool,
     resultField: oneOf([

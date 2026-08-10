@@ -1,7 +1,7 @@
 import { Layers3 } from 'lucide-react'
 import type { RefObject } from 'react'
 import type { PointerEventHandler } from 'react'
-import type { PlanViewResultScene } from '../../core/types'
+import type { AnnotationTool, PlanViewResultScene } from '../../core/types'
 
 type Props = {
   scene: PlanViewResultScene | null
@@ -9,6 +9,7 @@ type Props = {
   canvasFrameRef: RefObject<HTMLDivElement | null>
   displaySize: { width: number; height: number }
   stationLabelDragging: boolean
+  annotationTool: AnnotationTool
   onPointerDown: PointerEventHandler<HTMLCanvasElement>
   onPointerMove: PointerEventHandler<HTMLCanvasElement>
   onPointerUp: PointerEventHandler<HTMLCanvasElement>
@@ -21,6 +22,7 @@ export function PlanViewResultCanvas({
   canvasFrameRef,
   displaySize,
   stationLabelDragging,
+  annotationTool,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -44,6 +46,7 @@ export function PlanViewResultCanvas({
           className={scene ? 'map-canvas is-visible' : 'map-canvas'}
           aria-label="Generated plan-view hydraulic result figure"
           data-station-label-enabled={scene ? 'true' : undefined}
+          data-annotation-tool={scene ? annotationTool : undefined}
           data-station-label-dragging={
             stationLabelDragging ? 'true' : undefined
           }

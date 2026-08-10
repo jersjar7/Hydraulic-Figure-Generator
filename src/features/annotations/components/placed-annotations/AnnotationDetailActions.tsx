@@ -1,5 +1,5 @@
 import { Copy, Trash2 } from 'lucide-react'
-import type { AnnotationPanelActions } from '../../annotationPanelTypes'
+import type { AnnotationPanelActions } from '../../annotationEditorTypes'
 
 export function AnnotationDetailActions({
   actions,

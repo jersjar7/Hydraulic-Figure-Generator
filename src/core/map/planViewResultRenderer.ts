@@ -5,10 +5,15 @@ import type {
   FigureRenderDocument,
   MapElementBounds,
   MapOverlay,
+  MapAnnotation,
   PlanViewResultScene,
   PlanViewResultSettings,
 } from '../types'
 import { drawBasemap } from './basemapLayer'
+import {
+  drawAnnotations,
+  drawAnnotationSelection,
+} from './annotationLayer'
 import {
   drawContourLevels,
   drawMeshElements,
@@ -35,8 +40,9 @@ export type PlanViewResultRenderDocument = FigureRenderDocument<
   {
     overlays: MapOverlay[]
     centerlineStationing: CenterlineStationLayer[]
+    annotations: MapAnnotation[]
   },
-  Record<string, never>
+  { selectedAnnotationId: string | null }
 >
 
 export function resolvePlanViewTitle(
@@ -142,6 +148,15 @@ export async function renderPlanViewResultDocument(
 
   for (const layer of document.layers.centerlineStationing ?? []) {
     drawCenterlineStationing(context, layer, view, settings, frame)
+  }
+  const annotations = document.layers.annotations ?? []
+  drawAnnotations(context, annotations, view)
+  const selectedAnnotation = annotations.find(
+    (annotation) =>
+      annotation.id === document.selection?.selectedAnnotationId,
+  )
+  if (selectedAnnotation) {
+    drawAnnotationSelection(context, selectedAnnotation, view)
   }
 
   if (settings.showTitle) {

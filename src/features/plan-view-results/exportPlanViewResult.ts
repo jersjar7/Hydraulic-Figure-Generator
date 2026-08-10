@@ -2,6 +2,7 @@ import type { HydraulicEngine } from '../../core/hydraulicEngine'
 import type {
   IngestNotice,
   CenterlineStationLayer,
+  MapAnnotation,
   MapOverlay,
   PlanViewResultScene,
   PlanViewResultSettings,
@@ -15,6 +16,7 @@ type Options = {
   settings: PlanViewResultSettings
   overlays: MapOverlay[]
   centerlineStationing?: CenterlineStationLayer[]
+  annotations?: MapAnnotation[]
   appendNotices(notices: IngestNotice[]): void
 }
 
@@ -24,6 +26,7 @@ export async function exportPlanViewResult({
   settings,
   overlays,
   centerlineStationing,
+  annotations,
   appendNotices,
 }: Options) {
   try {
@@ -36,6 +39,7 @@ export async function exportPlanViewResult({
         settings,
         overlays,
         centerlineStationing,
+        annotations,
         mode: 'published',
       }),
     })

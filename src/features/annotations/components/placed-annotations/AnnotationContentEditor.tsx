@@ -2,8 +2,8 @@ import type { ResultLabelField } from '../../../../core/types'
 import type {
   AnnotationPanelActions,
   AnnotationPanelModel,
-} from '../../annotationPanelTypes'
-import { annotationCapabilities } from '../../../annotations/annotationCapabilities'
+} from '../../annotationEditorTypes'
+import { annotationCapabilities } from '../../annotationCapabilities'
 
 type Props = {
   model: AnnotationPanelModel

@@ -1,4 +1,9 @@
 import type { WseDifferenceSettingsSectionKey } from './wseDifferenceDefinition'
+export type {
+  AnnotationEditorView,
+  AnnotationPanelView,
+  AnnotationPlacedView,
+} from '../annotations/annotationEditorTypes'
 
 export const FRAME_ASPECTS = {
   landscape: 1650 / 1275,
@@ -6,6 +11,3 @@ export const FRAME_ASPECTS = {
 } as const
 
 export type SettingsSectionKey = WseDifferenceSettingsSectionKey
-export type AnnotationPanelView = 'create' | 'placed'
-export type AnnotationPlacedView = 'list' | 'detail'
-export type AnnotationEditorView = 'content' | 'style' | 'position'

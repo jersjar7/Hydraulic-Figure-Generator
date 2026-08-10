@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import type { MapAnnotation } from '../src/core/types'
+import { createDefaultFigureSettings } from '../src/core/defaults'
+import { hitTestAnnotation, mapPointToCanvas } from '../src/core/mapRenderer'
 import { annotationCapabilities } from '../src/features/annotations/annotationCapabilities'
+import { reorderSelectedAnnotation } from '../src/features/annotations/annotationEditorOperations'
 import {
   removeAnnotation,
   translateAnnotation,
@@ -65,5 +68,26 @@ describe('reusable annotation capabilities', () => {
       { x: 10, y: 20 },
       { x: 35, y: 35 },
     ])
+  })
+
+  it('reorders annotations without mutating the original collection', () => {
+    const annotations = [annotation('back'), annotation('middle'), annotation('front')]
+    const reordered = reorderSelectedAnnotation(annotations, 'middle', 1)
+
+    assert.deepEqual(annotations.map((item) => item.id), ['back', 'middle', 'front'])
+    assert.deepEqual(reordered.map((item) => item.id), ['back', 'front', 'middle'])
+    assert.equal(reorderSelectedAnnotation(reordered, 'middle', 1), reordered)
+  })
+
+  it('does not hit-test a hidden annotation', () => {
+    const bounds = { x0: 0, y0: 0, x1: 100, y1: 100 }
+    const settings = createDefaultFigureSettings()
+    const hidden = { ...annotation('hidden'), visible: false }
+    const point = mapPointToCanvas(hidden.points[0], bounds, settings)
+
+    assert.equal(
+      hitTestAnnotation([hidden], bounds, settings, point.x, point.y),
+      null,
+    )
   })
 })

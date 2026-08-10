@@ -45,6 +45,7 @@ describe('figure module registry', () => {
       hydraulicProfileFigure,
     )
     assert.equal(planViewResultFigure.editor.centerlineStationing, true)
+    assert.equal(planViewResultFigure.editor.annotations, true)
     assert.deepEqual(
       planViewResultFigure.editor.supportedTools.map((tool) => tool.id),
       [
@@ -53,6 +54,7 @@ describe('figure module registry', () => {
         'frame-view',
         'figure-elements',
         'centerline-stationing',
+        'annotations',
         'single-figure-export',
         'batch-figure-generation',
         'figure-document-export',
@@ -62,7 +64,15 @@ describe('figure module registry', () => {
       planViewResultFigure.editor.settingsSections.map(
         (section) => section.key,
       ),
-      ['result', 'legend', 'frame', 'elements', 'stationing', 'export'],
+      [
+        'result',
+        'legend',
+        'frame',
+        'elements',
+        'stationing',
+        'annotations',
+        'export',
+      ],
     )
     assert.equal(figureModuleById('not-registered'), null)
   })

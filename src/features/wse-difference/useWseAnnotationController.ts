@@ -44,6 +44,9 @@ import {
 } from '../annotations/annotationCollection'
 import { useEditorCommandHistory } from '../editor-history/useEditorCommandHistory'
 import {
+  reorderSelectedAnnotation,
+} from '../annotations/annotationEditorOperations'
+import {
   isAnchoredMapCallout,
   resetMapAnnotationPositionCommand,
   setMapAnnotationLockedCommand,
@@ -56,6 +59,7 @@ import {
   nudgeSelectedWseAnnotationCommand,
   removeSelectedWseAnnotation,
 } from './wseAnnotationSelectionOperations'
+import { WSE_ANNOTATION_TOOLS } from './annotationTools'
 
 type StateSetter<Value> = Dispatch<SetStateAction<Value>>
 
@@ -407,6 +411,26 @@ export function useWseAnnotationController({
     )
   }
 
+  const setSelectedVisible = (visible: boolean) => {
+    if (!selected) return
+    executeAnnotationCommand({
+      label: visible ? 'show annotation' : 'hide annotation',
+      apply: (current) => current.map((annotation) =>
+        annotation.id === selected.id
+          ? { ...annotation, visible }
+          : annotation,
+      ),
+    })
+  }
+
+  const reorderSelected = (direction: -1 | 1) => {
+    if (!selected) return
+    executeAnnotationCommand({
+      label: direction > 0 ? 'bring annotation forward' : 'send annotation backward',
+      apply: (current) => reorderSelectedAnnotation(current, selected.id, direction),
+    })
+  }
+
   const setSelectedLeaderVisible = (visible: boolean) => {
     if (!selected || !isAnchoredMapCallout(selected)) return
     executeAnnotationCommand(
@@ -481,6 +505,7 @@ export function useWseAnnotationController({
     placedView,
     editorView,
     tool,
+    tools: WSE_ANNOTATION_TOOLS,
     drawing,
     sceneReady: Boolean(scene),
     extrema,
@@ -515,10 +540,13 @@ export function useWseAnnotationController({
     setEditorView,
     handleEditorTabKeyDown: navigation.handleEditorTabKeyDown,
     nudgeSelected,
+    setSelectedVisible,
     setSelectedLocked,
     setSelectedLeaderVisible,
     resetSelectedPosition,
     duplicateSelected,
+    sendSelectedBackward: () => reorderSelected(-1),
+    bringSelectedForward: () => reorderSelected(1),
     deleteSelected,
     undo,
     redo,

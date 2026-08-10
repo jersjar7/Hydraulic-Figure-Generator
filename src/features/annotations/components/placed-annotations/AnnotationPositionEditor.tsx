@@ -3,15 +3,17 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  BringToFront,
   RotateCcw,
+  SendToBack,
 } from 'lucide-react'
 import type {
   AnnotationPanelActions,
   AnnotationPanelModel,
-} from '../../annotationPanelTypes'
-import { annotationCapabilities } from '../../../annotations/annotationCapabilities'
-import { NudgeButton } from '../NudgeButton'
-import { Toggle } from '../Toggle'
+} from '../../annotationEditorTypes'
+import { annotationCapabilities } from '../../annotationCapabilities'
+import { AnnotationNudgeButton } from '../AnnotationNudgeButton'
+import { AnnotationToggle } from '../AnnotationToggle'
 
 type Props = {
   model: AnnotationPanelModel
@@ -31,8 +33,13 @@ export function AnnotationPositionEditor({ model, actions }: Props) {
       role="tabpanel"
       aria-labelledby="annotation-editor-tab-position"
     >
+      <AnnotationToggle
+        label="Visible"
+        checked={model.selected.visible !== false}
+        onChange={actions.setSelectedVisible}
+      />
       {capabilities.positionLock ? (
-        <Toggle
+        <AnnotationToggle
           label="Lock position"
           checked={model.selected.locked ?? false}
           onChange={actions.setSelectedLocked}
@@ -41,31 +48,51 @@ export function AnnotationPositionEditor({ model, actions }: Props) {
       <div className="nudge-control">
         <span>Move selected</span>
         <div className="nudge-buttons">
-          <NudgeButton
+          <AnnotationNudgeButton
             label="Move annotation left"
             icon={<ArrowLeft size={14} />}
             disabled={model.selected.locked}
             onClick={() => actions.nudgeSelected(-10, 0)}
           />
-          <NudgeButton
+          <AnnotationNudgeButton
             label="Move annotation up"
             icon={<ArrowUp size={14} />}
             disabled={model.selected.locked}
             onClick={() => actions.nudgeSelected(0, -10)}
           />
-          <NudgeButton
+          <AnnotationNudgeButton
             label="Move annotation down"
             icon={<ArrowDown size={14} />}
             disabled={model.selected.locked}
             onClick={() => actions.nudgeSelected(0, 10)}
           />
-          <NudgeButton
+          <AnnotationNudgeButton
             label="Move annotation right"
             icon={<ArrowRight size={14} />}
             disabled={model.selected.locked}
             onClick={() => actions.nudgeSelected(10, 0)}
           />
         </div>
+      </div>
+      <div className="annotation-detail-actions">
+        <button
+          className="button secondary compact"
+          type="button"
+          disabled={model.selectedIndex <= 0}
+          onClick={actions.sendSelectedBackward}
+        >
+          <SendToBack size={14} aria-hidden="true" />
+          Send backward
+        </button>
+        <button
+          className="button secondary compact"
+          type="button"
+          disabled={model.selectedIndex >= model.annotations.length - 1}
+          onClick={actions.bringSelectedForward}
+        >
+          <BringToFront size={14} aria-hidden="true" />
+          Bring forward
+        </button>
       </div>
       {canReset ? (
         <button

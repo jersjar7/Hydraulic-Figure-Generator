@@ -1,9 +1,9 @@
 import type {
   AnnotationPanelActions,
   AnnotationPanelModel,
-} from '../../annotationPanelTypes'
-import { annotationCapabilities } from '../../../annotations/annotationCapabilities'
-import { Toggle } from '../Toggle'
+} from '../../annotationEditorTypes'
+import { annotationCapabilities } from '../../annotationCapabilities'
+import { AnnotationToggle } from '../AnnotationToggle'
 
 type Props = {
   model: AnnotationPanelModel
@@ -127,7 +127,7 @@ export function AnnotationStyleEditor({ model, actions }: Props) {
           </div>
         </label>
       ) : null}
-      <Toggle
+      <AnnotationToggle
         label="Dashed line"
         checked={model.editor.dashed}
         onChange={(checked) =>
@@ -135,14 +135,14 @@ export function AnnotationStyleEditor({ model, actions }: Props) {
         }
       />
       {capabilities.leaderLine ? (
-        <Toggle
+        <AnnotationToggle
           label="Leader line"
           checked={model.selected.leaderVisible !== false}
           onChange={actions.setSelectedLeaderVisible}
         />
       ) : null}
       {capabilities.typography ? (
-        <Toggle
+        <AnnotationToggle
           label="Text background"
           checked={model.editor.background}
           onChange={(checked) =>

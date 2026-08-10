@@ -1,6 +1,7 @@
 import type { HydraulicEngine } from '../../core/hydraulicEngine'
 import type {
   CenterlineStationLayer,
+  MapAnnotation,
   MapOverlay,
   PlanViewResultScene,
   PlanViewResultSettings,
@@ -15,6 +16,8 @@ type Options = {
   settings: PlanViewResultSettings
   overlays: MapOverlay[]
   centerlineStationing?: CenterlineStationLayer[]
+  annotations?: MapAnnotation[]
+  selectedAnnotationId?: string | null
   mode?: RenderMode
 }
 
@@ -24,6 +27,8 @@ export function createPlanViewResultRenderDocument({
   settings,
   overlays,
   centerlineStationing,
+  annotations = [],
+  selectedAnnotationId = null,
   mode = 'editor',
 }: Options): PlanViewResultRenderDocument {
   return {
@@ -41,7 +46,10 @@ export function createPlanViewResultRenderDocument({
             ? null
             : layer.selectedLabelId,
       })),
+      annotations,
     },
-    selection: {},
+    selection: {
+      selectedAnnotationId: mode === 'published' ? null : selectedAnnotationId,
+    },
   }
 }

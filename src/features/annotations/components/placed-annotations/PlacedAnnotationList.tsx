@@ -6,8 +6,8 @@ import {
 import type {
   AnnotationPanelActions,
   AnnotationPanelModel,
-} from '../../annotationPanelTypes'
-import { annotationDisplayName } from '../../workspaceInteractions'
+} from '../../annotationEditorTypes'
+import { annotationDisplayName } from '../../annotationEditorOperations'
 
 type Props = {
   model: AnnotationPanelModel

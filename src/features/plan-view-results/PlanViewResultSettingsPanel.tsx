@@ -14,6 +14,8 @@ import type {
 } from '../../core/types'
 import type { useMapElementController } from '../figures/useMapElementController'
 import { CenterlineStationingToolPanel } from '../stationing/CenterlineStationingToolPanel'
+import { AnnotationSettingsPanel } from '../annotations/components/AnnotationSettingsPanel'
+import type { usePlanViewAnnotations } from './usePlanViewAnnotations'
 import { FrameSettingsPanel } from '../wse-difference/components/FrameSettingsPanel'
 import { Toggle } from '../wse-difference/components/Toggle'
 import type { FigureSettingsChange } from '../wse-difference/settingsPanelTypes'
@@ -26,6 +28,7 @@ type Props = {
   activeElement: FigureElementPanelKey
   elements: ReturnType<typeof useMapElementController<PlanViewResultSettings>>
   stationing: ComponentProps<typeof CenterlineStationingToolPanel>
+  annotations: ReturnType<typeof usePlanViewAnnotations>['controller']
   canDownload: boolean
   exportActions: ReactNode
   onSettingsChange<Key extends keyof PlanViewResultSettings>(
@@ -221,6 +224,7 @@ export function PlanViewResultSettingsPanel(props: Props) {
     activeElement,
     elements,
     stationing,
+    annotations,
     canDownload,
     exportActions,
     onSettingsChange,
@@ -309,6 +313,9 @@ export function PlanViewResultSettingsPanel(props: Props) {
   }
   if (section === 'stationing') {
     return <CenterlineStationingToolPanel {...stationing} />
+  }
+  if (section === 'annotations') {
+    return <AnnotationSettingsPanel {...annotations} />
   }
   return (
     <ControlSection>

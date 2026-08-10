@@ -96,6 +96,16 @@ export const planViewResultFigure = {
         },
       },
       {
+        id: 'annotations',
+        bindings: {
+          settingsSection: 'annotations',
+          state: 'workspace-state',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'canvas',
+        },
+      },
+      {
         id: 'single-figure-export',
         bindings: {
           settingsSection: 'export',

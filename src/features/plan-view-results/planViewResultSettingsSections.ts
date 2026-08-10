@@ -3,6 +3,7 @@ import {
   ImageDown,
   Layers3,
   MapPin,
+  MessageSquareText,
   Milestone,
   Palette,
 } from 'lucide-react'
@@ -14,6 +15,7 @@ const ICONS = {
   frame: Frame,
   elements: MapPin,
   stationing: Milestone,
+  annotations: MessageSquareText,
   export: ImageDown,
 } as const
 

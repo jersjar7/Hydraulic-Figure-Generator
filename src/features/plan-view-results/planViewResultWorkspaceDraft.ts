@@ -1,4 +1,5 @@
 import { createDefaultFigureDocumentSettings } from '../../core/types'
+import { createDefaultAnnotationSettings } from '../../core/defaults'
 import { PLAN_VIEW_RESULTS_FIGURE_ID } from '../../core/figureIds'
 import { defineWorkspaceDraftModule } from '../figures/workspaceDraftModule'
 import { createHydraulicProjectDocument } from '../project-document/hydraulicProjectDocument'
@@ -22,6 +23,8 @@ export const planViewResultWorkspaceDraft = defineWorkspaceDraftModule({
     figureSet: createPlanViewFigureSetDocument(),
     figureDocument: createDefaultFigureDocumentSettings(),
     stationingSource: { centerlines: [] },
+    annotations: [],
+    annotationDefaults: createDefaultAnnotationSettings(),
   }),
   serializeDraft: serializePlanViewResultProject,
   parseDraft: parsePlanViewResultProject,

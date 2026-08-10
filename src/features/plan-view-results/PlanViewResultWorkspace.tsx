@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ChangeEvent } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import '../../App.css'
 import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspaceScaffold'
 import { HydraulicProjectPanel } from '../../components/project-data/HydraulicProjectPanel'
@@ -19,7 +19,6 @@ import { useFittedCanvasAspect } from '../figures/useFittedCanvasAspect'
 import { useMapElementController } from '../figures/useMapElementController'
 import { createHydraulicProjectInputActions } from '../project-workspace/hydraulicProjectInputActions'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
-import { useWorkspaceDraftRetention } from '../project-workspace/useWorkspaceDraftRetention'
 import { exportPlanViewResult } from './exportPlanViewResult'
 import type { PlanViewResultSettingsSectionKey } from './planViewResultDefinition'
 import { planViewResultFigure } from './planViewResultFigure'
@@ -36,18 +35,18 @@ import {
   type PlanViewFigureDocumentSettingsSectionKey,
 } from './planViewFigureDocumentDefinition'
 import { PLAN_VIEW_RESULT_WORKSPACE_SETTINGS } from './planViewResultSettingsSections'
-import { usePlanViewResultProjectFiles } from './usePlanViewResultProjectFiles'
 import { usePlanViewResultRendering } from './usePlanViewResultRendering'
 import { usePlanViewFigureSet } from './usePlanViewFigureSet'
 import { usePlanViewFigureDocument } from './usePlanViewFigureDocument'
 import { PlanViewWorkspaceFooter } from './PlanViewWorkspaceFooter'
 import { PlanViewWorkspaceMap } from './PlanViewWorkspaceMap'
 import { usePlanViewStationing } from './usePlanViewStationing'
-import { planViewResultWorkspaceDraft } from './planViewResultWorkspaceDraft'
 import { useCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 import { ReportFigureExportActions } from '../project-workspace/ReportFigureExportActions'
-import { usePlanViewStationLabelInteractions } from './usePlanViewStationLabelInteractions'
 import { usePlanViewResultSelection } from './usePlanViewResultSelection'
+import { usePlanViewAnnotations } from './usePlanViewAnnotations'
+import { usePlanViewMapInteractions } from './usePlanViewMapInteractions'
+import { usePlanViewWorkspacePersistence } from './usePlanViewWorkspacePersistence'
 
 const SCENARIO_ROLES: readonly ScenarioRoleOption[] = [
   { role: 'baseline', label: 'Scenario', required: true },
@@ -61,7 +60,7 @@ type WorkspaceSettingsSectionKey =
 export function PlanViewResultWorkspace() {
   const { projectSession, projectDocument } = useHydraulicProjectWorkspace()
   const { engine, scenarios, baselineId, runByScenario } = projectSession
-  const { overlays, setOverlays, loadDocument, resetDocument } = projectDocument
+  const { overlays, setOverlays, resetDocument } = projectDocument
   const runIndex = runByScenario[baselineId] ?? 0
   const [settings, setSettings] = useState(createDefaultPlanViewResultSettings)
   const [scene, setScene] = useState<PlanViewResultScene | null>(null)
@@ -109,15 +108,28 @@ export function PlanViewResultWorkspace() {
     setSettings,
     sourceController: stationingSource,
   })
-  const stationLabelInteractions = usePlanViewStationLabelInteractions({
-    enabled: Boolean(scene && productionMode === 'figure'),
-    bounds: engine.commonBounds([baselineId]),
+  const mapBounds = engine.commonBounds([baselineId])
+  const annotations = usePlanViewAnnotations({
+    bounds: mapBounds,
     settings,
-    layers: stationing.layers,
+    sceneReady: Boolean(scene),
+    keyboardEnabled:
+      productionMode === 'figure' && activeSection === 'annotations',
+  })
+  const mapInteractions = usePlanViewMapInteractions({
+    enabled: Boolean(scene && productionMode === 'figure'),
+    bounds: mapBounds,
+    settings,
+    annotations,
+    stationLayers: stationing.layers,
     setActiveCenterline: stationingSource.setActiveCenterline,
-    selectLabel: stationing.panelProps.onSelectLabel,
-    updateOverride: stationing.controller.updateLabelOverride,
-    openStationingPanel: () => {
+    selectStationLabel: stationing.panelProps.onSelectLabel,
+    updateStationOverride: stationing.controller.updateLabelOverride,
+    openAnnotations: () => {
+      setActiveSection('annotations')
+      setRightOpen(true)
+    },
+    openStationing: () => {
       setActiveSection('stationing')
       setRightOpen(true)
     },
@@ -199,9 +211,11 @@ export function PlanViewResultWorkspace() {
     settings,
     overlays,
     centerlineStationing: stationing.layers,
+    annotations: annotations.annotations,
+    selectedAnnotationId: annotations.selectedId,
     setBusy,
     appendNotices,
-    interacting: stationLabelInteractions.dragging,
+    interacting: mapInteractions.dragging,
   })
 
   const updateSettings = <Key extends keyof PlanViewResultSettings>(
@@ -238,61 +252,20 @@ export function PlanViewResultWorkspace() {
     setEditingFigureSetItemId(null)
   }
 
-  const snapshot = {
-    settings,
-    scenarioSelection: {
-      baselineId: projectSession.baselineId,
-      comparisonId: projectSession.comparisonId,
-      assessmentId: projectSession.assessmentId,
-      runByScenario: projectSession.runByScenario,
-      labels: Object.fromEntries(
-        scenarios.map((scenario) => [scenario.key, scenario.label]),
-      ),
-    },
-    project: projectDocument.document,
-    figureSet: figureSet.figureSet,
-    figureDocument: figureDocument.settings,
-    stationingSource: {
-      ...stationingSource.state,
-    },
-  }
-  const hydrateDraft = (
-    loaded: ReturnType<typeof planViewResultWorkspaceDraft.parseDraft>,
-  ) => {
-    setSettings(loaded.settings)
-    loadDocument(loaded.project)
-    projectSession.loadSelection(loaded.scenarioSelection)
-    figureSet.load(loaded.figureSet ?? figureSet.figureSet)
-    figureDocument.load(loaded.figureDocument)
-    stationingSource.load(loaded.stationingSource ?? {})
-    stationing.clearSelection()
-    setScene(null)
-  }
-  const draftRetention = useWorkspaceDraftRetention({
-    module: planViewResultWorkspaceDraft,
-    snapshot,
-    hydrate: hydrateDraft,
-  })
-  const projectFiles = usePlanViewResultProjectFiles({ snapshot, appendNotices })
-  const loadProject = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0]
-    event.currentTarget.value = ''
-    if (!file) return
-    const loaded = await projectFiles.loadProjectFile(file)
-    if (!loaded) return
-    hydrateDraft(loaded)
-    appendNotices([{
-      level: 'success',
-      text: 'Plan-view project loaded. Re-add the referenced local H5 files.',
-    }])
-  }
+  const { draftRetention, projectFiles, loadProject } =
+    usePlanViewWorkspacePersistence({
+      settings, setSettings, scenarios, projectSession, projectDocument,
+      figureSet, figureDocument, stationingSource, stationing, annotations,
+      setScene, appendNotices,
+    })
 
   const resetProject = () => {
-    stationLabelInteractions.resetInteractions()
+    mapInteractions.resetInteractions()
     projectSession.reset()
     resetDocument()
     stationingSource.reset()
     stationing.clearSelection()
+    annotations.reset()
     setSettings(createDefaultPlanViewResultSettings())
     figureSet.reset()
     figureDocument.reset()
@@ -331,6 +304,7 @@ export function PlanViewResultWorkspace() {
       settings,
       overlays,
       centerlineStationing: stationing.layers,
+      annotations: annotations.annotations,
       appendNotices,
     })
   }
@@ -398,7 +372,7 @@ export function PlanViewResultWorkspace() {
         <FigureProductionModeSwitcher
           value={productionMode}
           onChange={(mode) => {
-            stationLabelInteractions.resetInteractions()
+            mapInteractions.resetInteractions()
             setProductionMode(mode)
             if (mode !== 'figure') setEditingFigureSetItemId(null)
           }}
@@ -436,11 +410,12 @@ export function PlanViewResultWorkspace() {
           figureSet={figureSet}
           figureDocument={figureDocument}
           onOpenFigure={openFigureSetItem}
-          stationLabelDragging={stationLabelInteractions.dragging}
-          onPointerDown={stationLabelInteractions.handlePointerDown}
-          onPointerMove={stationLabelInteractions.handlePointerMove}
-          onPointerUp={stationLabelInteractions.handlePointerUp}
-          onPointerCancel={stationLabelInteractions.handlePointerCancel}
+          stationLabelDragging={mapInteractions.stationLabelDragging}
+          annotationTool={annotations.tool}
+          onPointerDown={mapInteractions.handlePointerDown}
+          onPointerMove={mapInteractions.handlePointerMove}
+          onPointerUp={mapInteractions.handlePointerUp}
+          onPointerCancel={mapInteractions.handlePointerCancel}
         />
       }
       settingsContent={
@@ -452,6 +427,7 @@ export function PlanViewResultWorkspace() {
             activeElement={activeElement}
             elements={elements}
             stationing={stationing.panelProps}
+            annotations={annotations.controller}
             canDownload={Boolean(scene)}
             onSettingsChange={updateSettings}
             onResultParameterChange={changeResult}

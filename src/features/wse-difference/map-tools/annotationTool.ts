@@ -4,7 +4,6 @@ import {
   canvasPointToMap,
   formatHydraulicResultLabel,
   FRAMES,
-  hitTestAnnotation,
   sampleHydraulicResult,
 } from '../../../core/mapRenderer'
 import type {
@@ -18,26 +17,11 @@ import type {
   ResultLabelField,
   WseDifferenceScene,
 } from '../../../core/types'
-import { mapAnnotationFigureObjectAdapter } from '../../annotations/mapAnnotationFigureObject'
-import {
-  isAnchoredMapCallout,
-  mapAnnotationDragTarget,
-} from '../../annotations/mapAnnotationManipulation'
-import { updateAdaptedFigureObject } from '../../figure-objects/figureObjectAdapter'
-import {
-  beginFigureObjectDrag,
-  updateFigureObjectDrag,
-} from '../../figure-objects/figureObjectGeometry'
-import { createMapFigureObjectContext } from '../../figure-objects/mapFigureObjectContext'
-import type { MapInteractionTool } from '../../map-interactions/mapInteraction'
-import { wseAnnotationToolById } from '../annotationTools'
-import {
-  draggedAnnotationPoints,
-  updateDraggedResultAnnotation,
-  type AnnotationDrag,
-} from '../workspaceInteractions'
+import { createManualAnnotationMapTool } from '../../annotations/manualAnnotationMapTool'
+import { WSE_ANNOTATION_TOOLS } from '../annotationTools'
+import { updateDraggedResultAnnotation } from '../workspaceInteractions'
 
-type AnnotationMapToolOptions = {
+type Options = {
   tool: AnnotationTool
   annotations: MapAnnotation[]
   annotationStart: MapCoordinate | null
@@ -65,269 +49,48 @@ type AnnotationMapToolOptions = {
   appendNotices(notices: IngestNotice[]): void
 }
 
-export function createAnnotationMapTool({
-  tool,
-  annotations,
-  annotationStart,
-  defaults,
-  scene,
-  engine,
-  bounds,
-  settings,
-  setAnnotations,
-  commitAnnotationChange,
-  setSelectedId,
-  setAnnotationStart,
-  showPlacedAnnotation,
-  setDragging,
-  createAnnotation,
-  appendNotices,
-}: AnnotationMapToolOptions): MapInteractionTool {
-  const toolModule = wseAnnotationToolById(tool)
-
-  return {
-    id: 'annotation',
-    begin: ({ screenPoint, mapPoint }) => {
-      if (toolModule.activation === 'instant') return { handled: true }
-
-      if (toolModule.activation === 'select') {
-        const hit = hitTestAnnotation(
-          annotations,
-          bounds,
-          settings,
-          screenPoint.x,
-          screenPoint.y,
-        )
-        setSelectedId(hit?.id ?? null)
-        if (!hit) return { handled: true }
-
-        const annotation = annotations.find((item) => item.id === hit.id)
-        if (!annotation) return { handled: true }
-        showPlacedAnnotation(annotation)
-        if (annotation.hydraulicExtremum && hit.part !== 'body') {
-          return { handled: true }
-        }
-
-        if (
-          annotation.kind === 'text' ||
-          isAnchoredMapCallout(annotation)
-        ) {
-          if (annotation.locked) return { handled: true }
-          const context = createMapFigureObjectContext(bounds, settings)
-          const originalAnnotations = annotations
-          const objectIndex = annotations.findIndex(
-            (item) => item.id === annotation.id,
-          )
-          const drag = beginFigureObjectDrag(
-            mapAnnotationFigureObjectAdapter.toFigureObject(
-              annotation,
-              objectIndex,
-            ),
-            mapAnnotationDragTarget(annotation, hit.part),
-            screenPoint,
-          )
-          let preview = originalAnnotations
-          let moved = false
-          const update = (point: { x: number; y: number }) => {
-            const nextObject = updateFigureObjectDrag(
-              drag,
-              point,
-              context.adapter,
-              context.frameBounds,
-              20,
-            )
-            preview = updateAdaptedFigureObject(
-              originalAnnotations,
-              annotation.id,
-              mapAnnotationFigureObjectAdapter,
-              () => nextObject,
-            )
-            const updated = preview.find(
-              (item) => item.id === annotation.id,
-            )
-            moved = Boolean(
-              updated?.points.some(
-                (item, index) =>
-                  item.x !== annotation.points[index]?.x ||
-                  item.y !== annotation.points[index]?.y,
-              ),
-            )
-            setAnnotations(preview)
-          }
-
-          setDragging(true)
-          return {
-            handled: true,
-            capturePointer: true,
-            session: {
-              id: `figure-object:${annotation.id}`,
-              move: ({ screenPoint: point }) => update(point),
-              finish: ({ screenPoint: point }) => {
-                update(point)
-                if (moved) {
-                  const finalized = preview.map((item) =>
-                    item.id === annotation.id
-                      ? updateDraggedResultAnnotation(
-                          item,
-                          hit.part,
-                          scene,
-                          engine,
-                          settings,
-                        )
-                      : item,
-                  )
-                  setAnnotations(finalized)
-                  commitAnnotationChange(
-                    originalAnnotations,
-                    finalized,
-                    `move ${annotation.kind} annotation`,
-                  )
-                } else {
-                  setAnnotations(originalAnnotations)
-                }
-                setDragging(false)
-              },
-              cancel: () => {
-                setAnnotations(originalAnnotations)
-                setDragging(false)
-              },
-            },
-          }
-        }
-
-        const drag: AnnotationDrag = {
-          id: hit.id,
-          part: hit.part,
-          start: mapPoint,
-          end: mapPoint,
-          originalPoints: annotation.points.map((point) => ({ ...point })),
-        }
-        const update = () =>
-          setAnnotations((current) =>
-            current.map((item) =>
-              item.id === drag.id
-                ? {
-                    ...item,
-                    points: draggedAnnotationPoints(item, drag),
-                  }
-                : item,
-            ),
-          )
-
-        setDragging(true)
-        return {
-          handled: true,
-          capturePointer: true,
-          session: {
-            id: `annotation:${hit.id}`,
-            move: ({ mapPoint: point }) => {
-              drag.end = point
-              update()
-            },
-            finish: ({ mapPoint: point }) => {
-              drag.end = point
-              setAnnotations((current) =>
-                current.map((item) =>
-                  item.id === drag.id
-                    ? updateDraggedResultAnnotation(
-                        {
-                          ...item,
-                          points: draggedAnnotationPoints(item, drag),
-                        },
-                        drag.part,
-                        scene,
-                        engine,
-                        settings,
-                      )
-                    : item,
-                ),
-              )
-              setDragging(false)
-            },
-            cancel: () => {
-              setAnnotations((current) =>
-                current.map((item) =>
-                  item.id === drag.id
-                    ? {
-                        ...item,
-                        points: drag.originalPoints.map((point) => ({
-                          ...point,
-                        })),
-                      }
-                    : item,
-                ),
-              )
-              setDragging(false)
-            },
-          },
-        }
-      }
-
-      if (
-        toolModule.activation === 'point' &&
-        toolModule.annotationKind === 'text'
-      ) {
-        createAnnotation(toolModule.annotationKind, [mapPoint])
-        return { handled: true }
-      }
-
-      if (
-        toolModule.activation === 'point' &&
-        toolModule.annotationKind === 'result'
-      ) {
-        const sample = sampleHydraulicResult(
-          scene,
-          bounds,
-          settings,
-          mapPoint,
-        )
-        if (!sample) {
-          appendNotices([
-            {
-              level: 'warning',
-              text: 'No hydraulic result was found close enough to that point.',
-            },
-          ])
-          return { handled: true }
-        }
-        const frame = FRAMES[settings.orientation]
-        const labelScreenPoint = {
-          x: Math.min(frame.width - 40, screenPoint.x + 135),
-          y: Math.max(40, screenPoint.y - 80),
-        }
-        const labelMapPoint = canvasPointToMap(
-          labelScreenPoint.x,
-          labelScreenPoint.y,
-          bounds,
-          settings,
-        )
-        createAnnotation(
-          'result',
-          [mapPoint, labelMapPoint],
-          formatHydraulicResultLabel(defaults.resultField, sample),
-          defaults.resultField,
-        )
-        return { handled: true }
-      }
-
-      if (
-        toolModule.activation !== 'segment' ||
-        !toolModule.annotationKind
-      ) {
-        return null
-      }
-
-      if (!annotationStart) {
-        setAnnotationStart(mapPoint)
-        return { handled: true }
-      }
-
-      createAnnotation(
-        toolModule.annotationKind,
-        [annotationStart, mapPoint],
+export function createAnnotationMapTool(options: Options) {
+  const { scene, engine, bounds, settings, defaults } = options
+  return createManualAnnotationMapTool({
+    ...options,
+    tools: WSE_ANNOTATION_TOOLS,
+    finalizeDraggedAnnotation: (annotation, part) =>
+      updateDraggedResultAnnotation(
+        annotation,
+        part,
+        scene,
+        engine,
+        settings,
+      ),
+    handlePointTool: (tool, input) => {
+      if (tool.annotationKind !== 'result') return false
+      const sample = sampleHydraulicResult(
+        scene,
+        bounds,
+        settings,
+        input.mapPoint,
       )
-      setAnnotationStart(null)
-      return { handled: true }
+      if (!sample) {
+        options.appendNotices([{
+          level: 'warning',
+          text: 'No hydraulic result was found close enough to that point.',
+        }])
+        return true
+      }
+      const frame = FRAMES[settings.orientation]
+      const labelPoint = canvasPointToMap(
+        Math.min(frame.width - 40, input.screenPoint.x + 135),
+        Math.max(40, input.screenPoint.y - 80),
+        bounds,
+        settings,
+      )
+      options.createAnnotation(
+        'result',
+        [input.mapPoint, labelPoint],
+        formatHydraulicResultLabel(defaults.resultField, sample),
+        defaults.resultField,
+      )
+      return true
     },
-  }
+  })
 }

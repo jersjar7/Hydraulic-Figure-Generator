@@ -3,6 +3,7 @@ import type { HydraulicEngine } from '../../core/hydraulicEngine'
 import type {
   IngestNotice,
   CenterlineStationLayer,
+  MapAnnotation,
   MapOverlay,
   PlanViewResultScene,
   PlanViewResultSettings,
@@ -17,6 +18,8 @@ type Options = {
   settings: PlanViewResultSettings
   overlays: MapOverlay[]
   centerlineStationing?: CenterlineStationLayer[]
+  annotations?: MapAnnotation[]
+  selectedAnnotationId?: string | null
   setBusy(busy: boolean): void
   appendNotices(notices: IngestNotice[]): void
   interacting?: boolean
@@ -29,6 +32,8 @@ export function usePlanViewResultRendering({
   settings,
   overlays,
   centerlineStationing,
+  annotations,
+  selectedAnnotationId,
   setBusy,
   appendNotices,
   interacting = false,
@@ -50,6 +55,8 @@ export function usePlanViewResultRendering({
           settings,
           overlays,
           centerlineStationing,
+          annotations,
+          selectedAnnotationId,
         }),
         signal: controller.signal,
       })
@@ -75,12 +82,14 @@ export function usePlanViewResultRendering({
     return () => controller.abort()
   }, [
     appendNotices,
+    annotations,
     canvasRef,
     centerlineStationing,
     engine,
     interacting,
     overlays,
     scene,
+    selectedAnnotationId,
     setBusy,
     settings,
   ])

@@ -1,101 +1,21 @@
 import {
   ArrowUpDown,
-  ArrowUpRight,
   Crosshair,
-  MessageSquareText,
-  Minus,
-  MousePointer2,
-  Type,
 } from 'lucide-react'
-import type {
-  AnnotationKind,
-  AnnotationTool,
-} from '../../core/types'
+import type { AnnotationTool } from '../../core/types'
+import { defineEditorTools } from '../tools/editorToolModule'
 import {
-  defineEditorTools,
-  editorToolById,
-  type EditorToolModule,
-} from '../tools/editorToolModule'
+  annotationToolById,
+  MANUAL_ANNOTATION_TOOLS,
+  type AnnotationEditorCapabilities,
+  type AnnotationToolModule,
+} from '../annotations/annotationTools'
 
-export type AnnotationEditorCapabilities = {
-  style: boolean
-  text: boolean
-  resultField: boolean
-  rotation: boolean
-}
-
-export type WseAnnotationToolModule =
-  EditorToolModule<AnnotationTool> & {
-    annotationKind?: AnnotationKind
-    editor: AnnotationEditorCapabilities
-  }
-
-const NO_EDITOR: AnnotationEditorCapabilities = {
-  style: false,
-  text: false,
-  resultField: false,
-  rotation: false,
-}
-
-const LINE_EDITOR: AnnotationEditorCapabilities = {
-  style: true,
-  text: false,
-  resultField: false,
-  rotation: false,
-}
-
-const TEXT_EDITOR: AnnotationEditorCapabilities = {
-  style: true,
-  text: true,
-  resultField: false,
-  rotation: true,
-}
+export type { AnnotationEditorCapabilities }
+export type WseAnnotationToolModule = AnnotationToolModule
 
 export const WSE_ANNOTATION_TOOLS = defineEditorTools([
-  {
-    id: 'select',
-    label: 'Select',
-    icon: MousePointer2,
-    activation: 'select',
-    requiresScene: true,
-    editor: NO_EDITOR,
-  },
-  {
-    id: 'text',
-    label: 'Text',
-    icon: Type,
-    activation: 'point',
-    requiresScene: true,
-    annotationKind: 'text',
-    editor: TEXT_EDITOR,
-  },
-  {
-    id: 'leader',
-    label: 'Leader callout',
-    icon: MessageSquareText,
-    activation: 'segment',
-    requiresScene: true,
-    annotationKind: 'leader',
-    editor: TEXT_EDITOR,
-  },
-  {
-    id: 'arrow',
-    label: 'Arrow',
-    icon: ArrowUpRight,
-    activation: 'segment',
-    requiresScene: true,
-    annotationKind: 'arrow',
-    editor: LINE_EDITOR,
-  },
-  {
-    id: 'line',
-    label: 'Line',
-    icon: Minus,
-    activation: 'segment',
-    requiresScene: true,
-    annotationKind: 'line',
-    editor: LINE_EDITOR,
-  },
+  ...MANUAL_ANNOTATION_TOOLS,
   {
     id: 'result',
     label: 'Automatic result label',
@@ -123,8 +43,8 @@ export const WSE_ANNOTATION_TOOLS = defineEditorTools([
       rotation: true,
     },
   },
-] as const satisfies readonly WseAnnotationToolModule[])
+] as const satisfies readonly AnnotationToolModule[])
 
 export function wseAnnotationToolById(id: AnnotationTool) {
-  return editorToolById(WSE_ANNOTATION_TOOLS, id)
+  return annotationToolById(WSE_ANNOTATION_TOOLS, id)
 }

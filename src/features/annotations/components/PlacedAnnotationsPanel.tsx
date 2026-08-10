@@ -1,7 +1,7 @@
 import type {
   AnnotationPanelActions,
   AnnotationPanelModel,
-} from '../annotationPanelTypes'
+} from '../annotationEditorTypes'
 import { AnnotationContentEditor } from './placed-annotations/AnnotationContentEditor'
 import { AnnotationDetailActions } from './placed-annotations/AnnotationDetailActions'
 import { AnnotationDetailHeader } from './placed-annotations/AnnotationDetailHeader'

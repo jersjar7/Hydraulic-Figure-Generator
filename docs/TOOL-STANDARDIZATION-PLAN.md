@@ -107,6 +107,12 @@ export round trips, and render identically in downloaded PNGs and Word output.
 
 ## Phase 4: Shared Annotation And Callout Suite
 
+**Status: implemented for map workspaces.** WSE Difference and Plan-View use
+the same manual tool registry, editor panels, controller, pointer interactions,
+render layer, persistence contract, and history behavior. WSE result labels and
+extrema remain workspace extensions. Chart-coordinate adoption is intentionally
+deferred until manual chart annotations become a requested workflow.
+
 **Purpose:** make one annotation system available to any map or chart workspace.
 
 - Move the WSE tool registry, controller, settings panels, interaction tools,

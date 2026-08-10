@@ -34,9 +34,11 @@ workspaces. Reuse behavior and contracts, not figure-instance state.
 
 ## Current Adopters
 
-WSE text annotations use the kernel for canvas dragging, nudge controls,
-keyboard arrows, duplication geometry, removal, position locking, and frame
-clamping. Existing project and editable-export files remain compatible.
+WSE Difference and Plan-View manual annotations use the kernel for canvas
+dragging, endpoint manipulation, nudge controls, keyboard arrows, duplication,
+removal, visibility, position locking, layer order, and frame clamping. The
+shared editor and pointer tool live under `features/annotations/`; WSE result
+labels and extrema extend that suite through workspace adapters.
 
 WSE leader and automatic-result callouts use it for independent anchor and
 label dragging, fixed hydraulic-extremum anchors, leader visibility, position
@@ -50,6 +52,6 @@ is an immutable map anchor and the displayed label is a normalized frame point.
 The shared stationing pointer tool moves only the label, clamps it inside the
 report frame, and renders an optional styled leader to the chosen text-box edge.
 WSE Difference and Plan-View use this same adapter and tool. WSE project-file
-version 16 and Plan-View project-file version 7 persist the label-frame and
+version 16 and Plan-View project-file version 8 persist the label-frame and
 leader fields; older map-coordinate overrides remain readable and migrate when
 edited.

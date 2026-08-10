@@ -4,6 +4,7 @@ export const PLAN_VIEW_RESULT_SETTINGS_SECTIONS = [
   { key: 'frame', label: 'Frame', title: 'Frame and view' },
   { key: 'elements', label: 'Elements', title: 'Figure elements' },
   { key: 'stationing', label: 'Stationing', title: 'Centerline stationing' },
+  { key: 'annotations', label: 'Callouts', title: 'Annotations and callouts' },
   { key: 'export', label: 'Export', title: 'Export' },
 ] as const
 

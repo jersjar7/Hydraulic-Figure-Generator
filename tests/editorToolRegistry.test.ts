@@ -8,8 +8,20 @@ import {
   WSE_ANNOTATION_TOOLS,
   wseAnnotationToolById,
 } from '../src/features/wse-difference/annotationTools'
+import { MANUAL_ANNOTATION_TOOLS } from '../src/features/annotations/annotationTools'
 
 describe('editor tool module registry', () => {
+  it('publishes one reusable manual annotation suite', () => {
+    assert.deepEqual(
+      MANUAL_ANNOTATION_TOOLS.map((tool) => tool.id),
+      ['select', 'text', 'leader', 'arrow', 'line'],
+    )
+    assert.deepEqual(
+      WSE_ANNOTATION_TOOLS.slice(0, MANUAL_ANNOTATION_TOOLS.length),
+      MANUAL_ANNOTATION_TOOLS,
+    )
+  })
+
   it('defines the WSE annotation workflow in one ordered registry', () => {
     assert.deepEqual(
       WSE_ANNOTATION_TOOLS.map((tool) => tool.id),

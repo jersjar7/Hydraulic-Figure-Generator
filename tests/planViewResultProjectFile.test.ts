@@ -8,6 +8,7 @@ import { createDefaultPlanViewResultSettings } from '../src/features/plan-view-r
 import { createPlanViewFigureSetDocument } from '../src/features/plan-view-results/planViewFigureSet'
 import { createDefaultFigureDocumentSettings } from '../src/core/types'
 import { PLAN_VIEW_TOPOGRAPHY_ID } from '../src/core/types'
+import { createDefaultAnnotationSettings } from '../src/core/defaults'
 
 describe('plan-view result project files', () => {
   it('round-trips settings, scenario selection, and shared overlays', () => {
@@ -56,6 +57,24 @@ describe('plan-view result project files', () => {
           startStation: 2500,
         }],
       },
+      annotations: [{
+        id: 'leader-1',
+        kind: 'leader' as const,
+        points: [{ x: 10, y: 20 }, { x: 14, y: 24 }],
+        defaultPoints: [{ x: 10, y: 20 }, { x: 14, y: 24 }],
+        text: 'Bridge opening',
+        color: '#b42318',
+        fillColor: '#ffffff',
+        lineWidth: 3,
+        fontSize: 20,
+        rotation: 0,
+        dashed: false,
+        background: true,
+        visible: false,
+        locked: false,
+        leaderVisible: true,
+      }],
+      annotationDefaults: createDefaultAnnotationSettings(),
     }
     assert.deepEqual(
       parsePlanViewResultProject(serializePlanViewResultProject(state)),

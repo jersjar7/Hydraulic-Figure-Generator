@@ -1,8 +1,15 @@
 import { PLAN_VIEW_RESULTS_FIGURE_ID } from '../../core/figureIds'
 import { mergeElementStyles } from '../../core/figureElements'
+import { createDefaultAnnotationSettings } from '../../core/defaults'
 import {
+  annotation as parseAnnotation,
+  annotationDefaults as parseAnnotationDefaults,
+} from '../../core/projectFiles/documentValidation'
+import {
+  type AnnotationDefaults,
   createDefaultFigureDocumentSettings,
   type FigureDocumentSettings,
+  type MapAnnotation,
   type PlanViewResultSettings,
 } from '../../core/types'
 import type { HydraulicProjectDocument } from '../project-document/hydraulicProjectDocument'
@@ -18,7 +25,7 @@ import { isPlanViewGeometryOutput } from '../../core/hydraulics/planViewGeometry
 import type { PersistedCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 import { parseStationLabelOverrides } from '../../core/projectFiles/settingsValidation'
 
-export const PLAN_VIEW_RESULT_PROJECT_VERSION = 7
+export const PLAN_VIEW_RESULT_PROJECT_VERSION = 8
 
 export type PlanViewResultProjectState = {
   settings: PlanViewResultSettings
@@ -27,6 +34,8 @@ export type PlanViewResultProjectState = {
   figureSet?: PlanViewFigureSetDocument
   figureDocument?: FigureDocumentSettings
   stationingSource?: PersistedCenterlineStationingSource
+  annotations?: MapAnnotation[]
+  annotationDefaults?: AnnotationDefaults
 }
 
 type Envelope = PlanViewResultProjectState & {
@@ -43,6 +52,9 @@ export function serializePlanViewResultProject(
     ...state,
     figureSet: state.figureSet ?? createPlanViewFigureSetDocument(),
     figureDocument: state.figureDocument ?? createDefaultFigureDocumentSettings(),
+    annotations: state.annotations ?? [],
+    annotationDefaults:
+      state.annotationDefaults ?? createDefaultAnnotationSettings(),
   }
   return JSON.stringify(envelope, null, 2)
 }
@@ -194,6 +206,26 @@ function hydrateSettings(value: unknown): PlanViewResultSettings {
   return settings
 }
 
+function hydrateAnnotations(value: unknown) {
+  if (value === undefined) return []
+  if (!Array.isArray(value)) {
+    throw new Error('Plan-view annotations must be an array.')
+  }
+  return value
+    .map((item, index) =>
+      parseAnnotation(item, `annotations[${index}]`),
+    )
+    .filter((item): item is MapAnnotation => item !== null)
+}
+
+function hydrateAnnotationDefaults(value: unknown) {
+  if (value === undefined) return createDefaultAnnotationSettings()
+  return {
+    ...createDefaultAnnotationSettings(),
+    ...parseAnnotationDefaults(value, 'annotationDefaults'),
+  }
+}
+
 function hydrateStationingSource(
   value: unknown,
 ): PersistedCenterlineStationingSource {
@@ -254,6 +286,7 @@ export function parsePlanViewResultProject(
     parsed.version !== 4 &&
     parsed.version !== 5 &&
     parsed.version !== 6 &&
+    parsed.version !== 7 &&
     parsed.version !== PLAN_VIEW_RESULT_PROJECT_VERSION
   ) {
     throw new Error(
@@ -277,5 +310,7 @@ export function parsePlanViewResultProject(
     stationingSource: parsed.stationingSource === undefined
       ? undefined
       : hydrateStationingSource(parsed.stationingSource),
+    annotations: hydrateAnnotations(parsed.annotations),
+    annotationDefaults: hydrateAnnotationDefaults(parsed.annotationDefaults),
   }
 }

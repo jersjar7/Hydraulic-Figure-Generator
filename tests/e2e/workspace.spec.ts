@@ -836,6 +836,16 @@ test('one SMS scenario renders a fitted plan-view scalar result map', async ({
       }),
     )
     .toBeGreaterThan(100)
+
+  await page.getByRole('tab', { name: 'Callouts', exact: true }).click()
+  await page.getByRole('button', { name: 'Text', exact: true }).click()
+  await page.getByLabel('New annotation text').fill('Review crossing')
+  await canvas.click({ position: { x: 540, y: 360 } })
+  await expect(page.getByRole('tab', { name: /Placed/ })).toContainText('1')
+  await expect(page.getByText('Review crossing', { exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: 'Position', exact: true }).click()
+  await expect(page.getByText('Visible', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Bring forward' })).toBeDisabled()
 })
 
 test('Plan-View loads a zipped centerline and renders station ticks', async ({

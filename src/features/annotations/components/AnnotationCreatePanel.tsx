@@ -7,14 +7,14 @@ import {
 } from 'lucide-react'
 import type { ResultLabelField } from '../../../core/types'
 import {
-  WSE_ANNOTATION_TOOLS,
-  wseAnnotationToolById,
+  annotationToolById,
+  MANUAL_ANNOTATION_TOOLS,
 } from '../annotationTools'
 import type {
   AnnotationPanelActions,
   AnnotationPanelModel,
-} from '../annotationPanelTypes'
-import { Toggle } from './Toggle'
+} from '../annotationEditorTypes'
+import { AnnotationToggle } from './AnnotationToggle'
 
 type AnnotationCreatePanelProps = {
   model: AnnotationPanelModel
@@ -30,7 +30,8 @@ export function AnnotationCreatePanel({
   model,
   actions,
 }: AnnotationCreatePanelProps) {
-  const activeTool = wseAnnotationToolById(model.tool)
+  const tools = model.tools ?? MANUAL_ANNOTATION_TOOLS
+  const activeTool = annotationToolById(tools, model.tool)
 
   return (
     <div
@@ -44,7 +45,7 @@ export function AnnotationCreatePanel({
         role="toolbar"
         aria-label="Annotation tools"
       >
-        {WSE_ANNOTATION_TOOLS.map((tool) => {
+        {tools.map((tool) => {
           const ToolIcon = tool.icon
           return (
             <button
@@ -104,7 +105,7 @@ export function AnnotationCreatePanel({
           <button
             className="button secondary compact full"
             type="button"
-            title={`Place labels at the maximum positive and negative ${model.comparisonLabel}-minus-${model.baselineLabel} WSE values`}
+            title={`Place labels at the maximum positive and negative ${model.comparisonLabel ?? 'comparison'}-minus-${model.baselineLabel ?? 'baseline'} WSE values`}
             disabled={
               !model.sceneReady ||
               (!model.extrema?.rise && !model.extrema?.reduction)
@@ -112,7 +113,7 @@ export function AnnotationCreatePanel({
             onClick={actions.addExtremaCallouts}
           >
             <Crosshair size={14} aria-hidden="true" />
-            {model.extremaCalloutCount > 0
+            {(model.extremaCalloutCount ?? 0) > 0
               ? 'Refresh max / min WSE callouts'
               : 'Add max / min WSE callouts'}
           </button>
@@ -259,7 +260,7 @@ export function AnnotationCreatePanel({
               </div>
             </label>
           ) : null}
-          <Toggle
+          <AnnotationToggle
             label="Dashed line"
             checked={model.editor.dashed}
             onChange={(checked) =>
@@ -267,7 +268,7 @@ export function AnnotationCreatePanel({
             }
           />
           {activeTool.editor.rotation ? (
-            <Toggle
+            <AnnotationToggle
               label="Text background"
               checked={model.editor.background}
               onChange={(checked) =>
