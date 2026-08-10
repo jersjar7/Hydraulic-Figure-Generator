@@ -6,6 +6,7 @@ import type { FigureSettingsSectionModule } from '../../src/features/figures/set
 import type { EditorToolModule } from '../../src/features/tools/editorToolModule'
 import type { WorkspaceDraftModule } from '../../src/features/figures/workspaceDraftModule'
 import { createWorkspaceDraftSnapshot } from '../../src/features/figures/workspaceDraftRepository'
+import { assertFigureToolSupportContract } from '../../src/features/tools/figureToolCapability'
 
 function assertNonEmpty(value: string, field: string) {
   assert.ok(value.trim(), `${field} must not be empty`)
@@ -51,6 +52,7 @@ export function assertFigureModuleContract<
     figure.editor.settingsSections.map((section) => section.key),
   )
   assertUnique('Figure input capability', figure.editor.inputs)
+  assertFigureToolSupportContract(figure.editor)
   assertUnique(
     'Required scenario role',
     figure.editor.requiredScenarioRoles,
@@ -71,7 +73,11 @@ export function assertFigureModuleContract<
 
 type RegisteredWorkspace = {
   id: string
-  figure: { id: string }
+  figure: {
+    id: string
+    editor: { supportedTools: readonly { id: string }[] }
+  }
+  supportedTools: readonly { id: string }[]
   draft: {
     workspaceId: string
     load: unknown
@@ -101,6 +107,11 @@ export function assertWorkspaceRegistryContract(
       workspace.id,
       workspace.figure.id,
       `Workspace ${workspace.id} must use its figure module id`,
+    )
+    assert.deepEqual(
+      workspace.supportedTools.map((tool) => tool.id),
+      workspace.figure.editor.supportedTools.map((tool) => tool.id),
+      `Workspace ${workspace.id} must expose its figure tool manifest`,
     )
     assert.ok(workspace.Workspace, `Workspace ${workspace.id} needs a component`)
     assert.equal(

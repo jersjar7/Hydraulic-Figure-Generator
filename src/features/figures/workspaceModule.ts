@@ -18,7 +18,10 @@ export type WorkspaceExtensionCapabilities = Readonly<{
 }>
 
 export function defineFigureWorkspace<
-  const Figure extends { id: string },
+  const Figure extends {
+    id: string
+    editor: { supportedTools: readonly { id: string }[] }
+  },
   Draft,
 >({
   figure,
@@ -34,6 +37,7 @@ export function defineFigureWorkspace<
   return {
     id: figure.id,
     figure,
+    supportedTools: figure.editor.supportedTools,
     capabilities,
     draft: {
       workspaceId: figure.id,

@@ -120,10 +120,10 @@ though reusable collection and capability helpers exist under
 | Max/min WSE callouts | Full | No | No | No | Creates editable maximum-rise and maximum-reduction result callouts. |
 | Undo/redo | Full | No | No | No | Bounded command history is implemented around WSE annotations. |
 
-The XS figure metadata currently declares `annotations: true`, but the XS
-workspace has no annotation panel, renderer, or interaction binding. The
-inventory therefore records it as **No**; the declaration needs to become a
-tested tool-registration contract rather than a descriptive boolean.
+The executable tool registry now records XS annotations as **No**. A workspace
+can declare annotation support only when it supplies the required settings,
+state, renderer, persistence, and canvas-interaction bindings, preventing the
+old descriptive-metadata mismatch from returning.
 
 ## Assessment WSE Labels
 

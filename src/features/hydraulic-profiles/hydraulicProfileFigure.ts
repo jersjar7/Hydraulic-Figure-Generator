@@ -3,7 +3,10 @@ import type {
   HydraulicProfileScene,
   HydraulicProfileSection,
 } from '../../core/types'
-import type { FigureModule } from '../figures/figureModule'
+import {
+  defineFigureEditor,
+  type FigureModule,
+} from '../figures/figureModule'
 import {
   HYDRAULIC_PROFILE_SETTINGS_SECTIONS,
   type HydraulicProfileSettingsSectionKey,
@@ -32,17 +35,56 @@ export const hydraulicProfileFigure = {
   label: 'Hydraulic Profiles & Sections',
   workspaceLabel: 'Profile workspace',
   description: 'Single-station hydraulic cross sections from SMS clipboard exports',
-  editor: {
+  editor: defineFigureEditor({
     inputs: ['sms-summary-table', 'sms-profile-values'],
     requiredScenarioRoles: [],
     optionalScenarioRoles: [],
-    shapefileOverlays: false,
-    assessmentLines: false,
-    centerlineStationing: false,
-    annotations: false,
     projectFileExtension: '.hydfig',
     settingsSections: HYDRAULIC_PROFILE_SETTINGS_SECTIONS,
-  },
+    supportedTools: [
+      {
+        id: 'chart-line-styles',
+        bindings: {
+          settingsSection: 'lines',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+        },
+      },
+      {
+        id: 'chart-axes',
+        bindings: {
+          settingsSection: 'axes',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+        },
+      },
+      {
+        id: 'single-figure-export',
+        bindings: {
+          settingsSection: 'export',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+          export: ['png', 'report-artifact'],
+        },
+      },
+      {
+        id: 'batch-figure-generation',
+        bindings: {
+          state: 'workspace-state',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+          export: ['report-artifact'],
+        },
+      },
+    ],
+  }),
   createDefaultSettings: createDefaultHydraulicProfileSettings,
   canGenerate: ({ section }) => Boolean(section),
   buildScene: ({ conditionLabel, section }) => {

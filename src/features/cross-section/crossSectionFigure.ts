@@ -9,7 +9,10 @@ import type {
   CrossSectionLine,
   HydraulicCrossSectionScene,
 } from '../../core/types'
-import type { FigureModule } from '../figures/figureModule'
+import {
+  defineFigureEditor,
+  type FigureModule,
+} from '../figures/figureModule'
 import {
   CROSS_SECTION_SETTINGS_SECTIONS,
   type CrossSectionSettingsSectionKey,
@@ -44,7 +47,7 @@ export const crossSectionFigure = {
   label: 'Cross-Section Comparison',
   workspaceLabel: 'FRA workspace',
   description: 'Ground and discharge-weighted WSE comparison at a selected section',
-  editor: {
+  editor: defineFigureEditor({
     inputs: [
       'hydraulic-models',
       'map-overlays',
@@ -52,13 +55,68 @@ export const crossSectionFigure = {
     ],
     requiredScenarioRoles: ['baseline', 'comparison'],
     optionalScenarioRoles: ['assessment'],
-    shapefileOverlays: true,
-    assessmentLines: true,
-    centerlineStationing: false,
-    annotations: true,
     projectFileExtension: '.hydfig',
     settingsSections: CROSS_SECTION_SETTINGS_SECTIONS,
-  },
+    supportedTools: [
+      {
+        id: 'hydraulic-models',
+        bindings: {
+          state: 'workspace-state',
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+        },
+      },
+      {
+        id: 'map-overlays',
+        bindings: {
+          state: 'project-document',
+          render: ['selection-map'],
+          persistence: 'project-document',
+          interaction: 'panel',
+        },
+      },
+      {
+        id: 'assessment-lines',
+        bindings: {
+          state: 'workspace-state',
+          render: ['selection-map'],
+          persistence: 'workspace-draft',
+          interaction: 'canvas',
+        },
+      },
+      {
+        id: 'chart-line-styles',
+        bindings: {
+          settingsSection: 'styles',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+        },
+      },
+      {
+        id: 'chart-axes',
+        bindings: {
+          settingsSection: 'display',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+        },
+      },
+      {
+        id: 'single-figure-export',
+        bindings: {
+          settingsSection: 'export',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+          export: ['png', 'report-artifact'],
+        },
+      },
+    ],
+  }),
   createDefaultSettings: createDefaultCrossSectionSettings,
   canGenerate: ({ engine, baselineId, comparisonId, line }) =>
     engine.isReady(baselineId, comparisonId) && line.points.length >= 2,

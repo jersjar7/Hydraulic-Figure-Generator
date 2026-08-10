@@ -104,7 +104,10 @@ implementation ownership stays in focused directories. See
 [Testing](docs/TESTING.md) before extending those contracts. The current
 cross-workspace capability baseline is recorded in the
 [Tool inventory](docs/TOOL-INVENTORY.md), with its implementation sequence in
-the [Tool standardization plan](docs/TOOL-STANDARDIZATION-PLAN.md).
+the [Tool standardization plan](docs/TOOL-STANDARDIZATION-PLAN.md). Registered
+workspaces publish an executable `supportedTools` manifest, so their advertised
+capabilities are checked against real settings, state, rendering, persistence,
+interaction, and export bindings.
 
 ## Development
 

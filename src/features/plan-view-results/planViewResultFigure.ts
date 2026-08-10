@@ -13,7 +13,10 @@ import type {
   PlanViewResultScene,
   PlanViewResultSettings,
 } from '../../core/types'
-import type { FigureModule } from '../figures/figureModule'
+import {
+  defineFigureEditor,
+  type FigureModule,
+} from '../figures/figureModule'
 import {
   PLAN_VIEW_RESULT_SETTINGS_SECTIONS,
   type PlanViewResultSettingsSectionKey,
@@ -38,17 +41,93 @@ export const planViewResultFigure = {
   label: 'Plan-View Hydraulic Results',
   workspaceLabel: 'Hydraulic results workspace',
   description: 'Classified plan-view maps from scalar SMS results',
-  editor: {
+  editor: defineFigureEditor({
     inputs: ['hydraulic-models', 'map-overlays'],
     requiredScenarioRoles: ['baseline'],
     optionalScenarioRoles: [],
-    shapefileOverlays: true,
-    assessmentLines: false,
-    centerlineStationing: true,
-    annotations: false,
     projectFileExtension: '.hydfig',
     settingsSections: PLAN_VIEW_RESULT_SETTINGS_SECTIONS,
-  },
+    supportedTools: [
+      {
+        id: 'hydraulic-models',
+        bindings: {
+          state: 'workspace-state',
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+        },
+      },
+      {
+        id: 'map-overlays',
+        bindings: {
+          state: 'project-document',
+          render: ['figure'],
+          persistence: 'project-document',
+          interaction: 'panel',
+        },
+      },
+      {
+        id: 'frame-view',
+        bindings: {
+          settingsSection: 'frame',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+        },
+      },
+      {
+        id: 'figure-elements',
+        bindings: {
+          settingsSection: 'elements',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+        },
+      },
+      {
+        id: 'centerline-stationing',
+        bindings: {
+          settingsSection: 'stationing',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+        },
+      },
+      {
+        id: 'single-figure-export',
+        bindings: {
+          settingsSection: 'export',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+          export: ['png', 'report-artifact'],
+        },
+      },
+      {
+        id: 'batch-figure-generation',
+        bindings: {
+          state: 'workspace-state',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+          export: ['report-artifact'],
+        },
+      },
+      {
+        id: 'figure-document-export',
+        bindings: {
+          state: 'workspace-state',
+          render: ['document'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+          export: ['word'],
+        },
+      },
+    ],
+  }),
   createDefaultSettings: createDefaultPlanViewResultSettings,
   canGenerate: ({ engine, scenarioId, runIndex, resultParameter }) =>
     canBuildPlanViewResult(engine, {

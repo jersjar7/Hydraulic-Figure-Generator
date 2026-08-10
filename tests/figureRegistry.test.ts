@@ -46,6 +46,19 @@ describe('figure module registry', () => {
     )
     assert.equal(planViewResultFigure.editor.centerlineStationing, true)
     assert.deepEqual(
+      planViewResultFigure.editor.supportedTools.map((tool) => tool.id),
+      [
+        'hydraulic-models',
+        'map-overlays',
+        'frame-view',
+        'figure-elements',
+        'centerline-stationing',
+        'single-figure-export',
+        'batch-figure-generation',
+        'figure-document-export',
+      ],
+    )
+    assert.deepEqual(
       planViewResultFigure.editor.settingsSections.map(
         (section) => section.key,
       ),
@@ -73,6 +86,7 @@ describe('figure module registry', () => {
     assert.equal(wseDifferenceFigure.editor.assessmentLines, true)
     assert.equal(wseDifferenceFigure.editor.centerlineStationing, true)
     assert.equal(wseDifferenceFigure.editor.annotations, true)
+    assert.equal(crossSectionFigure.editor.annotations, false)
     assert.deepEqual(
       wseDifferenceFigure.editor.settingsSections.map(
         (section) => section.key,

@@ -17,7 +17,11 @@ Create `src/features/<figure-name>/` with:
   contract instead of hard-coding toolbar branches.
 
 The module must define its stable ID, readiness rule, scene construction,
-render entry point, export filename, and input capabilities. Compose the UI with
+render entry point, export filename, input capabilities, and `supportedTools`
+manifest. Construct the editor with `defineFigureEditor`; each tool declaration
+must reference its real settings, state, render, persistence, interaction, and
+export bindings. The central capability contract derives legacy convenience
+flags and rejects incomplete support claims. Compose the UI with
 `FigureWorkspaceScaffold`, compose canvas responsibilities as ordered render
 layers, and call application use cases rather than parsing H5 directly.
 
@@ -114,7 +118,7 @@ Before registration, add:
 - A local real-file acceptance script when proprietary H5 data cannot be
   committed.
 - Registration in the workspace manifest; `extensionContracts.test.ts`
-  validates every manifest entry automatically.
+  validates every manifest entry and its tool bindings automatically.
 
 Every commit must pass `npm run lint`, `npm test`, `npm run build`, and
 `npm run test:e2e`.

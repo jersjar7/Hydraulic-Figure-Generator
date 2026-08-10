@@ -78,6 +78,11 @@ infrastructure directly.
 - `features/figures/settingsSectionModule.ts` defines the typed settings-panel
   registry; `features/tools/editorToolModule.ts` defines editor-tool metadata
   and activation contracts.
+- `features/tools/figureToolCapability.ts` is the stable engineer-facing tool
+  registry. Each figure editor declares `supportedTools` with concrete
+  settings, state, render, persistence, interaction, and export bindings.
+  Workspace metadata and compatibility flags are derived from that manifest;
+  extension tests reject incomplete or misleading support claims.
 - `features/figures/workspaceRegistry.ts` is the single figure manifest. It
   associates headless modules with lazy React workspaces and lazy versioned
   workspace draft codecs, then derives figure IDs, picker entries, routing,
@@ -157,8 +162,8 @@ Summary Z-min values diagnose the resulting order and never directly join one
 section to one station.
 
 `tests/support/extensionContracts.ts` is the executable extension contract.
-Every registered figure, tool set, settings registry, project workflow, and
-render pipeline must pass it.
+Every registered figure, declared tool binding, settings registry, project
+workflow, and render pipeline must pass it.
 
 ## Refactoring Rules
 

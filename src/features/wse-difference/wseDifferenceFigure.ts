@@ -17,7 +17,10 @@ import type {
   FigureSettings,
   WseDifferenceScene,
 } from '../../core/types'
-import type { FigureModule } from '../figures/figureModule'
+import {
+  defineFigureEditor,
+  type FigureModule,
+} from '../figures/figureModule'
 import {
   WSE_DIFFERENCE_SETTINGS_SECTIONS,
   type WseDifferenceSettingsSectionKey,
@@ -45,7 +48,7 @@ export const wseDifferenceFigure = {
   label: 'WSE Difference',
   workspaceLabel: 'FRA workspace',
   description: 'Comparison minus baseline water-surface elevation',
-  editor: {
+  editor: defineFigureEditor({
     inputs: [
       'hydraulic-models',
       'map-overlays',
@@ -53,13 +56,88 @@ export const wseDifferenceFigure = {
     ],
     requiredScenarioRoles: ['baseline', 'comparison'],
     optionalScenarioRoles: ['assessment'],
-    shapefileOverlays: true,
-    assessmentLines: true,
-    centerlineStationing: true,
-    annotations: true,
     projectFileExtension: '.hydfig',
     settingsSections: WSE_DIFFERENCE_SETTINGS_SECTIONS,
-  },
+    supportedTools: [
+      {
+        id: 'hydraulic-models',
+        bindings: {
+          state: 'workspace-state',
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+        },
+      },
+      {
+        id: 'map-overlays',
+        bindings: {
+          state: 'project-document',
+          render: ['figure'],
+          persistence: 'project-document',
+          interaction: 'panel',
+        },
+      },
+      {
+        id: 'assessment-lines',
+        bindings: {
+          state: 'workspace-state',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'canvas',
+        },
+      },
+      {
+        id: 'frame-view',
+        bindings: {
+          settingsSection: 'frame',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+        },
+      },
+      {
+        id: 'figure-elements',
+        bindings: {
+          settingsSection: 'elements',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'canvas',
+        },
+      },
+      {
+        id: 'centerline-stationing',
+        bindings: {
+          settingsSection: 'stationing',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'canvas',
+        },
+      },
+      {
+        id: 'annotations',
+        bindings: {
+          settingsSection: 'annotations',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'canvas',
+        },
+      },
+      {
+        id: 'single-figure-export',
+        bindings: {
+          settingsSection: 'export',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+          export: ['png', 'report-artifact'],
+        },
+      },
+    ],
+  }),
   createDefaultSettings: createDefaultFigureSettings,
   canGenerate: ({ engine, baselineId, comparisonId }) =>
     canCompareWse(engine, { baselineId, comparisonId }),

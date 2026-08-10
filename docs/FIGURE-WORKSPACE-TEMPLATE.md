@@ -13,6 +13,39 @@ Create a self-contained `src/features/<figure-name>/` feature with:
 - Focused document, settings, scene-builder, renderer, and report-adapter files.
 - Unit, UI, synthetic render, migration, and primary Playwright tests.
 
+## Tool Manifest
+
+Build the figure editor with `defineFigureEditor` and declare every supported
+tool using a stable ID from `features/tools/figureToolCapability.ts`:
+
+```ts
+editor: defineFigureEditor({
+  inputs: ['hydraulic-models'],
+  requiredScenarioRoles: ['existing', 'proposed'],
+  optionalScenarioRoles: [],
+  projectFileExtension: '.example.json',
+  settingsSections: exampleSettingsSections,
+  supportedTools: [
+    {
+      id: 'frame-view',
+      bindings: {
+        settingsSection: 'frame',
+        state: 'figure-settings',
+        render: ['figure'],
+        persistence: 'workspace-draft',
+        interaction: 'panel',
+      },
+    },
+  ],
+})
+```
+
+The binding values identify the actual owner of the tool's settings, state,
+rendering, persistence, interaction, and export behavior. Do not declare a tool
+until those paths exist. Compatibility properties such as `annotations` and
+`centerlineStationing` are derived from this manifest and must not be set by a
+workspace.
+
 ## Registry Entry
 
 ```ts
@@ -50,6 +83,8 @@ migrating workspace lacks that fixture.
 3. Attach a workspace draft snapshot to every single and batch artifact.
 4. Reuse project input, settings-section, tool, interaction, and render-layer
    registries instead of adding workspace-specific shell branches.
-5. Keep canvases, generated scenes, notices, and open-panel state transient.
-6. Run `npm run lint`, `npm run check:architecture`, `npm test`,
+5. Declare each engineer-facing tool in `supportedTools` with all bindings
+   required by the central capability registry.
+6. Keep canvases, generated scenes, notices, and open-panel state transient.
+7. Run `npm run lint`, `npm run check:architecture`, `npm test`,
    `npm run build`, and `npm run test:e2e` before shipping.

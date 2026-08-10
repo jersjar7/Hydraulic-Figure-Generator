@@ -35,6 +35,10 @@ hydraulic origin.
 
 ## Phase 1: Capability Baseline
 
+**Status: implemented.** Stable tool IDs, per-workspace manifests, derived
+compatibility fields, and executable binding conformance tests shipped as the
+first standardization increment.
+
 **Purpose:** make support claims executable before moving behavior.
 
 - Add stable tool IDs and a `supportedTools` declaration to every registered
