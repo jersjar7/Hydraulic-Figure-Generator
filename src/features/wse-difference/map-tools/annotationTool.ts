@@ -18,6 +18,13 @@ import type {
   ResultLabelField,
   WseDifferenceScene,
 } from '../../../core/types'
+import { mapAnnotationFigureObjectAdapter } from '../../annotations/mapAnnotationFigureObject'
+import { updateAdaptedFigureObject } from '../../figure-objects/figureObjectAdapter'
+import {
+  beginFigureObjectDrag,
+  updateFigureObjectDrag,
+} from '../../figure-objects/figureObjectGeometry'
+import { createMapFigureObjectContext } from '../../figure-objects/mapFigureObjectContext'
 import type { MapInteractionTool } from '../../map-interactions/mapInteraction'
 import { wseAnnotationToolById } from '../annotationTools'
 import {
@@ -36,6 +43,11 @@ type AnnotationMapToolOptions = {
   bounds: Bounds
   settings: FigureSettings
   setAnnotations(value: SetStateAction<MapAnnotation[]>): void
+  commitAnnotationChange(
+    before: MapAnnotation[],
+    after: MapAnnotation[],
+    label: string,
+  ): void
   setSelectedId(id: string | null): void
   setAnnotationStart(point: MapCoordinate | null): void
   showPlacedAnnotation(annotation: MapAnnotation): void
@@ -59,6 +71,7 @@ export function createAnnotationMapTool({
   bounds,
   settings,
   setAnnotations,
+  commitAnnotationChange,
   setSelectedId,
   setAnnotationStart,
   showPlacedAnnotation,
@@ -89,6 +102,73 @@ export function createAnnotationMapTool({
         showPlacedAnnotation(annotation)
         if (annotation.hydraulicExtremum && hit.part !== 'body') {
           return { handled: true }
+        }
+
+        if (annotation.kind === 'text') {
+          const context = createMapFigureObjectContext(bounds, settings)
+          const originalAnnotations = annotations
+          const objectIndex = annotations.findIndex(
+            (item) => item.id === annotation.id,
+          )
+          const drag = beginFigureObjectDrag(
+            mapAnnotationFigureObjectAdapter.toFigureObject(
+              annotation,
+              objectIndex,
+            ),
+            { type: 'body' },
+            screenPoint,
+          )
+          let preview = originalAnnotations
+          let moved = false
+          const update = (point: { x: number; y: number }) => {
+            moved =
+              moved ||
+              Math.hypot(
+                point.x - drag.start.x,
+                point.y - drag.start.y,
+              ) > 0.5
+            const nextObject = updateFigureObjectDrag(
+              drag,
+              point,
+              context.adapter,
+              context.frameBounds,
+              20,
+            )
+            preview = updateAdaptedFigureObject(
+              originalAnnotations,
+              annotation.id,
+              mapAnnotationFigureObjectAdapter,
+              () => nextObject,
+            )
+            setAnnotations(preview)
+          }
+
+          setDragging(true)
+          return {
+            handled: true,
+            capturePointer: true,
+            session: {
+              id: `figure-object:${annotation.id}`,
+              move: ({ screenPoint: point }) => update(point),
+              finish: ({ screenPoint: point }) => {
+                update(point)
+                if (moved) {
+                  commitAnnotationChange(
+                    originalAnnotations,
+                    preview,
+                    'move text annotation',
+                  )
+                } else {
+                  setAnnotations(originalAnnotations)
+                }
+                setDragging(false)
+              },
+              cancel: () => {
+                setAnnotations(originalAnnotations)
+                setDragging(false)
+              },
+            },
+          }
         }
 
         const drag: AnnotationDrag = {

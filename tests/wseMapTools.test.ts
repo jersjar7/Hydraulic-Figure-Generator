@@ -98,6 +98,7 @@ describe('WSE map tools', () => {
         annotations =
           typeof value === 'function' ? value(annotations) : value
       },
+      commitAnnotationChange: () => {},
       setSelectedId: (id) => {
         selected = id
       },
@@ -125,5 +126,87 @@ describe('WSE map tools', () => {
       { x: 25, y: 27 },
       { x: 45, y: 47 },
     ])
+  })
+
+  it('commits a text annotation canvas drag through the figure-object kernel', () => {
+    const settings = createDefaultFigureSettings()
+    const bounds: Bounds = { x0: 0, y0: 0, x1: 100, y1: 100 }
+    let annotations: MapAnnotation[] = [
+      {
+        id: 'text-1',
+        kind: 'text',
+        points: [{ x: 50, y: 50 }],
+        text: 'Move me',
+        color: '#111111',
+        fillColor: '#ffffff',
+        lineWidth: 2,
+        fontSize: 18,
+        rotation: 0,
+        dashed: false,
+        background: true,
+      },
+    ]
+    const committed: Array<{
+      before: MapAnnotation[]
+      after: MapAnnotation[]
+      label: string
+    }> = []
+    const start = mapPointToCanvas(
+      annotations[0].points[0],
+      bounds,
+      settings,
+    )
+    const tool = createAnnotationMapTool({
+      tool: 'select',
+      annotations,
+      annotationStart: null,
+      defaults: {
+        text: 'Note',
+        color: '#111111',
+        fillColor: '#ffffff',
+        lineWidth: 2,
+        fontSize: 18,
+        rotation: 0,
+        dashed: false,
+        background: true,
+        resultField: 'summary',
+      },
+      scene: {} as WseDifferenceScene,
+      engine: {} as HydraulicEngine,
+      bounds,
+      settings,
+      setAnnotations: (value) => {
+        annotations =
+          typeof value === 'function' ? value(annotations) : value
+      },
+      commitAnnotationChange: (before, after, label) => {
+        committed.push({ before, after, label })
+      },
+      setSelectedId: () => {},
+      setAnnotationStart: () => {},
+      showPlacedAnnotation: () => {},
+      setDragging: () => {},
+      createAnnotation: () => annotations[0],
+      appendNotices: () => {},
+    })
+    const started = tool.begin({
+      screenPoint: start,
+      mapPoint: { x: 50, y: 50 },
+    })
+    const end = { x: start.x + 25, y: start.y + 15 }
+    started?.session?.move?.({
+      screenPoint: end,
+      mapPoint: { x: 50, y: 50 },
+    })
+    started?.session?.finish?.({
+      screenPoint: end,
+      mapPoint: { x: 50, y: 50 },
+    })
+
+    assert.equal(started?.session?.id, 'figure-object:text-1')
+    assert.equal(committed.length, 1)
+    assert.equal(committed[0].label, 'move text annotation')
+    assert.deepEqual(committed[0].before[0].points, [{ x: 50, y: 50 }])
+    assert.notDeepEqual(committed[0].after[0].points, [{ x: 50, y: 50 }])
   })
 })

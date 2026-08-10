@@ -16,6 +16,13 @@ export type EditorHistory<State> = {
   future: EditorHistoryEntry<State>[]
 }
 
+export type EditorHistoryChange<State> = {
+  label: string
+  before: State
+  after: State
+  mergeKey?: string
+}
+
 export function createEditorHistory<State>(): EditorHistory<State> {
   return {
     past: [],
@@ -50,6 +57,36 @@ export function executeEditorCommand<State>(
     value,
     history: {
       past: [...unchangedPast, entry].slice(-limit),
+      future: [],
+    },
+  }
+}
+
+export function commitEditorHistoryChange<State>(
+  history: EditorHistory<State>,
+  change: EditorHistoryChange<State>,
+  limit = 50,
+): { history: EditorHistory<State>; value: State } {
+  if (Object.is(change.before, change.after)) {
+    return { history, value: change.after }
+  }
+  const previous = history.past.at(-1)
+  const shouldMerge =
+    Boolean(change.mergeKey) &&
+    previous?.mergeKey === change.mergeKey
+  const entry: EditorHistoryEntry<State> = {
+    label: change.label,
+    before: shouldMerge && previous ? previous.before : change.before,
+    after: change.after,
+    mergeKey: change.mergeKey,
+  }
+  return {
+    value: change.after,
+    history: {
+      past: [
+        ...(shouldMerge ? history.past.slice(0, -1) : history.past),
+        entry,
+      ].slice(-limit),
       future: [],
     },
   }

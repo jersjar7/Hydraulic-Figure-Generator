@@ -112,7 +112,7 @@ though reusable collection and capability helpers exist under
 | Annotation tool | WSE | XS | Plan | Profiles | Current behavior |
 | --- | --- | --- | --- | --- | --- |
 | Select | Full | No | No | No | Selects and opens the placed-item editor. |
-| Text | Full | No | No | No | Editable text, color, fill, size, rotation, background, duplicate/delete, nudge, and canvas drag. |
+| Text | Full | No | No | No | Editable text, color, fill, size, rotation, background, duplicate/delete, keyboard nudge, and canvas drag. WSE text movement now uses the shared figure-object kernel and undoable drag commit. |
 | Leader callout | Full | No | No | No | Text box and leader endpoints can be repositioned by dragging. |
 | Arrow | Full | No | No | No | Draggable line/endpoints with color, width, and dash controls. |
 | Straight line | Full | No | No | No | Draggable line/endpoints with color, width, and dash controls. |

@@ -56,6 +56,14 @@ render/export path, and adding a workspace requires an explicit tool manifest.
 
 ## Phase 2: Figure Object And Manipulation Kernel
 
+**Status: foundation implemented.** The normalized object contract, immutable
+collection and geometry operations, map/plot/frame coordinate adapters,
+frame-clamped drag/nudge/duplicate behavior, external drag history commits,
+and shared keyboard controls are in place. WSE text annotations are the first
+production adopter without changing their persisted schema. Leader/result
+annotations, station labels, report elements, and chart objects remain scoped
+to the rollout phases below.
+
 **Purpose:** provide one selection/drag foundation for every visual object.
 
 - Introduce a tagged `FigureObject` contract with stable ID, kind, visibility,

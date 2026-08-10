@@ -50,6 +50,13 @@ import {
   updateAnnotation,
 } from '../annotations/annotationCollection'
 import { useEditorCommandHistory } from '../editor-history/useEditorCommandHistory'
+import { mapAnnotationFigureObjectAdapter } from '../annotations/mapAnnotationFigureObject'
+import {
+  duplicateMapAnnotationFigureObject,
+  nudgeMapAnnotationFigureObjectCommand,
+} from '../annotations/mapAnnotationManipulation'
+import { removeAdaptedFigureObject } from '../figure-objects/figureObjectAdapter'
+import { useFigureObjectKeyboard } from '../figure-objects/useFigureObjectKeyboard'
 
 type StateSetter<Value> = Dispatch<SetStateAction<Value>>
 
@@ -144,6 +151,7 @@ export function useWseAnnotationController({
   })
   const {
     execute: executeAnnotationCommand,
+    commit: commitAnnotationHistory,
     undo: undoAnnotationCommand,
     redo: redoAnnotationCommand,
     canUndo,
@@ -194,53 +202,6 @@ export function useWseAnnotationController({
       synchronizeWseExtremaAnnotations(current, extrema),
     )
   }, [extrema, setAnnotations])
-
-  useEffect(() => {
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      const target = event.target
-      if (
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement
-      ) {
-        return
-      }
-      if (event.key === 'Escape') {
-        setAnnotationStart(null)
-        setTool('select')
-      }
-      if (
-        (event.key === 'Delete' || event.key === 'Backspace') &&
-        selectedId
-      ) {
-        executeAnnotationCommand({
-          label: 'delete annotation',
-          apply: (current) =>
-            current.filter((annotation) => annotation.id !== selectedId),
-        })
-        setSelectedId(null)
-      }
-      const modifier = event.ctrlKey || event.metaKey
-      if (modifier && event.key.toLowerCase() === 'z') {
-        event.preventDefault()
-        if (event.shiftKey) redoAnnotationCommand()
-        else undoAnnotationCommand()
-      } else if (modifier && event.key.toLowerCase() === 'y') {
-        event.preventDefault()
-        redoAnnotationCommand()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [
-    executeAnnotationCommand,
-    redoAnnotationCommand,
-    selectedId,
-    setAnnotationStart,
-    setSelectedId,
-    setTool,
-    undoAnnotationCommand,
-  ])
 
   const createAnnotation = (
     kind: MapAnnotation['kind'],
@@ -377,7 +338,20 @@ export function useWseAnnotationController({
 
   const deleteSelected = () => {
     if (!selectedId) return
-    const result = removeAnnotation(annotations, selectedId)
+    const result =
+      selected?.kind === 'text'
+        ? (() => {
+            const removed = removeAdaptedFigureObject(
+              annotations,
+              selectedId,
+              mapAnnotationFigureObjectAdapter,
+            )
+            return {
+              annotations: removed.items,
+              selectedId: removed.selectedId,
+            }
+          })()
+        : removeAnnotation(annotations, selectedId)
     executeAnnotationCommand({
       label: 'delete annotation',
       apply: () => result.annotations,
@@ -390,25 +364,36 @@ export function useWseAnnotationController({
     if (!selected) return
     const frame = FRAMES[settings.orientation]
     const bounds = engine.commonBounds()
-    const origin = canvasPointToMap(
-      frame.width / 2,
-      frame.height / 2,
-      bounds,
-      settings,
-    )
-    const shifted = canvasPointToMap(
-      frame.width / 2 + 18,
-      frame.height / 2 + 18,
-      bounds,
-      settings,
-    )
     const id = globalThis.crypto.randomUUID()
-    const copy = duplicateAnnotation(
-      selected,
-      id,
-      shifted.x - origin.x,
-      shifted.y - origin.y,
-    )
+    const copy =
+      selected.kind === 'text'
+        ? duplicateMapAnnotationFigureObject({
+            annotation: selected,
+            index: selectedIndex,
+            id,
+            bounds,
+            settings,
+          })
+        : (() => {
+            const origin = canvasPointToMap(
+              frame.width / 2,
+              frame.height / 2,
+              bounds,
+              settings,
+            )
+            const shifted = canvasPointToMap(
+              frame.width / 2 + 18,
+              frame.height / 2 + 18,
+              bounds,
+              settings,
+            )
+            return duplicateAnnotation(
+              selected,
+              id,
+              shifted.x - origin.x,
+              shifted.y - origin.y,
+            )
+          })()
     if (copy.kind === 'result' && copy.resultField && scene) {
       const sample = sampleHydraulicResult(
         scene,
@@ -436,6 +421,18 @@ export function useWseAnnotationController({
     if (!selectedId) return
     const frame = FRAMES[settings.orientation]
     const bounds = engine.commonBounds()
+    if (selected?.kind === 'text') {
+      executeAnnotationCommand(
+        nudgeMapAnnotationFigureObjectCommand({
+          id: selectedId,
+          dx,
+          dy,
+          bounds,
+          settings,
+        }),
+      )
+      return
+    }
     const center = canvasPointToMap(
       frame.width / 2,
       frame.height / 2,
@@ -471,6 +468,41 @@ export function useWseAnnotationController({
     setSelectedId(null)
     setAnnotationStart(null)
   }
+
+  const undo = () => {
+    const restored = undoAnnotationCommand()
+    if (
+      restored &&
+      selectedId &&
+      !restored.some((annotation) => annotation.id === selectedId)
+    ) {
+      setSelectedId(null)
+    }
+  }
+
+  const redo = () => {
+    const restored = redoAnnotationCommand()
+    if (
+      restored &&
+      selectedId &&
+      !restored.some((annotation) => annotation.id === selectedId)
+    ) {
+      setSelectedId(null)
+    }
+  }
+
+  useFigureObjectKeyboard({
+    enabled: true,
+    hasSelection: Boolean(selectedId),
+    onCancel: () => {
+      setAnnotationStart(null)
+      setTool('select')
+    },
+    onDelete: deleteSelected,
+    onNudge: nudgeSelected,
+    onUndo: undo,
+    onRedo: redo,
+  })
 
   const model: AnnotationPanelModel = {
     annotations,
@@ -514,32 +546,19 @@ export function useWseAnnotationController({
     nudgeSelected,
     duplicateSelected,
     deleteSelected,
-    undo: () => {
-      const restored = undoAnnotationCommand()
-      if (
-        restored &&
-        selectedId &&
-        !restored.some((annotation) => annotation.id === selectedId)
-      ) {
-        setSelectedId(null)
-      }
-    },
-    redo: () => {
-      const restored = redoAnnotationCommand()
-      if (
-        restored &&
-        selectedId &&
-        !restored.some((annotation) => annotation.id === selectedId)
-      ) {
-        setSelectedId(null)
-      }
-    },
+    undo,
+    redo,
   }
 
   return {
     model,
     actions,
     createAnnotation,
+    commitAnnotationChange: (
+      before: MapAnnotation[],
+      after: MapAnnotation[],
+      label: string,
+    ) => commitAnnotationHistory({ before, after, label }),
     selectPlacedAnnotation: navigation.selectPlaced,
   }
 }

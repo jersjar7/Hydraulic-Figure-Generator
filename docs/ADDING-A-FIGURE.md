@@ -51,6 +51,13 @@ controls belong in a settings-section module. Canvas behavior belongs in an
 editor tool consumed by `MapInteractionRuntime`; user edits that need
 undo/redo should execute an editor command.
 
+Directly manipulated labels and elements should adapt their persisted document
+shape to `FigureObject` through a feature-owned `FigureObjectAdapter`. Reuse
+the shared coordinate adapters, movement geometry, keyboard hook, and command
+history commit path. Do not persist the normalized runtime object beside the
+workspace object or place its position in a global store: the workspace draft
+remains the only owner of that figure instance.
+
 ## 3. Persist It
 
 Shared scenarios and overlays belong under the project envelope's `project`

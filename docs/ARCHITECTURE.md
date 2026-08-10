@@ -146,6 +146,15 @@ infrastructure directly.
   lifecycle. Feature tools own hit testing and the behavior of one action.
 - `features/editor-history/` owns immutable editor commands and bounded
   undo/redo history independently of any annotation UI.
+- `core/contracts/figureObjects.ts` defines the normalized runtime shape for a
+  directly manipulated object. `features/figure-objects/` owns immutable
+  selection, drag, nudge, duplicate, remove, reset, frame-clamping, coordinate
+  adapter, keyboard, and command composition. Workspace adapters project their
+  persisted objects into this shape and write edits back; the kernel never owns
+  a cross-workspace document or global object positions.
+- WSE text annotations are the first kernel adopter. Their saved
+  `MapAnnotation` schema remains unchanged, while canvas drag completion is
+  committed to the existing bounded undo/redo history as one command.
 - `components/project-data/projectWorkflowRegistry.ts` maps declared workspace
   input capabilities to independent Models, Layers, Assess, and Review workflow
   modules with their own status and view adapters.

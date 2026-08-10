@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  commitEditorHistoryChange,
   createEditorHistory,
   executeEditorCommand,
   redoEditorCommand,
@@ -56,4 +57,20 @@ test('executing after undo clears the redo branch', () => {
 
   assert.equal(replacement.history.future.length, 0)
   assert.equal(replacement.value, 2)
+})
+
+test('commits an externally previewed drag as one undoable change', () => {
+  const initial = createEditorHistory<{ x: number }>()
+  const committed = commitEditorHistoryChange(initial, {
+    label: 'move figure object',
+    before: { x: 10 },
+    after: { x: 42 },
+  })
+
+  assert.equal(committed.history.past.length, 1)
+  assert.deepEqual(undoEditorCommand(committed.history).value, { x: 10 })
+  assert.deepEqual(
+    redoEditorCommand(undoEditorCommand(committed.history).history).value,
+    { x: 42 },
+  )
 })

@@ -82,6 +82,7 @@ src/
   features/
     annotations/       Reusable annotation capabilities and collection commands
     assessment-lines/  Stationing controls, bounded review state, and interface
+    figure-objects/    Shared selection, movement, coordinates, commands, and keyboard behavior
     figures/           Figure, tool, settings-section, and workspace contracts
     figure-sets/       Shared Figure / Figure Set / Document navigation
     project-document/  Shared project state independent of figure documents

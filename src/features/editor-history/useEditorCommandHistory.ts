@@ -6,11 +6,13 @@ import {
   type SetStateAction,
 } from 'react'
 import {
+  commitEditorHistoryChange,
   createEditorHistory,
   executeEditorCommand,
   redoEditorCommand,
   undoEditorCommand,
   type EditorCommand,
+  type EditorHistoryChange,
 } from './editorCommand'
 
 type Options<State> = {
@@ -59,6 +61,22 @@ export function useEditorCommandHistory<State>({
     return result.value
   }, [onChange])
 
+  const commit = useCallback(
+    (change: EditorHistoryChange<State>) => {
+      const result = commitEditorHistoryChange(
+        historyRef.current,
+        change,
+        limit,
+      )
+      valueRef.current = result.value
+      historyRef.current = result.history
+      onChange(result.value)
+      setRevision((current) => current + 1)
+      return result.value
+    },
+    [limit, onChange],
+  )
+
   const redo = useCallback(() => {
     const result = redoEditorCommand(historyRef.current)
     if (result.value === null) return null
@@ -77,6 +95,7 @@ export function useEditorCommandHistory<State>({
 
   return {
     execute,
+    commit,
     undo,
     redo,
     clear,

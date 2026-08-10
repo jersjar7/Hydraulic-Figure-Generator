@@ -266,6 +266,7 @@ export function WseDifferenceWorkspace() {
     assessmentReviewOpen: assessmentState.panelView === 'review',
     assessmentOverrides: assessmentState.overrides,
     setAnnotations,
+    commitAnnotationChange: annotationController.commitAnnotationChange,
     setAnnotationStart,
     setSelectedAnnotationId,
     showPlacedAnnotation: annotationController.selectPlacedAnnotation,

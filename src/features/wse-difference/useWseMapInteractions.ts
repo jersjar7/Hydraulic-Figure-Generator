@@ -54,6 +54,11 @@ type Options = {
   assessmentReviewOpen: boolean
   assessmentOverrides: Record<string, AssessmentLineOverride>
   setAnnotations(value: SetStateAction<MapAnnotation[]>): void
+  commitAnnotationChange(
+    before: MapAnnotation[],
+    after: MapAnnotation[],
+    label: string,
+  ): void
   setAnnotationStart(point: MapCoordinate | null): void
   setSelectedAnnotationId(id: string | null): void
   showPlacedAnnotation(annotation: MapAnnotation): void
@@ -178,6 +183,7 @@ export function useWseMapInteractions(options: Options) {
               bounds,
               settings: options.settings,
               setAnnotations: options.setAnnotations,
+              commitAnnotationChange: options.commitAnnotationChange,
               setSelectedId: options.setSelectedAnnotationId,
               setAnnotationStart: options.setAnnotationStart,
               showPlacedAnnotation: options.showPlacedAnnotation,
