@@ -87,7 +87,8 @@ export function HydraulicProfilesWorkspace() {
 
   useEffect(() => {
     if (!dataset.sections.some((section) => section.id === selectedSectionId)) {
-      setSelectedSectionId(dataset.sections[0]?.id ?? '')
+      const nextSectionId = dataset.sections[0]?.id ?? ''
+      if (nextSectionId !== selectedSectionId) setSelectedSectionId(nextSectionId)
     }
   }, [dataset.sections, selectedSectionId, setSelectedSectionId])
 

@@ -6,6 +6,18 @@ import type {
   CrossSectionFigureSettings,
   CrossSectionLineStyle,
 } from './crossSectionSettings'
+import {
+  drawChartAxes,
+  drawChartLabels,
+  drawChartLegend,
+  type ChartPlotFrame,
+} from '../chart-tools/chartCanvas'
+import {
+  crossSectionChartAxes,
+  crossSectionChartLayout,
+  crossSectionChartLegend,
+  crossSectionChartSeries,
+} from './crossSectionChartStyle'
 
 export const CROSS_SECTION_FRAMES = {
   landscape: { width: 1500, height: 900 },
@@ -15,23 +27,6 @@ export const CROSS_SECTION_FRAMES = {
 export type CrossSectionRenderDocument = {
   scene: HydraulicCrossSectionScene
   settings: CrossSectionFigureSettings
-}
-
-type PlotFrame = {
-  left: number
-  top: number
-  width: number
-  height: number
-}
-
-function niceStep(span: number, targetTicks: number) {
-  const rough = span / Math.max(1, targetTicks)
-  const magnitude = 10 ** Math.floor(Math.log10(Math.max(rough, 1e-6)))
-  return (
-    [1, 2, 5, 10].map((factor) => factor * magnitude).find(
-      (candidate) => candidate >= rough,
-    ) ?? 10 * magnitude
-  )
 }
 
 function profileValues(
@@ -180,52 +175,6 @@ function drawDifferenceArrow(
   context.restore()
 }
 
-function drawLegend(
-  context: CanvasRenderingContext2D,
-  frame: PlotFrame,
-  settings: CrossSectionFigureSettings,
-) {
-  const entries = [
-    settings.showExistingGround
-      ? ['Existing Ground', settings.existingGroundStyle]
-      : null,
-    settings.showProposedGround
-      ? ['Proposed Ground', settings.proposedGroundStyle]
-      : null,
-    settings.showExistingWse
-      ? ['Existing 100-Year WSE', settings.existingWseStyle]
-      : null,
-    settings.showProposedWse
-      ? ['Proposed 100-Year WSE', settings.proposedWseStyle]
-      : null,
-  ].filter(Boolean) as [string, CrossSectionLineStyle][]
-  if (entries.length === 0) return
-
-  const fontSize = Math.max(14, settings.fontSize - 2)
-  context.save()
-  context.font = `${fontSize}px Arial`
-  const width =
-    Math.max(...entries.map(([label]) => context.measureText(label).width)) + 72
-  const height = entries.length * (fontSize + 12) + 18
-  const left = frame.left + frame.width - width - 16
-  const top = frame.top + 16
-  roundedBox(context, left, top, width, height)
-  entries.forEach(([label, style], index) => {
-    const y = top + 20 + index * (fontSize + 12)
-    context.strokeStyle = style.color
-    context.lineWidth = style.width
-    context.setLineDash(style.dash)
-    context.beginPath()
-    context.moveTo(left + 12, y)
-    context.lineTo(left + 48, y)
-    context.stroke()
-    context.setLineDash([])
-    context.fillStyle = settings.textColor
-    context.fillText(label, left + 57, y + fontSize * 0.32)
-  })
-  context.restore()
-}
-
 export function renderCrossSectionDocument(
   canvas: HTMLCanvasElement,
   document: CrossSectionRenderDocument,
@@ -240,7 +189,7 @@ export function renderCrossSectionDocument(
   context.fillRect(0, 0, canvas.width, canvas.height)
 
   const portrait = settings.orientation === 'portrait'
-  const plot: PlotFrame = {
+  const plot: ChartPlotFrame = {
     left: portrait ? 105 : 120,
     top: portrait ? 150 : 120,
     width: canvas.width - (portrait ? 165 : 200),
@@ -254,111 +203,37 @@ export function renderCrossSectionDocument(
   const rawMinimum = values.length > 0 ? Math.min(...values) : 0
   const rawMaximum = values.length > 0 ? Math.max(...values) : 1
   const elevationSpan = Math.max(rawMaximum - rawMinimum, 1)
-  const elevationMinimum = rawMinimum - elevationSpan * 0.12
-  const elevationMaximum = rawMaximum + elevationSpan * 0.12
-  const x = (distance: number) =>
-    plot.left + (distance / maximumDistance) * plot.width
-  const y = (elevation: number) =>
-    plot.top +
-    ((elevationMaximum - elevation) /
-      (elevationMaximum - elevationMinimum)) *
-      plot.height
+  const automaticMinimum = rawMinimum - elevationSpan * 0.12
+  const automaticMaximum = rawMaximum + elevationSpan * 0.12
+  const requestedMinimum = settings.yMinimum ?? automaticMinimum
+  const requestedMaximum = settings.yMaximum ?? automaticMaximum
+  const elevationMinimum = requestedMaximum > requestedMinimum ? requestedMinimum : automaticMinimum
+  const elevationMaximum = requestedMaximum > requestedMinimum ? requestedMaximum : automaticMaximum
+  const axes = crossSectionChartAxes(settings)
+  const { x, y } = drawChartAxes(
+    context,
+    plot,
+    { minimum: 0, maximum: maximumDistance },
+    { minimum: elevationMinimum, maximum: elevationMaximum },
+    axes,
+    portrait ? 6 : 10,
+  )
 
-  context.save()
-  context.fillStyle = '#fbfcfd'
-  context.fillRect(plot.left, plot.top, plot.width, plot.height)
-  context.strokeStyle = '#263746'
-  context.lineWidth = 1.5
-  context.strokeRect(plot.left, plot.top, plot.width, plot.height)
-
-  const distanceStep = niceStep(maximumDistance, portrait ? 6 : 10)
-  const elevationStep = niceStep(elevationMaximum - elevationMinimum, 8)
-  context.font = `${settings.fontSize}px Arial`
-  context.fillStyle = settings.textColor
-  context.textAlign = 'center'
-  context.textBaseline = 'top'
-  for (
-    let distance = 0;
-    distance <= maximumDistance + distanceStep * 0.01;
-    distance += distanceStep
-  ) {
-    const location = x(distance)
-    if (settings.showGrid) {
-      context.strokeStyle = '#dbe1e7'
-      context.lineWidth = 1
-      context.beginPath()
-      context.moveTo(location, plot.top)
-      context.lineTo(location, plot.top + plot.height)
-      context.stroke()
-    }
-    context.fillStyle = settings.textColor
-    context.fillText(distance.toFixed(distanceStep < 1 ? 1 : 0), location, plot.top + plot.height + 12)
+  const profileValuesBySeries = {
+    'existing-ground': (sample: HydraulicCrossSectionScene['samples'][number]) => sample.baselineGround,
+    'proposed-ground': (sample: HydraulicCrossSectionScene['samples'][number]) => sample.comparisonGround,
+    'existing-wse': (sample: HydraulicCrossSectionScene['samples'][number]) => sample.baselineWse,
+    'proposed-wse': (sample: HydraulicCrossSectionScene['samples'][number]) => sample.comparisonWse,
   }
-  context.textAlign = 'right'
-  context.textBaseline = 'middle'
-  for (
-    let elevation = Math.ceil(elevationMinimum / elevationStep) * elevationStep;
-    elevation <= elevationMaximum + elevationStep * 0.01;
-    elevation += elevationStep
-  ) {
-    const location = y(elevation)
-    if (settings.showGrid) {
-      context.strokeStyle = '#dbe1e7'
-      context.lineWidth = 1
-      context.beginPath()
-      context.moveTo(plot.left, location)
-      context.lineTo(plot.left + plot.width, location)
-      context.stroke()
-    }
-    context.fillStyle = settings.textColor
-    context.fillText(
-      elevation.toFixed(elevationStep < 1 ? 1 : 0),
-      plot.left - 12,
-      location,
-    )
-  }
-  context.restore()
-
-  if (settings.showExistingGround) {
-    drawProfile(
-      context,
-      scene.samples,
-      (sample) => sample.baselineGround,
-      x,
-      y,
-      settings.existingGroundStyle,
-    )
-  }
-  if (settings.showProposedGround) {
-    drawProfile(
-      context,
-      scene.samples,
-      (sample) => sample.comparisonGround,
-      x,
-      y,
-      settings.proposedGroundStyle,
-    )
-  }
-  if (settings.showExistingWse) {
-    drawProfile(
-      context,
-      scene.samples,
-      (sample) => sample.baselineWse,
-      x,
-      y,
-      settings.existingWseStyle,
-    )
-  }
-  if (settings.showProposedWse) {
-    drawProfile(
-      context,
-      scene.samples,
-      (sample) => sample.comparisonWse,
-      x,
-      y,
-      settings.proposedWseStyle,
-    )
-  }
+  const series = crossSectionChartSeries(settings)
+  series.filter((item) => item.visible).forEach((item) => drawProfile(
+    context,
+    scene.samples,
+    profileValuesBySeries[item.id],
+    x,
+    y,
+    item.style,
+  ))
 
   if (settings.showAverageWse) {
     const averages = [
@@ -412,19 +287,21 @@ export function renderCrossSectionDocument(
       Math.max(14, settings.fontSize - 2),
     )
   }
-  if (settings.showLegend) drawLegend(context, plot, settings)
-
-  context.save()
-  context.fillStyle = settings.textColor
-  context.textAlign = 'center'
-  context.font = `700 ${settings.fontSize + 8}px Arial`
-  context.fillText(settings.title, canvas.width / 2, 45)
-  context.font = `${settings.fontSize + 2}px Arial`
-  context.fillText('Distance (feet)', plot.left + plot.width / 2, plot.top + plot.height + 58)
-  context.translate(35, plot.top + plot.height / 2)
-  context.rotate(-Math.PI / 2)
-  context.fillText('Elevation (feet)', 0, 0)
-  context.restore()
+  drawChartLegend(
+    context,
+    series.filter((item) => item.visible).map((item) => ({ label: item.label, style: item.style })),
+    plot,
+    crossSectionChartLegend(settings),
+    axes.textColor,
+    axes.fontSize,
+  )
+  drawChartLabels(
+    context,
+    canvas,
+    plot,
+    crossSectionChartLayout(settings),
+    axes,
+  )
 
   context.save()
   context.font = `600 ${Math.max(14, settings.fontSize - 2)}px Arial`

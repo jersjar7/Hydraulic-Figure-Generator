@@ -1,8 +1,18 @@
-export type CrossSectionLineStyle = {
-  color: string
-  width: number
-  dash: number[]
-}
+import {
+  createDefaultChartAxesSettings,
+  createDefaultChartLegendSettings,
+} from '../../core/chartStyle'
+import type {
+  ChartLegendPosition,
+  ChartLineStyle,
+} from '../../core/contracts/chartStyle'
+
+export type CrossSectionLineStyle = ChartLineStyle
+export type CrossSectionSeriesKey =
+  | 'existing-ground'
+  | 'proposed-ground'
+  | 'existing-wse'
+  | 'proposed-wse'
 
 export type CrossSectionFigureSettings = {
   orientation: 'landscape' | 'portrait'
@@ -27,9 +37,28 @@ export type CrossSectionFigureSettings = {
   arrowColor: string
   textColor: string
   fontSize: number
+  yMinimum: number | null
+  yMaximum: number | null
+  xAxisLabel: string
+  yAxisLabel: string
+  gridColor: string
+  plotBackgroundColor: string
+  frameColor: string
+  frameWidth: number
+  legendPosition: ChartLegendPosition
+  legendBackgroundColor: string
+  legendBackgroundOpacity: number
+  legendBorderColor: string
+  existingGroundLabel: string
+  proposedGroundLabel: string
+  existingWseLabel: string
+  proposedWseLabel: string
+  seriesOrder: CrossSectionSeriesKey[]
 }
 
 export function createDefaultCrossSectionSettings(): CrossSectionFigureSettings {
+  const axes = createDefaultChartAxesSettings('Elevation (feet)')
+  const legend = createDefaultChartLegendSettings()
   return {
     orientation: 'landscape',
     dryDepth: 0,
@@ -69,5 +98,27 @@ export function createDefaultCrossSectionSettings(): CrossSectionFigureSettings 
     arrowColor: '#c62828',
     textColor: '#17263b',
     fontSize: 18,
+    yMinimum: axes.yMinimum,
+    yMaximum: axes.yMaximum,
+    xAxisLabel: axes.xLabel,
+    yAxisLabel: axes.yLabel,
+    gridColor: axes.gridColor,
+    plotBackgroundColor: axes.plotBackgroundColor,
+    frameColor: axes.frameColor,
+    frameWidth: axes.frameWidth,
+    legendPosition: legend.position,
+    legendBackgroundColor: legend.backgroundColor,
+    legendBackgroundOpacity: legend.backgroundOpacity,
+    legendBorderColor: legend.borderColor,
+    existingGroundLabel: 'Existing Ground',
+    proposedGroundLabel: 'Proposed Ground',
+    existingWseLabel: 'Existing 100-Year WSE',
+    proposedWseLabel: 'Proposed 100-Year WSE',
+    seriesOrder: [
+      'existing-ground',
+      'proposed-ground',
+      'existing-wse',
+      'proposed-wse',
+    ],
   }
 }

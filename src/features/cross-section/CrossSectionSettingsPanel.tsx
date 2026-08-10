@@ -9,16 +9,29 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { ControlSection } from '../../components/ControlSection'
+import { Toggle } from '../../components/settings/Toggle'
+import { ChartAxesControls } from '../chart-tools/ChartAxesControls'
+import { ChartLayoutControls } from '../chart-tools/ChartLayoutControls'
+import { ChartSeriesControls } from '../chart-tools/ChartSeriesControls'
 import type {
   CrossSectionLine,
   WseAssessmentLine,
 } from '../../core/types'
-import { Toggle } from '../wse-difference/components/Toggle'
 import type {
   CrossSectionFigureSettings,
-  CrossSectionLineStyle,
 } from './crossSectionSettings'
 import type { CrossSectionSettingsSectionKey } from './crossSectionDefinition'
+import {
+  applyCrossSectionChartAxes,
+  applyCrossSectionChartLayout,
+  applyCrossSectionChartLegend,
+  crossSectionChartAxes,
+  crossSectionChartLayout,
+  crossSectionChartLegend,
+  crossSectionChartSeries,
+  moveCrossSectionSeries,
+  updateCrossSectionSeries,
+} from './crossSectionChartStyle'
 
 type Props = {
   section: CrossSectionSettingsSectionKey
@@ -53,48 +66,6 @@ function Field({
       <span>{label}</span>
       {children}
     </label>
-  )
-}
-
-function LineStyleEditor({
-  label,
-  style,
-  onChange,
-}: {
-  label: string
-  style: CrossSectionLineStyle
-  onChange(style: CrossSectionLineStyle): void
-}) {
-  return (
-    <div className="cross-line-style">
-      <strong>{label}</strong>
-      <div className="field-grid two">
-        <Field label="Color">
-          <input
-            type="color"
-            value={style.color}
-            onChange={(event) =>
-              onChange({ ...style, color: event.currentTarget.value })
-            }
-          />
-        </Field>
-        <Field label="Width">
-          <input
-            type="number"
-            min="0.5"
-            max="8"
-            step="0.25"
-            value={style.width}
-            onChange={(event) =>
-              onChange({
-                ...style,
-                width: Math.max(0.5, Number(event.currentTarget.value) || 0.5),
-              })
-            }
-          />
-        </Field>
-      </div>
-    </div>
   )
 }
 
@@ -263,44 +234,18 @@ export function CrossSectionSettingsPanel({
 
       {section === 'display' ? (
         <div className="cross-settings-stack">
-          <Field label="Figure title">
-            <textarea
-              rows={2}
-              value={settings.title}
-              onChange={(event) => update('title', event.currentTarget.value)}
-            />
-          </Field>
-          <div className="segmented">
-            {(['landscape', 'portrait'] as const).map((orientation) => (
-              <button
-                className={settings.orientation === orientation ? 'active' : ''}
-                type="button"
-                key={orientation}
-                onClick={() => update('orientation', orientation)}
-              >
-                {orientation[0].toUpperCase() + orientation.slice(1)}
-              </button>
-            ))}
-          </div>
-          <Toggle
-            label="Existing ground"
-            checked={settings.showExistingGround}
-            onChange={(value) => update('showExistingGround', value)}
+          <ChartLayoutControls
+            layout={crossSectionChartLayout(settings)}
+            legend={crossSectionChartLegend(settings)}
+            onLayoutChange={(value) => onSettingsChange((current) =>
+              applyCrossSectionChartLayout(current, value))}
+            onLegendChange={(value) => onSettingsChange((current) =>
+              applyCrossSectionChartLegend(current, value))}
           />
-          <Toggle
-            label="Proposed ground"
-            checked={settings.showProposedGround}
-            onChange={(value) => update('showProposedGround', value)}
-          />
-          <Toggle
-            label="Existing WSE"
-            checked={settings.showExistingWse}
-            onChange={(value) => update('showExistingWse', value)}
-          />
-          <Toggle
-            label="Proposed WSE"
-            checked={settings.showProposedWse}
-            onChange={(value) => update('showProposedWse', value)}
+          <ChartAxesControls
+            axes={crossSectionChartAxes(settings)}
+            onChange={(value) => onSettingsChange((current) =>
+              applyCrossSectionChartAxes(current, value))}
           />
           <Toggle
             label="Discharge-weighted averages"
@@ -312,40 +257,21 @@ export function CrossSectionSettingsPanel({
             checked={settings.showDifferenceArrow}
             onChange={(value) => update('showDifferenceArrow', value)}
           />
-          <Toggle
-            label="Legend"
-            checked={settings.showLegend}
-            onChange={(value) => update('showLegend', value)}
-          />
-          <Toggle
-            label="Grid"
-            checked={settings.showGrid}
-            onChange={(value) => update('showGrid', value)}
-          />
         </div>
       ) : null}
 
       {section === 'styles' ? (
         <div className="cross-settings-stack">
-          <LineStyleEditor
-            label="Existing ground"
-            style={settings.existingGroundStyle}
-            onChange={(style) => update('existingGroundStyle', style)}
-          />
-          <LineStyleEditor
-            label="Proposed ground"
-            style={settings.proposedGroundStyle}
-            onChange={(style) => update('proposedGroundStyle', style)}
-          />
-          <LineStyleEditor
-            label="Existing WSE"
-            style={settings.existingWseStyle}
-            onChange={(style) => update('existingWseStyle', style)}
-          />
-          <LineStyleEditor
-            label="Proposed WSE"
-            style={settings.proposedWseStyle}
-            onChange={(style) => update('proposedWseStyle', style)}
+          <ChartSeriesControls
+            series={crossSectionChartSeries(settings)}
+            onLabelChange={(id, label) => onSettingsChange((current) =>
+              updateCrossSectionSeries(current, id, { label }))}
+            onStyleChange={(id, style) => onSettingsChange((current) =>
+              updateCrossSectionSeries(current, id, { style }))}
+            onVisibilityChange={(id, visible) => onSettingsChange((current) =>
+              updateCrossSectionSeries(current, id, { visible }))}
+            onMove={(id, direction) => onSettingsChange((current) =>
+              moveCrossSectionSeries(current, id, direction))}
           />
           <div className="field-grid two">
             <Field label="Arrow color">
@@ -353,17 +279,6 @@ export function CrossSectionSettingsPanel({
                 type="color"
                 value={settings.arrowColor}
                 onChange={(event) => update('arrowColor', event.currentTarget.value)}
-              />
-            </Field>
-            <Field label="Text size">
-              <input
-                type="number"
-                min="12"
-                max="30"
-                value={settings.fontSize}
-                onChange={(event) =>
-                  update('fontSize', Math.max(12, Number(event.currentTarget.value) || 18))
-                }
               />
             </Field>
           </div>

@@ -6,8 +6,15 @@ import {
   createDefaultCrossSectionSettings,
   type CrossSectionFigureSettings,
 } from './crossSectionSettings'
+import { assertValidChartStyle } from '../../core/chartStyle'
+import {
+  crossSectionChartAxes,
+  crossSectionChartLayout,
+  crossSectionChartLegend,
+  crossSectionChartSeries,
+} from './crossSectionChartStyle'
 
-export const CROSS_SECTION_PROJECT_VERSION = 1
+export const CROSS_SECTION_PROJECT_VERSION = 2
 
 export type CrossSectionProjectState = {
   settings: CrossSectionFigureSettings
@@ -48,6 +55,10 @@ function hydrateSettings(value: unknown): CrossSectionFigureSettings {
   }
   const incoming = value as Partial<CrossSectionFigureSettings>
   const defaults = createDefaultCrossSectionSettings()
+  const validSeriesOrder = Array.isArray(incoming.seriesOrder)
+    && incoming.seriesOrder.length === defaults.seriesOrder.length
+    && new Set(incoming.seriesOrder).size === defaults.seriesOrder.length
+    && incoming.seriesOrder.every((key) => defaults.seriesOrder.includes(key))
   const settings = {
     ...defaults,
     ...incoming,
@@ -67,6 +78,7 @@ function hydrateSettings(value: unknown): CrossSectionFigureSettings {
       ...defaults.proposedWseStyle,
       ...incoming.proposedWseStyle,
     },
+    seriesOrder: validSeriesOrder ? incoming.seriesOrder! : defaults.seriesOrder,
   }
   if (
     !Number.isFinite(settings.dryDepth) ||
@@ -78,6 +90,12 @@ function hydrateSettings(value: unknown): CrossSectionFigureSettings {
   ) {
     throw new Error('Cross-section settings contain invalid numeric values.')
   }
+  assertValidChartStyle({
+    layout: crossSectionChartLayout(settings),
+    legend: crossSectionChartLegend(settings),
+    axes: crossSectionChartAxes(settings),
+    lines: crossSectionChartSeries(settings).map((series) => series.style),
+  })
   return settings
 }
 
@@ -99,7 +117,7 @@ export function parseCrossSectionProject(
   if (parsed.figureId !== CROSS_SECTION_FIGURE_ID) {
     throw new Error('This is not a Cross-Section Comparison project file.')
   }
-  if (parsed.version !== CROSS_SECTION_PROJECT_VERSION) {
+  if (![1, CROSS_SECTION_PROJECT_VERSION].includes(Number(parsed.version))) {
     throw new Error(
       `Cross-section project version ${String(parsed.version)} is not supported.`,
     )

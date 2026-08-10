@@ -14,6 +14,18 @@ import type {
   HydraulicProfileLineStyle,
 } from './hydraulicProfileSettings'
 import { hydraulicProfileLineStyle } from './hydraulicProfileSettings'
+import {
+  drawChartAxes,
+  drawChartLabels,
+  drawChartLegend,
+  type ChartPlotFrame,
+} from '../chart-tools/chartCanvas'
+import {
+  hydraulicProfileChartAxes,
+  hydraulicProfileChartLayout,
+  hydraulicProfileChartLegend,
+  hydraulicProfileChartSeries,
+} from './hydraulicProfileChartStyle'
 
 export const HYDRAULIC_PROFILE_FRAMES = {
   landscape: { width: 1500, height: 900 },
@@ -23,16 +35,6 @@ export const HYDRAULIC_PROFILE_FRAMES = {
 export type HydraulicProfileRenderDocument = {
   scene: HydraulicProfileScene
   settings: HydraulicProfileFigureSettings
-}
-
-type PlotFrame = { left: number; top: number; width: number; height: number }
-
-function niceStep(span: number, targetTicks: number) {
-  const rough = span / Math.max(1, targetTicks)
-  const magnitude = 10 ** Math.floor(Math.log10(Math.max(rough, 1e-6)))
-  return [1, 2, 5, 10]
-    .map((factor) => factor * magnitude)
-    .find((candidate) => candidate >= rough) ?? 10 * magnitude
 }
 
 function linePoints(line: HydraulicProfileLine) {
@@ -130,44 +132,6 @@ function roundedBox(
   context.stroke()
 }
 
-function drawLegend(
-  context: CanvasRenderingContext2D,
-  scene: HydraulicProfileScene,
-  settings: HydraulicProfileFigureSettings,
-  plot: PlotFrame,
-) {
-  const entries = [
-    ...scene.section.lines.map((line) => ({
-      name: line.name,
-      style: hydraulicProfileLineStyle(settings, line.datasetSlot),
-    })),
-  ]
-  const fontSize = Math.max(14, settings.fontSize - 2)
-  context.save()
-  context.font = `${fontSize}px Arial`
-  context.textAlign = 'left'
-  context.textBaseline = 'middle'
-  const width = Math.max(...entries.map((entry) => context.measureText(entry.name).width)) + 72
-  const height = entries.length * (fontSize + 11) + 18
-  const left = plot.left + plot.width - width - 15
-  const top = plot.top + 15
-  roundedBox(context, left, top, width, height)
-  entries.forEach((entry, index) => {
-    const location = top + 20 + index * (fontSize + 11)
-    context.strokeStyle = entry.style.color
-    context.lineWidth = entry.style.width
-    context.setLineDash(entry.style.dash)
-    context.beginPath()
-    context.moveTo(left + 12, location)
-    context.lineTo(left + 48, location)
-    context.stroke()
-    context.setLineDash([])
-    context.fillStyle = settings.textColor
-    context.fillText(entry.name, left + 57, location)
-  })
-  context.restore()
-}
-
 export function renderHydraulicProfileDocument(
   canvas: HTMLCanvasElement,
   document: HydraulicProfileRenderDocument,
@@ -182,13 +146,16 @@ export function renderHydraulicProfileDocument(
   context.fillRect(0, 0, canvas.width, canvas.height)
 
   const portrait = settings.orientation === 'portrait'
-  const plot: PlotFrame = {
+  const plot: ChartPlotFrame = {
     left: portrait ? 105 : 120,
     top: portrait ? 165 : 135,
     width: canvas.width - (portrait ? 165 : 200),
     height: canvas.height - (portrait ? 315 : 255),
   }
-  const lines = scene.section.lines
+  const series = hydraulicProfileChartSeries(settings, scene.section.lines)
+  const visibleSlots = new Set(series.filter((item) => item.visible).map((item) => item.id))
+  const lineBySlot = new Map(scene.section.lines.map((line) => [line.datasetSlot, line]))
+  const lines = series.map((item) => lineBySlot.get(item.id)!).filter(Boolean)
   const points = lines.flatMap(linePoints)
   const rawXMinimum = Math.min(...points.map((point) => point.distance))
   const rawXMaximum = Math.max(...points.map((point) => point.distance))
@@ -198,50 +165,21 @@ export function renderHydraulicProfileDocument(
   const ySpan = Math.max(rawYMaximum - rawYMinimum, 1)
   const xMinimum = rawXMinimum - xSpan * 0.03
   const xMaximum = rawXMaximum + xSpan * 0.03
-  const yMinimum = settings.yMinimum ?? rawYMinimum - ySpan * 0.16
-  const yMaximum = settings.yMaximum ?? rawYMaximum + ySpan * 0.12
-  const x = (value: number) => plot.left + ((value - xMinimum) / (xMaximum - xMinimum)) * plot.width
-  const y = (value: number) => plot.top + ((yMaximum - value) / (yMaximum - yMinimum)) * plot.height
-
-  context.fillStyle = '#fbfcfd'
-  context.fillRect(plot.left, plot.top, plot.width, plot.height)
-  const xStep = niceStep(xMaximum - xMinimum, portrait ? 6 : 10)
-  const yStep = niceStep(yMaximum - yMinimum, 8)
-  context.font = `${settings.fontSize}px Arial`
-  context.fillStyle = settings.textColor
-  context.textAlign = 'center'
-  context.textBaseline = 'top'
-  for (let value = Math.ceil(xMinimum / xStep) * xStep; value <= xMaximum; value += xStep) {
-    const location = x(value)
-    if (settings.showGrid) {
-      context.strokeStyle = '#dde2e8'
-      context.lineWidth = 1
-      context.beginPath()
-      context.moveTo(location, plot.top)
-      context.lineTo(location, plot.top + plot.height)
-      context.stroke()
-    }
-    context.fillStyle = settings.textColor
-    context.fillText(value.toFixed(xStep < 1 ? 1 : 0), location, plot.top + plot.height + 12)
-  }
-  context.textAlign = 'right'
-  context.textBaseline = 'middle'
-  for (let value = Math.ceil(yMinimum / yStep) * yStep; value <= yMaximum; value += yStep) {
-    const location = y(value)
-    if (settings.showGrid) {
-      context.strokeStyle = '#dde2e8'
-      context.lineWidth = 1
-      context.beginPath()
-      context.moveTo(plot.left, location)
-      context.lineTo(plot.left + plot.width, location)
-      context.stroke()
-    }
-    context.fillStyle = settings.textColor
-    context.fillText(value.toFixed(yStep < 1 ? 1 : 0), plot.left - 12, location)
-  }
-  context.strokeStyle = '#334455'
-  context.lineWidth = 1.5
-  context.strokeRect(plot.left, plot.top, plot.width, plot.height)
+  const automaticYMinimum = rawYMinimum - ySpan * 0.16
+  const automaticYMaximum = rawYMaximum + ySpan * 0.12
+  const requestedYMinimum = settings.yMinimum ?? automaticYMinimum
+  const requestedYMaximum = settings.yMaximum ?? automaticYMaximum
+  const yMinimum = requestedYMaximum > requestedYMinimum ? requestedYMinimum : automaticYMinimum
+  const yMaximum = requestedYMaximum > requestedYMinimum ? requestedYMaximum : automaticYMaximum
+  const axes = hydraulicProfileChartAxes(settings)
+  const { x, y } = drawChartAxes(
+    context,
+    plot,
+    { minimum: xMinimum, maximum: xMaximum },
+    { minimum: yMinimum, maximum: yMaximum },
+    axes,
+    portrait ? 6 : 10,
+  )
 
   const earthFillGround = scene.section.grounds.find(
     ({ datasetSlot }) => datasetSlot === settings.earthFillGroundSlot,
@@ -261,12 +199,7 @@ export function renderHydraulicProfileDocument(
   if (settings.showInundation && inundationGround) {
     drawInundation(context, inundationGround, inundationSurface, x, y)
   }
-  const drawOrder = [
-    ...scene.section.grounds,
-    ...scene.section.otherLines,
-    ...scene.section.surfaces,
-  ]
-  drawOrder.forEach((profileLine) => drawLineSegments(
+  lines.filter((profileLine) => visibleSlots.has(profileLine.datasetSlot)).forEach((profileLine) => drawLineSegments(
     context,
     settings.clipWseAtGround && profileLine.kind === 'wse' && wseClippingGround
       ? clipHydraulicProfileLineAtGround(profileLine, wseClippingGround)
@@ -276,7 +209,7 @@ export function renderHydraulicProfileDocument(
     hydraulicProfileLineStyle(settings, profileLine.datasetSlot),
   ))
 
-  if (settings.showThalweg && earthFillGround && linePoints(earthFillGround).length > 0) {
+  if (settings.showThalweg && earthFillGround && visibleSlots.has(earthFillGround.datasetSlot) && linePoints(earthFillGround).length > 0) {
     const groundPoints = linePoints(earthFillGround)
     const thalweg = groundPoints.reduce((best, point) => point.elevation < best.elevation ? point : best)
     context.save()
@@ -289,21 +222,22 @@ export function renderHydraulicProfileDocument(
     context.fillText(`Thalweg ${thalweg.elevation.toFixed(2)}`, x(thalweg.distance), y(thalweg.elevation) + 22)
     context.restore()
   }
-  if (settings.showLegend) drawLegend(context, scene, settings, plot)
-
-  context.save()
-  context.fillStyle = settings.textColor
-  context.textAlign = 'center'
-  context.font = `700 ${settings.fontSize + 8}px Arial`
-  context.fillText(settings.title, canvas.width / 2, 43)
-  context.font = `600 ${settings.fontSize + 1}px Arial`
-  context.fillText(`Station ${scene.section.stationLabel}`, canvas.width / 2, 78)
-  context.font = `${settings.fontSize + 2}px Arial`
-  context.fillText('Distance (feet)', plot.left + plot.width / 2, plot.top + plot.height + 58)
-  context.translate(35, plot.top + plot.height / 2)
-  context.rotate(-Math.PI / 2)
-  context.fillText('Elevation (feet, NAVD88)', 0, 0)
-  context.restore()
+  drawChartLegend(
+    context,
+    series.filter((item) => item.visible).map((item) => ({ label: item.label, style: item.style })),
+    plot,
+    hydraulicProfileChartLegend(settings),
+    axes.textColor,
+    axes.fontSize,
+  )
+  drawChartLabels(
+    context,
+    canvas,
+    plot,
+    hydraulicProfileChartLayout(settings),
+    axes,
+    `Station ${scene.section.stationLabel}`,
+  )
 
   context.save()
   context.font = `600 ${Math.max(14, settings.fontSize - 2)}px Arial`

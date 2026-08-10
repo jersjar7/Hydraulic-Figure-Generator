@@ -158,6 +158,11 @@ vocabulary where semantics match.
 
 ## Phase 6: Cartography And Chart Style Tools
 
+**Status:** implemented. Shared cartography controls are adopted by WSE
+Difference and Plan-View Hydraulic Results. Shared chart layout, legend, axes,
+and series controls are adopted by Cross-Section Comparison and Hydraulic
+Profiles & Sections.
+
 **Purpose:** standardize visual controls without merging different hydraulics.
 
 - Centralize color-ramp selection, numeric classification bounds, interval

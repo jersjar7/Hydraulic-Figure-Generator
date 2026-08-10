@@ -111,6 +111,42 @@ test('mobile controls keep both sidebars reachable', async ({ page }) => {
   ).toBeVisible()
 })
 
+test('shared chart styling controls remain stable across chart workspaces', async ({
+  page,
+}) => {
+  const consoleErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text())
+  })
+  page.on('pageerror', (error) => consoleErrors.push(error.message))
+
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto('.')
+  await continueWithoutProject(page)
+
+  const workspace = page.getByLabel('Workspace', { exact: true })
+  await workspace.selectOption('fra-cross-section-comparison')
+  await page.getByRole('tab', { name: 'Display', exact: true }).click()
+  await page.getByLabel('Figure title').fill('Shared XS Style Check')
+  await page.getByLabel('Y-axis label').fill('Elevation test')
+  await page.getByLabel('Legend position').selectOption('bottom-left')
+  await page.getByRole('tab', { name: 'Styles', exact: true }).click()
+  await page.getByLabel('Series 1 legend name').fill('Baseline terrain')
+  await expect(page.getByLabel('Series 1 legend name')).toHaveValue(
+    'Baseline terrain',
+  )
+
+  await workspace.selectOption('hydraulic-profiles-sections')
+  await page.getByRole('tab', { name: 'Layout', exact: true }).click()
+  await page.getByLabel('Figure title').fill('Shared Profile Style Check')
+  await page.getByLabel('Legend position').selectOption('bottom-right')
+  await page.getByRole('tab', { name: 'Axes', exact: true }).click()
+  await page.getByLabel('X-axis label').fill('Station test')
+  await expect(page.getByLabel('X-axis label')).toHaveValue('Station test')
+
+  expect(consoleErrors).toEqual([])
+})
+
 test('figure workspace drafts survive navigation through the Export Collection', async ({
   page,
 }) => {

@@ -64,8 +64,8 @@ Workspace abbreviations used below:
 | Cross-section sampling | N/A | Full | N/A | N/A | Dry depth, sample spacing, Existing/Proposed ground and WSE, discharge-weighted averages, and rise/drop arrow. |
 | Profile station generation/navigation | N/A | N/A | N/A | Full | Generates all detected stations, provides station tabs/previous/next navigation, and supports add-all-to-export. |
 | Ground/WSE relationship controls | N/A | N/A | N/A | Full | Selects clipping ground, earth-fill ground, inundation ground, and shading WSE without assuming only one ground or surface. |
-| Chart line styles | N/A | Full | N/A | Full | Both expose color and width, but use separate editors and schemas. Profiles also permits legend renaming. |
-| Chart axes and text | N/A | Partial | N/A | Full | Profiles exposes grid, Y bounds, font size, and text color. XS only exposes grid and text size. |
+| Chart line styles | N/A | Full | N/A | Full | Shared series controls provide editable names, visibility, ordering, color, width, and line pattern; workspace adapters preserve each chart's semantic series IDs. |
+| Chart axes and text | N/A | Full | N/A | Full | Shared axes controls provide labels, optional Y bounds, grid visibility/color, typography, plot fill, and frame styling. |
 
 ## Figure Elements
 
@@ -76,12 +76,12 @@ nudge/reset, keyboard actions, and isolated undo/redo history.
 
 | Element/tool | WSE | XS | Plan | Profiles | Current interaction |
 | --- | --- | --- | --- | --- | --- |
-| Figure title | Full | Separate chart title | Full | Separate chart title | WSE and Plan share drag, anchor, lock, nudge, reset, style, and undo/redo behavior. Charts use separate title fields. |
-| Difference/result legend | Full | Separate chart legend | Full | Separate chart legend | WSE and Plan share a numeric legend shell plus direct manipulation; hydraulic labels, classes, and colors remain figure-specific. Chart legends do not yet use this contract. |
+| Figure title | Full | Shared chart layout | Full | Shared chart layout | WSE and Plan share direct frame manipulation. Chart workspaces share title and orientation controls while keeping chart titles plot-scoped. |
+| Difference/result legend | Full | Shared chart legend | Full | Shared chart legend | Map legends retain classification-specific content; chart legends share visibility, position, fill, border, opacity, and series adapters. |
 | Wet/dry key | Full | N/A | N/A | N/A | Draggable, visible, styled, and independently positioned. |
 | North arrow | Full | Selection map only | Full | N/A | WSE and Plan share direct manipulation and styling. |
 | Scale bar | Full | Selection map only | Full | N/A | WSE and Plan share direct manipulation and styling. |
-| Chart legend | N/A | Full | N/A | Full | Visibility and line styling exist, but chart legend position/style are not standardized with map legends. |
+| Chart legend | N/A | Full | N/A | Full | Shared chart controls provide visibility, four-corner placement, fill, border, opacity, and ordered series content. |
 
 ## Centerline Stationing And Labels
 
@@ -154,12 +154,13 @@ assessment-specific.
 
 ## Main Duplication And Consistency Gaps
 
-1. Map and chart legends plus chart line styles still use parallel contracts;
-   map classification, contour, and mesh styling now use shared cartography.
+1. Map and chart legends intentionally use separate content adapters for map
+   classifications and chart series, while their matching style vocabulary is
+   standardized within each figure family.
 2. Figure Set behavior is mature in Plan and all-station generation exists in
    Profiles, but there is no common batch-production contract presented to
    every workspace.
-3. Map report elements use the shared frame-object contract, while chart titles
-   and legends still need plot-aware adapters and equivalent direct controls.
+3. Chart titles and legends now share plot-aware settings and renderers, but do
+   not yet participate in direct canvas dragging or figure-object undo/redo.
 4. Assessment WSE labels use anchored behavior but retain an
    assessment-specific controller and style contract.

@@ -10,8 +10,14 @@ import {
   type HydraulicProfileLineStyle,
 } from './hydraulicProfileSettings'
 import { HYDRAULIC_PROFILE_PRESETS } from './hydraulicProfilePresets'
+import { assertValidChartStyle } from '../../core/chartStyle'
+import {
+  hydraulicProfileChartAxes,
+  hydraulicProfileChartLayout,
+  hydraulicProfileChartLegend,
+} from './hydraulicProfileChartStyle'
 
-export const HYDRAULIC_PROFILE_PROJECT_VERSION = 4
+export const HYDRAULIC_PROFILE_PROJECT_VERSION = 5
 
 export type HydraulicProfileProjectState = {
   conditionLabel: string
@@ -177,6 +183,14 @@ function hydrateSettings(
       ? Number(incoming.inundationSurfaceSlot)
       : null,
     lineStyles,
+    lineVisibility: Array.isArray(incoming.lineVisibility)
+      ? incoming.lineVisibility.map((visible) => visible !== false)
+      : [...defaults.lineVisibility],
+    lineOrder: Array.isArray(incoming.lineOrder)
+      && incoming.lineOrder.every((slot) => Number.isInteger(slot) && Number(slot) >= 0)
+      && new Set(incoming.lineOrder).size === incoming.lineOrder.length
+      ? incoming.lineOrder.map(Number)
+      : [...defaults.lineOrder],
   }
   if (
     !Number.isFinite(settings.fontSize)
@@ -184,6 +198,12 @@ function hydrateSettings(
     || settings.lineStyles.length === 0
     || settings.lineStyles.some((style) => !isLineStyle(style))
   ) throw new Error('Profile settings contain invalid numeric values.')
+  assertValidChartStyle({
+    layout: hydraulicProfileChartLayout(settings),
+    legend: hydraulicProfileChartLegend(settings),
+    axes: hydraulicProfileChartAxes(settings),
+    lines: settings.lineStyles,
+  })
   return settings
 }
 
@@ -199,7 +219,7 @@ export function serializeHydraulicProfileProject(state: HydraulicProfileProjectS
 export function parseHydraulicProfileProject(text: string): HydraulicProfileProjectState {
   const parsed = JSON.parse(text) as Partial<Envelope> & Record<string, unknown>
   if (parsed.figureId !== HYDRAULIC_PROFILES_FIGURE_ID) throw new Error('This is not a Hydraulic Profiles & Sections project file.')
-  if (![1, 2, 3, HYDRAULIC_PROFILE_PROJECT_VERSION].includes(Number(parsed.version))) {
+  if (![1, 2, 3, 4, HYDRAULIC_PROFILE_PROJECT_VERSION].includes(Number(parsed.version))) {
     throw new Error(`Hydraulic profile project version ${String(parsed.version)} is not supported.`)
   }
   if (

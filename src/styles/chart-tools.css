@@ -1,0 +1,82 @@
+.chart-tool-stack {
+  display: grid;
+  gap: 9px;
+}
+
+.chart-tool-stack input[type='color'] {
+  width: 100%;
+  height: 31px;
+}
+
+.chart-series-list {
+  display: grid;
+  gap: 7px;
+}
+
+.chart-series-row {
+  display: grid;
+  gap: 6px;
+  padding: 7px;
+  background: #f8fafc;
+  border: 1px solid #d9e2ea;
+  border-radius: 5px;
+}
+
+.chart-series-row[data-visible='false'] {
+  opacity: 0.62;
+}
+
+.chart-series-heading {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+}
+
+.chart-series-heading > input {
+  min-width: 0;
+  height: 30px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.chart-series-order {
+  display: flex;
+  gap: 3px;
+}
+
+.chart-series-fields {
+  display: grid;
+  grid-template-columns: minmax(54px, 0.8fr) minmax(54px, 0.7fr) minmax(82px, 1.25fr);
+  gap: 6px;
+}
+
+.chart-series-fields label {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  color: #68798c;
+  font-size: 9px;
+}
+
+.chart-series-fields input,
+.chart-series-fields select {
+  min-width: 0;
+  height: 30px;
+  font-size: 10px;
+}
+
+.chart-series-fields input[type='color'] {
+  width: 100%;
+}
+
+.chart-series-empty {
+  padding: 10px;
+  color: #68798c;
+  background: #f7f9fb;
+  border: 1px dashed #bdc9d4;
+  border-radius: 5px;
+  font-size: 10px;
+  line-height: 1.45;
+}

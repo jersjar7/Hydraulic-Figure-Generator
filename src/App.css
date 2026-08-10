@@ -4,6 +4,7 @@
 @import './styles/settings-shell.css';
 @import './styles/annotations.css';
 @import './styles/controls.css';
+@import './styles/chart-tools.css';
 @import './styles/figure-elements.css';
 @import './styles/commands.css';
 @import './styles/map-workspace.css';

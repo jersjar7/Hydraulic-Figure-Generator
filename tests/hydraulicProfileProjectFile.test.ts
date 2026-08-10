@@ -33,10 +33,27 @@ function state(): HydraulicProfileProjectState {
 describe('hydraulic profile project files', () => {
   it('round-trips clipboard inputs, mapping review, and figure settings', () => {
     const project = state()
+    project.settings.legendPosition = 'bottom-right'
+    project.settings.lineVisibility[2] = false
+    project.settings.lineOrder = [1, 2, 0]
     assert.deepEqual(
       parseHydraulicProfileProject(serializeHydraulicProfileProject(project)),
       project,
     )
+  })
+
+  it('migrates version 4 files to shared chart-style defaults', () => {
+    const older = JSON.parse(serializeHydraulicProfileProject(state()))
+    older.version = 4
+    delete older.settings.legendPosition
+    delete older.settings.lineVisibility
+    delete older.settings.lineOrder
+
+    const parsed = parseHydraulicProfileProject(JSON.stringify(older))
+
+    assert.equal(parsed.settings.legendPosition, 'top-right')
+    assert.equal(parsed.settings.lineVisibility.every(Boolean), true)
+    assert.deepEqual(parsed.settings.lineOrder.slice(0, 3), [0, 1, 2])
   })
 
   it('rejects malformed inputs and invalid line styles', () => {

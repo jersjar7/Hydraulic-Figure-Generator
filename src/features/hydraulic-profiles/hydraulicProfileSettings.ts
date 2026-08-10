@@ -1,8 +1,13 @@
-export type HydraulicProfileLineStyle = {
-  color: string
-  width: number
-  dash: number[]
-}
+import {
+  createDefaultChartAxesSettings,
+  createDefaultChartLegendSettings,
+} from '../../core/chartStyle'
+import type {
+  ChartLegendPosition,
+  ChartLineStyle,
+} from '../../core/contracts/chartStyle'
+
+export type HydraulicProfileLineStyle = ChartLineStyle
 
 export type HydraulicProfileFigureSettings = {
   orientation: 'landscape' | 'portrait'
@@ -23,6 +28,18 @@ export type HydraulicProfileFigureSettings = {
   inundationGroundSlot: number | null
   inundationSurfaceSlot: number | null
   lineStyles: HydraulicProfileLineStyle[]
+  lineVisibility: boolean[]
+  lineOrder: number[]
+  legendPosition: ChartLegendPosition
+  legendBackgroundColor: string
+  legendBackgroundOpacity: number
+  legendBorderColor: string
+  xAxisLabel: string
+  yAxisLabel: string
+  gridColor: string
+  plotBackgroundColor: string
+  frameColor: string
+  frameWidth: number
 }
 
 const LINE_COLORS = [
@@ -57,6 +74,8 @@ export function hydraulicProfileLineStyle(
 }
 
 export function createDefaultHydraulicProfileSettings(): HydraulicProfileFigureSettings {
+  const axes = createDefaultChartAxesSettings()
+  const legend = createDefaultChartLegendSettings()
   return {
     orientation: 'landscape',
     title: 'Hydraulic Cross Section',
@@ -76,5 +95,17 @@ export function createDefaultHydraulicProfileSettings(): HydraulicProfileFigureS
     inundationGroundSlot: null,
     inundationSurfaceSlot: null,
     lineStyles: LINE_COLORS.map((_, slot) => defaultHydraulicProfileLineStyle(slot)),
+    lineVisibility: LINE_COLORS.map(() => true),
+    lineOrder: LINE_COLORS.map((_, slot) => slot),
+    legendPosition: legend.position,
+    legendBackgroundColor: legend.backgroundColor,
+    legendBackgroundOpacity: legend.backgroundOpacity,
+    legendBorderColor: legend.borderColor,
+    xAxisLabel: axes.xLabel,
+    yAxisLabel: axes.yLabel,
+    gridColor: axes.gridColor,
+    plotBackgroundColor: axes.plotBackgroundColor,
+    frameColor: axes.frameColor,
+    frameWidth: axes.frameWidth,
   }
 }
