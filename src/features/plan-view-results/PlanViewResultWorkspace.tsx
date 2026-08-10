@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useCallback, useRef, useState, type ChangeEvent } from 'react'
 import '../../App.css'
 import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspaceScaffold'
 import { HydraulicProjectPanel } from '../../components/project-data/HydraulicProjectPanel'
@@ -46,6 +46,8 @@ import { usePlanViewStationing } from './usePlanViewStationing'
 import { planViewResultWorkspaceDraft } from './planViewResultWorkspaceDraft'
 import { useCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 import { ReportFigureExportActions } from '../project-workspace/ReportFigureExportActions'
+import { usePlanViewStationLabelInteractions } from './usePlanViewStationLabelInteractions'
+import { usePlanViewResultSelection } from './usePlanViewResultSelection'
 
 const SCENARIO_ROLES: readonly ScenarioRoleOption[] = [
   { role: 'baseline', label: 'Scenario', required: true },
@@ -84,16 +86,14 @@ export function PlanViewResultWorkspace() {
     canvasFrameRef,
     settings.orientation === 'landscape' ? 1650 / 1275 : 1275 / 1650,
   )
-  const resultOptions = useMemo(
-    () => {
-      void scenarios
-      return engine.planViewResultOptions(baselineId, runIndex)
-    }, [baselineId, engine, runIndex, scenarios],
-  )
-  const selectedResult = resultOptions.find(
-    (option) => option.paramName === settings.resultParameter,
-  )
-  const ready = Boolean(selectedResult)
+  const { resultOptions, selectedResult, ready } = usePlanViewResultSelection({
+    engine,
+    scenarioId: baselineId,
+    runIndex,
+    scenarioRevision: scenarios,
+    settings,
+    setSettings,
+  })
   const scenarioLabel = engine.condition(baselineId)?.label ?? 'Scenario'
   const appendNotices = useCallback((incoming: IngestNotice[]) => {
     if (incoming.length > 0) {
@@ -108,6 +108,19 @@ export function PlanViewResultWorkspace() {
     settings,
     setSettings,
     sourceController: stationingSource,
+  })
+  const stationLabelInteractions = usePlanViewStationLabelInteractions({
+    enabled: Boolean(scene && productionMode === 'figure'),
+    bounds: engine.commonBounds([baselineId]),
+    settings,
+    layers: stationing.layers,
+    setActiveCenterline: stationingSource.setActiveCenterline,
+    selectLabel: stationing.panelProps.onSelectLabel,
+    updateOverride: stationing.controller.updateLabelOverride,
+    openStationingPanel: () => {
+      setActiveSection('stationing')
+      setRightOpen(true)
+    },
   })
   const figureSet = usePlanViewFigureSet({
     engine,
@@ -126,29 +139,6 @@ export function PlanViewResultWorkspace() {
     figureSet,
     appendNotices,
   })
-
-  useEffect(() => {
-    if (selectedResult || resultOptions.length === 0) return
-    const next =
-      resultOptions.find((option) => /Water_?Depth/i.test(option.paramName)) ??
-      resultOptions[0]
-    setSettings((current) => ({
-      ...current,
-      resultParameter: next.paramName,
-      ramp: next.defaultRamp,
-      legendMin: null,
-      legendMax: null,
-      scalarLegendInterval: null,
-      elementStyles: {
-        ...current.elementStyles,
-        diffLegend: {
-          ...current.elementStyles.diffLegend,
-          title: next.label,
-          units: next.units,
-        },
-      },
-    }))
-  }, [resultOptions, selectedResult])
 
   const invalidate = useCallback(() => {
     setScene(null)
@@ -211,6 +201,7 @@ export function PlanViewResultWorkspace() {
     centerlineStationing: stationing.layers,
     setBusy,
     appendNotices,
+    interacting: stationLabelInteractions.dragging,
   })
 
   const updateSettings = <Key extends keyof PlanViewResultSettings>(
@@ -297,6 +288,7 @@ export function PlanViewResultWorkspace() {
   }
 
   const resetProject = () => {
+    stationLabelInteractions.resetInteractions()
     projectSession.reset()
     resetDocument()
     stationingSource.reset()
@@ -406,6 +398,7 @@ export function PlanViewResultWorkspace() {
         <FigureProductionModeSwitcher
           value={productionMode}
           onChange={(mode) => {
+            stationLabelInteractions.resetInteractions()
             setProductionMode(mode)
             if (mode !== 'figure') setEditingFigureSetItemId(null)
           }}
@@ -443,6 +436,11 @@ export function PlanViewResultWorkspace() {
           figureSet={figureSet}
           figureDocument={figureDocument}
           onOpenFigure={openFigureSetItem}
+          stationLabelDragging={stationLabelInteractions.dragging}
+          onPointerDown={stationLabelInteractions.handlePointerDown}
+          onPointerMove={stationLabelInteractions.handlePointerMove}
+          onPointerUp={stationLabelInteractions.handlePointerUp}
+          onPointerCancel={stationLabelInteractions.handlePointerCancel}
         />
       }
       settingsContent={

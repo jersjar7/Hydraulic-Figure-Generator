@@ -39,6 +39,9 @@ export {
 } from './map/assessmentLayer'
 export {
   hitTestStationLabel,
+  hitTestStationLabels,
+  stationLabelFramePosition,
+  stationLabelLeaderAttachmentPoint,
   stationLabelPosition,
   type StationLabelHit,
 } from './map/stationingLayer'

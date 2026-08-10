@@ -29,6 +29,7 @@ import {
   type MapPointerInput,
 } from '../map-interactions/mapInteraction'
 import { useCanvasInteractionRuntime } from '../map-interactions/useCanvasInteractionRuntime'
+import { createStationLabelInteractionTool } from '../stationing/stationLabelInteractionTool'
 import type { SettingsSectionKey } from './workspaceConfiguration'
 import { createAnnotationMapTool } from './map-tools/annotationTool'
 import {
@@ -36,7 +37,6 @@ import {
   createAssessmentLineTool,
 } from './map-tools/assessmentTools'
 import { createFigureElementTool } from './map-tools/figureElementTool'
-import { createStationLabelTool } from './map-tools/stationLabelTool'
 
 type Options = {
   scene: WseDifferenceScene | null
@@ -48,7 +48,7 @@ type Options = {
   annotations: MapAnnotation[]
   annotationStart: MapCoordinate | null
   annotationDefaults: AnnotationDefaults
-  centerlineStationLayer?: CenterlineStationLayer
+  centerlineStationLayers?: CenterlineStationLayer[]
   assessmentDisplayLayer: AssessmentMapLayer
   stationedAssessmentLines: StationedAssessmentLineCollection | null
   assessmentReviewOpen: boolean
@@ -77,10 +77,10 @@ type Options = {
   ): void
   setElementDragging(dragging: boolean): void
   setHoveredElement(key: MapElementKey | null): void
-  selectStationLabel(id: string): void
+  selectStationLabel(id: string, centerlineId: string): void
   updateStationLabelOverride(
     id: string,
-    override: Partial<StationLabelOverride> | null,
+    override: StationLabelOverride | null,
   ): void
   setStationLabelDragging(dragging: boolean): void
   selectAssessmentLine(id: string): void
@@ -139,9 +139,9 @@ export function useWseMapInteractions(options: Options) {
         setDragging: options.setElementDragging,
         setHovered: options.setHoveredElement,
       }),
-      createStationLabelTool({
+      createStationLabelInteractionTool({
         enabled: options.annotationTool === 'select',
-        layer: options.centerlineStationLayer,
+        layers: options.centerlineStationLayers,
         bounds,
         settings: options.settings,
         selectLabel: options.selectStationLabel,

@@ -136,6 +136,10 @@
   cursor: grabbing;
 }
 
+.map-canvas[data-station-label-enabled="true"] {
+  cursor: grab;
+}
+
 .map-canvas[data-station-label-dragging="true"] {
   cursor: grabbing;
 }

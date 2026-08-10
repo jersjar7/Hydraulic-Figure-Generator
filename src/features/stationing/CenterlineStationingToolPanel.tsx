@@ -22,6 +22,7 @@ type Props = CenterlineSourceControlsProps & {
     override: StationLabelOverride | null,
   ): void
   onNudgeSelected(dx: number, dy: number): void
+  onResetSelectedPosition(): void
   onReset(): void
 }
 
@@ -43,6 +44,7 @@ export function CenterlineStationingToolPanel({
   onSelectLabel,
   onOverrideChange,
   onNudgeSelected,
+  onResetSelectedPosition,
   onReset,
 }: Props) {
   return (
@@ -67,6 +69,7 @@ export function CenterlineStationingToolPanel({
         onSelectLabel={onSelectLabel}
         onOverrideChange={onOverrideChange}
         onNudgeSelected={onNudgeSelected}
+        onResetSelectedPosition={onResetSelectedPosition}
         onReset={onReset}
       />
     </ControlSection>

@@ -126,6 +126,7 @@ export function WseDifferenceWorkspace() {
     selectedCenterline,
     centerlineStationTicks,
     centerlineStationLayer,
+    centerlineStationLayers,
     activeCenterlineEntry,
     stationedAssessmentLines,
     exportLayer: assessmentExportLayer,
@@ -260,7 +261,7 @@ export function WseDifferenceWorkspace() {
     annotations,
     annotationStart,
     annotationDefaults,
-    centerlineStationLayer,
+    centerlineStationLayers,
     assessmentDisplayLayer,
     stationedAssessmentLines,
     assessmentReviewOpen: assessmentState.panelView === 'review',
@@ -277,7 +278,8 @@ export function WseDifferenceWorkspace() {
     updateElementPosition: figureElements.updateElementPosition,
     setElementDragging,
     setHoveredElement,
-    selectStationLabel: (id) => {
+    selectStationLabel: (id, centerlineId) => {
+      stationingSource.setActiveCenterline(centerlineId)
       setActiveSettingsSection('stationing')
       setSelectedStationLabelId(id)
       setRightOpen(true)

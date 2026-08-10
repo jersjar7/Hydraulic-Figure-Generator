@@ -17,6 +17,20 @@ describe('plan-view result project files', () => {
         resultParameter: 'Froude',
         ramp: 'froude' as const,
         legendMax: 2,
+        centerlineStationing: {
+          ...createDefaultPlanViewResultSettings().centerlineStationing,
+          overrides: {
+            'main:station:1200.000000': {
+              framePoint: { x: 0.3, y: 0.7 },
+              text: 'Bridge',
+              leaderVisible: true,
+              leaderColor: '#d92d20',
+              leaderWidth: 2,
+              leaderDashed: true,
+              leaderAttachment: 'top' as const,
+            },
+          },
+        },
       },
       scenarioSelection: {
         baselineId: 'NA',
@@ -46,6 +60,37 @@ describe('plan-view result project files', () => {
     assert.deepEqual(
       parsePlanViewResultProject(serializePlanViewResultProject(state)),
       state,
+    )
+  })
+
+  it('loads version 6 station-label map positions', () => {
+    const settings = createDefaultPlanViewResultSettings()
+    settings.centerlineStationing.overrides['station:0.000000'] = {
+      labelPoint: { x: 10, y: 20 },
+      text: 'Legacy station',
+    }
+    const state = {
+      settings,
+      scenarioSelection: {
+        baselineId: 'EX',
+        comparisonId: 'PR',
+        assessmentId: 'EX',
+        runByScenario: {},
+      },
+      project: { overlays: [] },
+    }
+    const version6 = {
+      ...JSON.parse(serializePlanViewResultProject(state)),
+      version: 6,
+    }
+
+    assert.deepEqual(
+      parsePlanViewResultProject(JSON.stringify(version6))
+        .settings.centerlineStationing.overrides['station:0.000000'],
+      {
+        labelPoint: { x: 10, y: 20 },
+        text: 'Legacy station',
+      },
     )
   })
 

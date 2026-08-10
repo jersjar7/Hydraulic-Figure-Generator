@@ -62,8 +62,8 @@ frame-clamped drag/nudge/duplicate behavior, external drag history commits,
 and shared keyboard controls are in place. WSE text, leader, and automatic
 result annotations are production adopters. Anchored callouts now support
 independent endpoints, fixed extrema anchors, optional leaders, lock/reset,
-and one-command drag history. Station labels, report elements, and chart
-objects remain scoped to the rollout phases below.
+and one-command drag history. Station labels are also production adopters;
+report elements and chart objects remain scoped to the rollout phases below.
 
 **Purpose:** provide one selection/drag foundation for every visual object.
 
@@ -82,6 +82,11 @@ objects remain scoped to the rollout phases below.
 chart test surfaces, all commands undo/redo, and serialization is deterministic.
 
 ## Phase 3: Centerline Stationing And Anchored Labels
+
+**Status: implemented.** Centerline-scoped IDs, normalized frame positions,
+edge-attached leader styling, legacy override fallback, and the shared WSE/Plan
+pointer tool are in production with render, interaction, UI, and persistence
+regressions.
 
 **Purpose:** deliver the highest-priority plan-view parity on the shared kernel.
 

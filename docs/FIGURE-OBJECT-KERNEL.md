@@ -44,3 +44,12 @@ locking, creation-position reset, duplication, deletion, keyboard nudge, and
 one-command drag history. Project-file version 15 persists the new optional
 callout fields; version 14 callouts load visible and unlocked with their saved
 position as the reset baseline.
+
+Centerline station labels use a mixed-space adapter: the generated station tick
+is an immutable map anchor and the displayed label is a normalized frame point.
+The shared stationing pointer tool moves only the label, clamps it inside the
+report frame, and renders an optional styled leader to the chosen text-box edge.
+WSE Difference and Plan-View use this same adapter and tool. WSE project-file
+version 16 and Plan-View project-file version 7 persist the label-frame and
+leader fields; older map-coordinate overrides remain readable and migrate when
+edited.

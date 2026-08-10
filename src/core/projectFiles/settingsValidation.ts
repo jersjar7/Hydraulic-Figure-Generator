@@ -117,7 +117,7 @@ function elementPositions(value: unknown, path: string) {
   return output
 }
 
-function stationLabelOverrides(value: unknown, path: string) {
+export function parseStationLabelOverrides(value: unknown, path: string) {
   const input = record(value, path)
   const output: StationLabelOverrides = {}
   for (const [stationId, stationOverride] of Object.entries(input)) {
@@ -127,7 +127,22 @@ function stationLabelOverrides(value: unknown, path: string) {
       {
         visible: bool,
         labelPoint: coordinate,
+        framePoint: (value, pointPath) => shape(value, pointPath, {
+          x: ranged(0, 1),
+          y: ranged(0, 1),
+        }),
         text,
+        leaderVisible: bool,
+        leaderColor: text,
+        leaderWidth: ranged(0.25, 12),
+        leaderDashed: bool,
+        leaderAttachment: oneOf([
+          'auto',
+          'left',
+          'right',
+          'top',
+          'bottom',
+        ] as const),
       },
     )
   }
@@ -161,7 +176,7 @@ function centerlineStationing(value: unknown, path: string) {
     decimalPlaces: oneOf([0, 1, 2]),
     showEndpoints: bool,
     showDirectionArrow: bool,
-    overrides: stationLabelOverrides,
+    overrides: parseStationLabelOverrides,
   })
 }
 

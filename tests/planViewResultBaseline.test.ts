@@ -217,4 +217,74 @@ describe('Plan-View Hydraulic Results production baseline', () => {
     }
     assert.ok(magenta > 20)
   })
+
+  it('renders a moved station label with its configured anchored leader', async () => {
+    const settings = createDefaultPlanViewResultSettings()
+    settings.basemapOpacity = 0
+    settings.showTitle = false
+    settings.showLegend = false
+    settings.showNorth = false
+    settings.showScale = false
+    settings.centerlineStationing.visible = true
+    settings.centerlineStationing.showMinorTicks = false
+    settings.centerlineStationing.showMajorTicks = false
+    settings.centerlineStationing.labelInterval = 40
+    const centerline = {
+      id: 'centerline',
+      overlayId: 'overlay',
+      overlayName: 'Centerline',
+      featureIndex: 0,
+      partIndex: 0,
+      mapPoints: [{ x: 10, y: 50 }, { x: 90, y: 50 }],
+      modelPoints: [{ x: 10, y: 50 }, { x: 90, y: 50 }],
+      lengthFeet: 80,
+    }
+    const ticks = generateCenterlineStationTicks(
+      centerline,
+      'a-to-b',
+      0,
+      settings.centerlineStationing,
+    )
+    const labelId = ticks.find((tick) => tick.label)!.id
+    settings.centerlineStationing.overrides[labelId] = {
+      framePoint: { x: 0.7, y: 0.25 },
+      leaderColor: '#00ff00',
+      leaderWidth: 4,
+      leaderAttachment: 'auto',
+    }
+    const canvas = createCanvas(1650, 1275)
+    await renderPlanViewResultDocument(
+      canvas as unknown as HTMLCanvasElement,
+      {
+        scene: scene(),
+        view: {
+          bounds: { x0: -8, x1: 108, y0: -8, y1: 108 },
+          settings,
+        },
+        layers: {
+          overlays: [],
+          centerlineStationing: [{
+            centerline,
+            direction: 'a-to-b',
+            ticks,
+          }],
+        },
+        selection: {},
+      },
+    )
+    const pixels = canvas
+      .getContext('2d')
+      .getImageData(0, 0, canvas.width, canvas.height).data
+    let green = 0
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (
+        pixels[index] < 60 &&
+        pixels[index + 1] > 200 &&
+        pixels[index + 2] < 60
+      ) {
+        green += 1
+      }
+    }
+    assert.ok(green > 100)
+  })
 })

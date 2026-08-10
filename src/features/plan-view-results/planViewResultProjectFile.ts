@@ -16,8 +16,9 @@ import {
 } from './planViewFigureSet'
 import { isPlanViewGeometryOutput } from '../../core/hydraulics/planViewGeometryResults'
 import type { PersistedCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
+import { parseStationLabelOverrides } from '../../core/projectFiles/settingsValidation'
 
-export const PLAN_VIEW_RESULT_PROJECT_VERSION = 6
+export const PLAN_VIEW_RESULT_PROJECT_VERSION = 7
 
 export type PlanViewResultProjectState = {
   settings: PlanViewResultSettings
@@ -162,7 +163,10 @@ function hydrateSettings(value: unknown): PlanViewResultSettings {
     centerlineStationing: {
       ...defaults.centerlineStationing,
       ...incoming.centerlineStationing,
-      overrides: { ...(incoming.centerlineStationing?.overrides ?? {}) },
+      overrides: parseStationLabelOverrides(
+        incoming.centerlineStationing?.overrides ?? {},
+        'Plan-view result settings.centerlineStationing.overrides',
+      ),
     },
     elementPositions: {
       ...defaults.elementPositions,
@@ -249,6 +253,7 @@ export function parsePlanViewResultProject(
     parsed.version !== 3 &&
     parsed.version !== 4 &&
     parsed.version !== 5 &&
+    parsed.version !== 6 &&
     parsed.version !== PLAN_VIEW_RESULT_PROJECT_VERSION
   ) {
     throw new Error(

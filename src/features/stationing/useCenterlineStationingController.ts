@@ -1,16 +1,17 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { createDefaultFigureSettings } from '../../core/defaults'
-import {
-  canvasPointToMap,
-  mapPointToCanvas,
-  stationLabelPosition,
-} from '../../core/mapRenderer'
+import { stationLabelFramePosition } from '../../core/mapRenderer'
+import { stationLabelOverride } from '../../core/map/stationLabelLayout'
 import type {
   Bounds,
   CenterlineStationLayer,
   FigureSettings,
   StationLabelOverride,
 } from '../../core/types'
+import {
+  moveStationLabelOverrideInFrame,
+  resetStationLabelPosition,
+} from './stationLabelFigureObject'
 
 type Options<Settings extends FigureSettings> = {
   bounds: Bounds
@@ -47,6 +48,10 @@ export function useCenterlineStationingController<Settings extends FigureSetting
   ) => {
     setSettings((current) => {
       const overrides = { ...current.centerlineStationing.overrides }
+      const tick = stationingLayer?.ticks.find((item) => item.id === id)
+      if (tick?.legacyId && tick.legacyId !== id) {
+        delete overrides[tick.legacyId]
+      }
       if (override) overrides[id] = override
       else delete overrides[id]
       return {
@@ -61,24 +66,40 @@ export function useCenterlineStationingController<Settings extends FigureSetting
 
   const nudgeSelectedLabel = (dx: number, dy: number) => {
     if (!selectedLabelId || !stationingLayer) return
-    const currentPoint = stationLabelPosition(
+    const geometry = stationLabelFramePosition(
       stationingLayer,
       bounds,
       settings,
       selectedLabelId,
     )
-    if (!currentPoint) return
-    const screenPoint = mapPointToCanvas(currentPoint, bounds, settings)
-    const nextPoint = canvasPointToMap(
-      screenPoint.x + dx,
-      screenPoint.y + dy,
-      bounds,
-      settings,
+    const tick = stationingLayer.ticks.find(
+      (item) => item.id === selectedLabelId,
     )
-    updateLabelOverride(selectedLabelId, {
-      ...settings.centerlineStationing.overrides[selectedLabelId],
-      labelPoint: nextPoint,
-    })
+    if (!geometry || !tick) return
+    updateLabelOverride(
+      selectedLabelId,
+      moveStationLabelOverrideInFrame({
+        id: selectedLabelId,
+        geometry,
+        override: stationLabelOverride(stationingLayer, settings, tick),
+        delta: { x: dx, y: dy },
+        settings,
+      }),
+    )
+  }
+
+  const resetSelectedLabelPosition = () => {
+    if (!selectedLabelId || !stationingLayer) return
+    const tick = stationingLayer.ticks.find(
+      (item) => item.id === selectedLabelId,
+    )
+    if (!tick) return
+    updateLabelOverride(
+      selectedLabelId,
+      resetStationLabelPosition(
+        stationLabelOverride(stationingLayer, settings, tick),
+      ),
+    )
   }
 
   const reset = () => {
@@ -94,6 +115,7 @@ export function useCenterlineStationingController<Settings extends FigureSetting
     update,
     updateLabelOverride,
     nudgeSelectedLabel,
+    resetSelectedLabelPosition,
     reset,
   }
 }

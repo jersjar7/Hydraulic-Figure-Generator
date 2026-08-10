@@ -39,10 +39,25 @@ export type StationLabelSide = 'left' | 'right' | 'alternate' | 'auto'
 
 export type StationLabelOrientation = 'horizontal' | 'aligned'
 
+export type StationLabelLeaderAttachment =
+  | 'auto'
+  | 'left'
+  | 'right'
+  | 'top'
+  | 'bottom'
+
 export type StationLabelOverride = {
   visible?: boolean
+  /** Legacy map-coordinate placement retained for project migration. */
   labelPoint?: MapCoordinate
+  /** Normalized position inside the exported figure frame. */
+  framePoint?: MapCoordinate
   text?: string
+  leaderVisible?: boolean
+  leaderColor?: string
+  leaderWidth?: number
+  leaderDashed?: boolean
+  leaderAttachment?: StationLabelLeaderAttachment
 }
 
 export type StationLabelOverrides = Record<string, StationLabelOverride>
@@ -78,6 +93,7 @@ export type CenterlineStationingSettings = {
 
 export type CenterlineStationTick = {
   id: string
+  legacyId?: string
   stationFeet: number
   centerlineOffsetFeet: number
   mapPoint: MapCoordinate
@@ -92,6 +108,7 @@ export type CenterlineStationLayer = {
   direction: CenterlineDirection
   ticks: CenterlineStationTick[]
   selectedLabelId?: string | null
+  allowLegacyOverrides?: boolean
 }
 
 export type AssessmentLineOverride = {

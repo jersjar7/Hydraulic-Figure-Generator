@@ -93,14 +93,16 @@ The shared stationing panel currently provides:
 - tick side, color, lengths, and line widths;
 - station label color, size, side, orientation, offset, decimals, prefix, and halo;
 - endpoint labels and increasing-station arrow;
-- per-label visibility, replacement text, nudge, and reset.
+- per-label visibility, replacement text, direct drag, nudge, and reset;
+- optional per-label leader visibility, color, width, dash, and attachment edge.
 
 | Capability | WSE | Plan | Gap |
 | --- | --- | --- | --- |
 | Render multiple stationed centerlines | Full | Full | None in the shared computation/render contract. |
 | Select/edit/hide an individual label in panel | Full | Full | None. |
-| Drag an individual label on canvas | Full | No | Plan has no map pointer runtime. |
-| Optional leader from moved label to station origin | No | No | Required next shared capability. Leader style and visibility are absent from `StationLabelOverride`. |
+| Drag an individual label on canvas | Full | Full | Shared stationing interaction tool and frame-space adapter. |
+| Optional leader from moved label to station origin | Full | Full | Shared visibility, color, width, dash, and attachment controls. |
+| Preserve labels through pan/zoom and export | Full | Full | Moved labels use normalized frame positions while their map anchors remain fixed. |
 | Toggle all labels | Full | Full | Available through shared settings. |
 
 ## Annotations And Callouts
@@ -154,19 +156,17 @@ assessment-specific.
 
 1. Shared map element editors do not imply shared canvas manipulation; WSE has
    the complete pointer wiring while Plan does not.
-2. Stationing state/rendering is shared, but canvas dragging is workspace-owned
-   and optional station-label leaders do not exist.
-3. Annotation data and collection commands are partly shared, while its tool
+2. Annotation data and collection commands are partly shared, while its tool
    registry, controller, settings UI, interaction tools, and renderer binding
    remain WSE-specific.
-4. Map legends, chart legends, color classification, contour style, and chart
+3. Map legends, chart legends, color classification, contour style, and chart
    line styles use parallel contracts with inconsistent capability depth.
-5. Figure Set behavior is mature in Plan and all-station generation exists in
+4. Figure Set behavior is mature in Plan and all-station generation exists in
    Profiles, but there is no common batch-production contract presented to
    every workspace.
-6. Boolean figure metadata can claim support without proving that UI,
+5. Boolean figure metadata can claim support without proving that UI,
    interaction, rendering, persistence, and export are all wired.
-7. Draggable objects use several coordinate/state shapes: map annotations,
+6. Draggable objects use several coordinate/state shapes: map annotations,
    anchored map elements, station-label overrides, assessment callouts, and
    Export Collection ordering. A shared object-manipulation contract is needed
    before applying drag behavior consistently to every figure surface.

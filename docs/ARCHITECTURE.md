@@ -157,6 +157,15 @@ infrastructure directly.
   fixed anchor, and each completed drag enters the bounded undo/redo history as
   one command. Feature-specific duplicate, nudge, remove, and reset decisions
   live in `wseAnnotationSelectionOperations.ts`, outside the React controller.
+- Centerline station labels use the same kernel through a stationing-owned
+  adapter and pointer tool. Their hydraulic station remains a fixed map anchor,
+  while an engineer-moved label is persisted as a normalized frame position
+  with an optional edge-attached leader. WSE Difference and Plan-View bind the
+  same interaction tool, so neither workspace owns station-label drag rules.
+- WSE project schema version 16 and Plan-View schema version 7 persist the
+  frame-positioned label and leader contract. Legacy map-positioned labels are
+  read unchanged and migrate to centerline-scoped IDs and frame coordinates
+  the next time the engineer edits them.
 - `components/project-data/projectWorkflowRegistry.ts` maps declared workspace
   input capabilities to independent Models, Layers, Assess, and Review workflow
   modules with their own status and view adapters.

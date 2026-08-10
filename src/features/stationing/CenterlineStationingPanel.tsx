@@ -21,6 +21,7 @@ type Props = {
     override: StationLabelOverride | null,
   ): void
   onNudgeSelected(dx: number, dy: number): void
+  onResetSelectedPosition(): void
   onReset(): void
 }
 
@@ -33,6 +34,7 @@ export function CenterlineStationingPanel({
   onSelectLabel,
   onOverrideChange,
   onNudgeSelected,
+  onResetSelectedPosition,
   onReset,
 }: Props) {
   return (
@@ -53,6 +55,7 @@ export function CenterlineStationingPanel({
         onSelectLabel={onSelectLabel}
         onOverrideChange={onOverrideChange}
         onNudgeSelected={onNudgeSelected}
+        onResetSelectedPosition={onResetSelectedPosition}
       />
     </div>
   )

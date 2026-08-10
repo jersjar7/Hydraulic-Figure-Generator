@@ -45,7 +45,7 @@ describe('multi-centerline stationing source', () => {
     )
   })
 
-  it('retains unprefixed station ids when only one centerline is selected', () => {
+  it('keeps station override ids scoped to one centerline', () => {
     const settings = createDefaultFigureSettings().centerlineStationing
     const [layer] = buildCenterlineStationingLayers({
       centerlines: [{
@@ -54,6 +54,8 @@ describe('multi-centerline stationing source', () => {
         startStation: 0,
       }],
     }, settings)
-    assert.match(layer.ticks[0].id, /^station:/)
+    assert.match(layer.ticks[0].id, /^main:station:/)
+    assert.match(layer.ticks[0].legacyId!, /^station:/)
+    assert.equal(layer.allowLegacyOverrides, true)
   })
 })

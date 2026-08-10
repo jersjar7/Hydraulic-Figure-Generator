@@ -137,6 +137,7 @@ export function useWseFigureElementController({
     nudgeElement,
     resetElement,
     nudgeStationLabel: stationing.nudgeSelectedLabel,
+    resetStationLabelPosition: stationing.resetSelectedLabelPosition,
     resetCenterlineStationing: stationing.reset,
     resetView,
   }

@@ -896,6 +896,17 @@ test('Plan-View loads a zipped centerline and renders station ticks', async ({
     'Generated plan-view hydraulic result figure',
   )
   await expect(canvas).toHaveClass(/is-visible/)
+  const stationLabel = settingsPanel.getByRole('combobox', {
+    name: /^Station label/,
+  })
+  const firstStationId = await stationLabel.locator('option').nth(1).getAttribute('value')
+  expect(firstStationId).toBeTruthy()
+  await stationLabel.selectOption(firstStationId!)
+  await expect(settingsPanel.getByText('Show leader', { exact: true }))
+    .toBeVisible()
+  await settingsPanel.getByRole('button', { name: 'Move label right' }).click()
+  await expect(settingsPanel.getByRole('button', { name: 'Reset position' }))
+    .toBeVisible()
   await expect.poll(() => canvas.evaluate((element) => {
     const map = element as HTMLCanvasElement
     const context = map.getContext('2d')

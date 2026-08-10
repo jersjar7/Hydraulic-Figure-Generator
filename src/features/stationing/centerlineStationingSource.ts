@@ -17,7 +17,6 @@ export type CenterlineStationingSource = {
 function stationTicks(
   source: CenterlineStationingSource['centerlines'][number],
   settings: CenterlineStationingSettings,
-  namespace: boolean,
 ) {
   const ticks = generateCenterlineStationTicks(
     source.centerline,
@@ -25,12 +24,11 @@ function stationTicks(
     source.startStation,
     settings,
   )
-  return namespace
-    ? ticks.map((tick) => ({
-        ...tick,
-        id: `${source.centerline.id}:${tick.id}`,
-      }))
-    : ticks
+  return ticks.map((tick) => ({
+    ...tick,
+    legacyId: tick.id,
+    id: `${source.centerline.id}:${tick.id}`,
+  }))
 }
 
 export function buildCenterlineStationingLayers(
@@ -39,11 +37,11 @@ export function buildCenterlineStationingLayers(
   selectedLabelId: string | null = null,
 ): CenterlineStationLayer[] {
   if (!source) return []
-  const namespace = source.centerlines.length > 1
   return source.centerlines.map((item) => ({
     centerline: item.centerline,
     direction: item.direction,
-    ticks: stationTicks(item, settings, namespace),
+    ticks: stationTicks(item, settings),
     selectedLabelId,
+    allowLegacyOverrides: source.centerlines.length === 1,
   }))
 }

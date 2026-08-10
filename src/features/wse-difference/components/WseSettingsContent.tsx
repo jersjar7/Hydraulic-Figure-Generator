@@ -121,6 +121,7 @@ export function WseSettingsContent({
       onSelectLabel: onStationLabelSelect,
       onOverrideChange: figureElements.updateStationLabelOverride,
       onNudgeSelected: figureElements.nudgeStationLabel,
+      onResetSelectedPosition: figureElements.resetStationLabelPosition,
       onReset: figureElements.resetCenterlineStationing,
     },
     annotations: {

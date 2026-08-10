@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { createDefaultFigureSettings } from '../../src/core/defaults'
 import { CenterlineStationingToolPanel } from '../../src/features/stationing/CenterlineStationingToolPanel'
+import { SelectedStationLabelEditor } from '../../src/features/stationing/SelectedStationLabelEditor'
 
 describe('CenterlineStationingToolPanel', () => {
   it('combines line selection with the complete stationing workflow', () => {
@@ -33,6 +34,7 @@ describe('CenterlineStationingToolPanel', () => {
         onSelectLabel={vi.fn()}
         onOverrideChange={vi.fn()}
         onNudgeSelected={vi.fn()}
+        onResetSelectedPosition={vi.fn()}
         onReset={vi.fn()}
       />,
     )
@@ -95,6 +97,7 @@ describe('CenterlineStationingToolPanel', () => {
         onSelectLabel={vi.fn()}
         onOverrideChange={vi.fn()}
         onNudgeSelected={vi.fn()}
+        onResetSelectedPosition={vi.fn()}
         onReset={vi.fn()}
       />,
     )
@@ -108,5 +111,52 @@ describe('CenterlineStationingToolPanel', () => {
       target: { value: 'north' },
     })
     expect(onCenterlineChange).toHaveBeenCalledWith('north')
+  })
+
+  it('edits and resets an anchored station-label leader', () => {
+    const settings = createDefaultFigureSettings().centerlineStationing
+    const id = 'main:station:1000.000000'
+    settings.overrides[id] = {
+      framePoint: { x: 0.4, y: 0.3 },
+      leaderVisible: true,
+    }
+    const onOverrideChange = vi.fn()
+    const onResetSelectedPosition = vi.fn()
+    render(
+      <SelectedStationLabelEditor
+        settings={settings}
+        ticks={[{
+          id,
+          stationFeet: 1000,
+          distanceFeet: 0,
+          mapPoint: { x: 0, y: 0 },
+          modelPoint: { x: 0, y: 0 },
+          mapTangent: { x: 1, y: 0 },
+          major: true,
+          minor: true,
+          label: true,
+        }]}
+        selectedLabelId={id}
+        onSelectLabel={vi.fn()}
+        onOverrideChange={onOverrideChange}
+        onNudgeSelected={vi.fn()}
+        onResetSelectedPosition={onResetSelectedPosition}
+      />,
+    )
+
+    fireEvent.click(screen.getByLabelText('Show leader'))
+    expect(onOverrideChange).toHaveBeenCalledWith(
+      id,
+      expect.objectContaining({ leaderVisible: false }),
+    )
+    fireEvent.change(screen.getByLabelText('Attachment'), {
+      target: { value: 'right' },
+    })
+    expect(onOverrideChange).toHaveBeenCalledWith(
+      id,
+      expect.objectContaining({ leaderAttachment: 'right' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Reset position' }))
+    expect(onResetSelectedPosition).toHaveBeenCalledOnce()
   })
 })

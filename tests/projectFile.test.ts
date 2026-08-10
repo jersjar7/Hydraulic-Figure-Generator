@@ -49,10 +49,15 @@ describe('hydraulic figure project files', () => {
           showEndpoints: true,
           showDirectionArrow: true,
           overrides: {
-            'station:1100.000000': {
+            'main:station:1100.000000': {
               visible: true,
-              labelPoint: { x: 10, y: 20 },
+              framePoint: { x: 0.25, y: 0.75 },
               text: 'Bridge',
+              leaderVisible: true,
+              leaderColor: '#d92d20',
+              leaderWidth: 2.5,
+              leaderDashed: true,
+              leaderAttachment: 'left',
             },
           },
         },
@@ -143,6 +148,35 @@ describe('hydraulic figure project files', () => {
     assert.deepEqual(
       loaded.annotations,
       saved.figures['fra-wse-difference'].annotations,
+    )
+  })
+
+  it('loads version 15 map-positioned station labels for lazy migration', () => {
+    const saved = createHydraulicFigureProject({
+      settings: {
+        centerlineStationing: {
+          overrides: {
+            'station:1100.000000': {
+              labelPoint: { x: 10, y: 20 },
+              text: 'Legacy bridge',
+            },
+          },
+        },
+      },
+    })
+    const loaded = parseHydraulicFigureProject(JSON.stringify({
+      ...saved,
+      version: 15,
+    }))
+
+    assert.deepEqual(
+      loaded.settings?.centerlineStationing?.overrides?.[
+        'station:1100.000000'
+      ],
+      {
+        labelPoint: { x: 10, y: 20 },
+        text: 'Legacy bridge',
+      },
     )
   })
 

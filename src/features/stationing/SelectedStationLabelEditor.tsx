@@ -16,6 +16,7 @@ import {
   StationingSectionHeading,
   StationingToggle,
 } from './stationingControls'
+import { stationingNumberValue } from './stationingValues'
 
 const NUDGE_ACTIONS: Array<{
   direction: string
@@ -39,6 +40,7 @@ type Props = {
     override: StationLabelOverride | null,
   ): void
   onNudgeSelected(dx: number, dy: number): void
+  onResetSelectedPosition(): void
 }
 
 export function SelectedStationLabelEditor({
@@ -48,12 +50,15 @@ export function SelectedStationLabelEditor({
   onSelectLabel,
   onOverrideChange,
   onNudgeSelected,
+  onResetSelectedPosition,
 }: Props) {
   const labels = ticks.filter((tick) => tick.label)
   const selected =
     labels.find((tick) => tick.id === selectedLabelId) ?? null
   const selectedOverride = selected
-    ? settings.overrides[selected.id] ?? {}
+    ? settings.overrides[selected.id] ??
+      (selected.legacyId ? settings.overrides[selected.legacyId] : undefined) ??
+      {}
     : null
   const selectedDefaultText = selected
     ? `${settings.prefix}${formatStation(
@@ -108,6 +113,85 @@ export function SelectedStationLabelEditor({
               }
             />
           </label>
+          <StationingSectionHeading>Leader</StationingSectionHeading>
+          <StationingToggle
+            label="Show leader"
+            checked={selectedOverride.leaderVisible !== false}
+            onChange={(leaderVisible) =>
+              onOverrideChange(selected.id, {
+                ...selectedOverride,
+                leaderVisible,
+              })
+            }
+          />
+          <div className="field-grid two">
+            <label className="field">
+              <span>Color</span>
+              <input
+                type="color"
+                value={selectedOverride.leaderColor ?? settings.tickColor}
+                onChange={(event) =>
+                  onOverrideChange(selected.id, {
+                    ...selectedOverride,
+                    leaderColor: event.target.value,
+                  })
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Width</span>
+              <input
+                type="number"
+                min="0.25"
+                max="12"
+                step="0.25"
+                value={
+                  selectedOverride.leaderWidth ??
+                  Math.max(1, settings.minorLineWidth)
+                }
+                onChange={(event) =>
+                  onOverrideChange(selected.id, {
+                    ...selectedOverride,
+                    leaderWidth: stationingNumberValue(
+                      event.target.value,
+                      selectedOverride.leaderWidth ??
+                        Math.max(1, settings.minorLineWidth),
+                    ),
+                  })
+                }
+              />
+            </label>
+          </div>
+          <label className="field">
+            <span>Attachment</span>
+            <select
+              value={selectedOverride.leaderAttachment ?? 'auto'}
+              onChange={(event) =>
+                onOverrideChange(selected.id, {
+                  ...selectedOverride,
+                  leaderAttachment: event.target.value as NonNullable<
+                    StationLabelOverride['leaderAttachment']
+                  >,
+                })
+              }
+            >
+              <option value="auto">Automatic edge</option>
+              <option value="left">Left edge</option>
+              <option value="right">Right edge</option>
+              <option value="top">Top edge</option>
+              <option value="bottom">Bottom edge</option>
+            </select>
+          </label>
+          <StationingToggle
+            label="Dashed leader"
+            checked={selectedOverride.leaderDashed ?? false}
+            onChange={(leaderDashed) =>
+              onOverrideChange(selected.id, {
+                ...selectedOverride,
+                leaderDashed,
+              })
+            }
+          />
           <div className="station-label-actions">
             <span>Move selected</span>
             <div className="nudge-buttons">
@@ -125,13 +209,23 @@ export function SelectedStationLabelEditor({
               ))}
             </div>
           </div>
+          {selectedOverride.framePoint || selectedOverride.labelPoint ? (
+            <button
+              className="button secondary compact full"
+              type="button"
+              onClick={onResetSelectedPosition}
+            >
+              <RotateCcw size={13} aria-hidden="true" />
+              Reset position
+            </button>
+          ) : null}
           <button
             className="button secondary compact full"
             type="button"
             onClick={() => onOverrideChange(selected.id, null)}
           >
             <RotateCcw size={13} aria-hidden="true" />
-            Reset this label
+            Reset label settings
           </button>
         </div>
       ) : (

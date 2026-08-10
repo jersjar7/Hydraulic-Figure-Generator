@@ -1,4 +1,5 @@
 import type { RefObject } from 'react'
+import type { PointerEventHandler } from 'react'
 import type { PlanViewResultScene } from '../../core/types'
 import type { FigureProductionMode } from '../figure-sets/FigureProductionModeSwitcher'
 import type { CanvasDisplaySize } from '../figures/useFittedCanvasAspect'
@@ -19,6 +20,11 @@ type Props = {
   onOpenFigure(
     item: ReturnType<typeof usePlanViewFigureSet>['figureSet']['items'][number],
   ): void
+  stationLabelDragging: boolean
+  onPointerDown: PointerEventHandler<HTMLCanvasElement>
+  onPointerMove: PointerEventHandler<HTMLCanvasElement>
+  onPointerUp: PointerEventHandler<HTMLCanvasElement>
+  onPointerCancel: PointerEventHandler<HTMLCanvasElement>
 }
 
 export function PlanViewWorkspaceMap({
@@ -30,6 +36,11 @@ export function PlanViewWorkspaceMap({
   figureSet,
   figureDocument,
   onOpenFigure,
+  stationLabelDragging,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
 }: Props) {
   if (mode === 'document') {
     return (
@@ -59,6 +70,11 @@ export function PlanViewWorkspaceMap({
       canvasRef={canvasRef}
       canvasFrameRef={canvasFrameRef}
       displaySize={displaySize}
+      stationLabelDragging={stationLabelDragging}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
     />
   )
 }

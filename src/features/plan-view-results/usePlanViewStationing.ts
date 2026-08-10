@@ -104,6 +104,7 @@ export function usePlanViewStationing({
       onSelectLabel: setSelectedLabelId,
       onOverrideChange: controller.updateLabelOverride,
       onNudgeSelected: controller.nudgeSelectedLabel,
+      onResetSelectedPosition: controller.resetSelectedLabelPosition,
       onReset: controller.reset,
     },
   }

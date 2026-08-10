@@ -1,5 +1,6 @@
 import { Layers3 } from 'lucide-react'
 import type { RefObject } from 'react'
+import type { PointerEventHandler } from 'react'
 import type { PlanViewResultScene } from '../../core/types'
 
 type Props = {
@@ -7,6 +8,11 @@ type Props = {
   canvasRef: RefObject<HTMLCanvasElement | null>
   canvasFrameRef: RefObject<HTMLDivElement | null>
   displaySize: { width: number; height: number }
+  stationLabelDragging: boolean
+  onPointerDown: PointerEventHandler<HTMLCanvasElement>
+  onPointerMove: PointerEventHandler<HTMLCanvasElement>
+  onPointerUp: PointerEventHandler<HTMLCanvasElement>
+  onPointerCancel: PointerEventHandler<HTMLCanvasElement>
 }
 
 export function PlanViewResultCanvas({
@@ -14,6 +20,11 @@ export function PlanViewResultCanvas({
   canvasRef,
   canvasFrameRef,
   displaySize,
+  stationLabelDragging,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
 }: Props) {
   return (
     <>
@@ -32,6 +43,14 @@ export function PlanViewResultCanvas({
           ref={canvasRef}
           className={scene ? 'map-canvas is-visible' : 'map-canvas'}
           aria-label="Generated plan-view hydraulic result figure"
+          data-station-label-enabled={scene ? 'true' : undefined}
+          data-station-label-dragging={
+            stationLabelDragging ? 'true' : undefined
+          }
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
           style={{
             width: displaySize.width || undefined,
             height: displaySize.height || undefined,

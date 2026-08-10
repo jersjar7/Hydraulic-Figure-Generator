@@ -15,6 +15,7 @@ export type StationLabelLayout = {
   labelX: number
   labelY: number
   labelPoint: MapCoordinate
+  framePoint: MapCoordinate
   width: number
   height: number
   angle: number
@@ -27,6 +28,23 @@ export type StationLabelLayout = {
   moved: boolean
 }
 
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.max(minimum, Math.min(maximum, value))
+}
+
+export function stationLabelOverride(
+  layer: CenterlineStationLayer,
+  settings: FigureSettings,
+  tick: CenterlineStationTick,
+) {
+  return (
+    settings.centerlineStationing.overrides[tick.id] ??
+    (layer.allowLegacyOverrides && tick.legacyId
+      ? settings.centerlineStationing.overrides[tick.legacyId]
+      : undefined)
+  )
+}
+
 function normalizedTextAngle(angle: number) {
   let result = angle
   while (result > Math.PI) result -= Math.PI * 2
@@ -37,10 +55,11 @@ function normalizedTextAngle(angle: number) {
 }
 
 function stationLabelText(
+  layer: CenterlineStationLayer,
   tick: CenterlineStationTick,
   settings: FigureSettings,
 ) {
-  const override = settings.centerlineStationing.overrides[tick.id]
+  const override = stationLabelOverride(layer, settings, tick)
   return (
     override?.text ??
     `${settings.centerlineStationing.prefix}${formatStation(
@@ -65,7 +84,7 @@ export function stationLabelLayouts(
     .filter(
       (tick) =>
         tick.label &&
-        stationing.overrides[tick.id]?.visible !== false,
+        stationLabelOverride(layer, settings, tick)?.visible !== false,
     )
     .forEach((tick, index) => {
       const [targetX, targetY] = view.toScreen(
@@ -81,7 +100,7 @@ export function stationLabelLayouts(
       const tangentLength = Math.hypot(dx, dy) || 1
       const normalX = -dy / tangentLength
       const normalY = dx / tangentLength
-      const text = stationLabelText(tick, settings)
+      const text = stationLabelText(layer, tick, settings)
       const width = measureText(text) + 8
       const height = stationing.labelFontSize + 8
       const angle =
@@ -94,7 +113,7 @@ export function stationLabelLayouts(
       const rotatedHeight =
         Math.abs(Math.sin(angle)) * width +
         Math.abs(Math.cos(angle)) * height
-      const override = stationing.overrides[tick.id]
+      const override = stationLabelOverride(layer, settings, tick)
       let labelX = targetX
       let labelY = targetY
       let collisionBox = {
@@ -104,7 +123,16 @@ export function stationLabelLayouts(
         height: rotatedHeight,
       }
 
-      if (override?.labelPoint) {
+      if (override?.framePoint) {
+        labelX = clamp(override.framePoint.x, 0, 1) * frame.width
+        labelY = clamp(override.framePoint.y, 0, 1) * frame.height
+        collisionBox = {
+          x: labelX - rotatedWidth / 2,
+          y: labelY - rotatedHeight / 2,
+          width: rotatedWidth,
+          height: rotatedHeight,
+        }
+      } else if (override?.labelPoint) {
         ;[labelX, labelY] = view.toScreen(
           override.labelPoint.x,
           override.labelPoint.y,
@@ -195,12 +223,18 @@ export function stationLabelLayouts(
         labelX,
         labelY,
         labelPoint:
-          override?.labelPoint ?? view.screenToMerc(labelX, labelY),
+          override?.framePoint
+            ? view.screenToMerc(labelX, labelY)
+            : override?.labelPoint ?? view.screenToMerc(labelX, labelY),
+        framePoint: {
+          x: labelX / frame.width,
+          y: labelY / frame.height,
+        },
         width,
         height,
         angle,
         collisionBox,
-        moved: Boolean(override?.labelPoint),
+        moved: Boolean(override?.framePoint || override?.labelPoint),
       })
     })
 

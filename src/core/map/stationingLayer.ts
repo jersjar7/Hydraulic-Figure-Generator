@@ -4,6 +4,7 @@ import type {
   CenterlineStationTick,
   FigureSettings,
   MapCoordinate,
+  StationLabelLeaderAttachment,
 } from '../types'
 import {
   FRAMES,
@@ -11,7 +12,51 @@ import {
   type MapFrame as Frame,
   type MapView as View,
 } from './view'
-import { stationLabelLayouts } from './stationLabelLayout'
+import {
+  stationLabelLayouts,
+  stationLabelOverride,
+  type StationLabelLayout,
+} from './stationLabelLayout'
+
+function rotatedPoint(
+  layout: StationLabelLayout,
+  localX: number,
+  localY: number,
+) {
+  const cosine = Math.cos(layout.angle)
+  const sine = Math.sin(layout.angle)
+  return {
+    x: layout.labelX + localX * cosine - localY * sine,
+    y: layout.labelY + localX * sine + localY * cosine,
+  }
+}
+
+export function stationLabelLeaderAttachmentPoint(
+  layout: StationLabelLayout,
+  attachment: StationLabelLeaderAttachment,
+) {
+  const halfWidth = layout.width / 2 + 3
+  const halfHeight = layout.height / 2 + 3
+  if (attachment === 'left') return rotatedPoint(layout, -halfWidth, 0)
+  if (attachment === 'right') return rotatedPoint(layout, halfWidth, 0)
+  if (attachment === 'top') return rotatedPoint(layout, 0, -halfHeight)
+  if (attachment === 'bottom') return rotatedPoint(layout, 0, halfHeight)
+
+  const dx = layout.targetX - layout.labelX
+  const dy = layout.targetY - layout.labelY
+  const cosine = Math.cos(-layout.angle)
+  const sine = Math.sin(-layout.angle)
+  const localX = dx * cosine - dy * sine
+  const localY = dx * sine + dy * cosine
+  const denominator = Math.max(
+    Math.abs(localX) / halfWidth,
+    Math.abs(localY) / halfHeight,
+  )
+  if (!Number.isFinite(denominator) || denominator === 0) {
+    return { x: layout.labelX, y: layout.labelY }
+  }
+  return rotatedPoint(layout, localX / denominator, localY / denominator)
+}
 
 function drawStationTick(
   context: CanvasRenderingContext2D,
@@ -170,14 +215,29 @@ export function drawCenterlineStationing(
       frame,
       (text) => context.measureText(text).width,
     )
+    const ticks = new Map(layer.ticks.map((tick) => [tick.id, tick]))
     for (const layout of layouts) {
-      if (layout.moved) {
-        context.strokeStyle = stationing.tickColor
-        context.lineWidth = Math.max(1, stationing.minorLineWidth)
+      const tick = ticks.get(layout.id)
+      const override = tick
+        ? stationLabelOverride(layer, settings, tick)
+        : undefined
+      if (layout.moved && override?.leaderVisible !== false) {
+        const attachment = stationLabelLeaderAttachmentPoint(
+          layout,
+          override?.leaderAttachment ?? 'auto',
+        )
+        context.save()
+        context.strokeStyle = override?.leaderColor ?? stationing.tickColor
+        context.lineWidth = override?.leaderWidth ?? Math.max(
+          1,
+          stationing.minorLineWidth,
+        )
+        context.setLineDash(override?.leaderDashed ? [8, 5] : [])
         context.beginPath()
         context.moveTo(layout.targetX, layout.targetY)
-        context.lineTo(layout.labelX, layout.labelY)
+        context.lineTo(attachment.x, attachment.y)
         context.stroke()
+        context.restore()
       }
 
       context.save()
@@ -210,7 +270,11 @@ export function drawCenterlineStationing(
 
 export type StationLabelHit = {
   id: string
+  centerlineId: string
   labelPoint: MapCoordinate
+  framePoint: MapCoordinate
+  targetScreenPoint: MapCoordinate
+  labelScreenPoint: MapCoordinate
 }
 
 export function hitTestStationLabel(
@@ -251,9 +315,28 @@ export function hitTestStationLabel(
     ) {
       return {
         id: layout.id,
+        centerlineId: layer.centerline.id,
         labelPoint: layout.labelPoint,
+        framePoint: layout.framePoint,
+        targetScreenPoint: { x: layout.targetX, y: layout.targetY },
+        labelScreenPoint: { x: layout.labelX, y: layout.labelY },
       }
     }
+  }
+  return null
+}
+
+export function hitTestStationLabels(
+  layers: readonly CenterlineStationLayer[] | undefined,
+  bounds: Bounds,
+  settings: FigureSettings,
+  x: number,
+  y: number,
+) {
+  if (!layers) return null
+  for (let index = layers.length - 1; index >= 0; index -= 1) {
+    const hit = hitTestStationLabel(layers[index], bounds, settings, x, y)
+    if (hit) return hit
   }
   return null
 }
@@ -276,4 +359,30 @@ export function stationLabelPosition(
       text.length * settings.centerlineStationing.labelFontSize * 0.62,
   ).find((item) => item.id === id)
   return layout?.labelPoint ?? null
+}
+
+export function stationLabelFramePosition(
+  layer: CenterlineStationLayer | undefined,
+  bounds: Bounds,
+  settings: FigureSettings,
+  id: string,
+) {
+  if (!layer) return null
+  const frame = FRAMES[settings.orientation]
+  const view = makeView(bounds, frame, settings)
+  const layout = stationLabelLayouts(
+    layer,
+    view,
+    settings,
+    frame,
+    (text) =>
+      text.length * settings.centerlineStationing.labelFontSize * 0.62,
+  ).find((item) => item.id === id)
+  return layout
+    ? {
+        framePoint: layout.framePoint,
+        targetScreenPoint: { x: layout.targetX, y: layout.targetY },
+        labelScreenPoint: { x: layout.labelX, y: layout.labelY },
+      }
+    : null
 }

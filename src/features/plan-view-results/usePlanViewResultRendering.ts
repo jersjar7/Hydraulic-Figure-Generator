@@ -19,6 +19,7 @@ type Options = {
   centerlineStationing?: CenterlineStationLayer[]
   setBusy(busy: boolean): void
   appendNotices(notices: IngestNotice[]): void
+  interacting?: boolean
 }
 
 export function usePlanViewResultRendering({
@@ -30,6 +31,7 @@ export function usePlanViewResultRendering({
   centerlineStationing,
   setBusy,
   appendNotices,
+  interacting = false,
 }: Options) {
   const renderSequence = useRef(0)
 
@@ -38,7 +40,7 @@ export function usePlanViewResultRendering({
     const sequence = ++renderSequence.current
     const output = document.createElement('canvas')
     const controller = new AbortController()
-    setBusy(true)
+    if (!interacting) setBusy(true)
     void planViewResultFigure
       .render({
         canvas: output,
@@ -68,7 +70,7 @@ export function usePlanViewResultRendering({
         }])
       })
       .finally(() => {
-        if (renderSequence.current === sequence) setBusy(false)
+        if (renderSequence.current === sequence && !interacting) setBusy(false)
       })
     return () => controller.abort()
   }, [
@@ -76,6 +78,7 @@ export function usePlanViewResultRendering({
     canvasRef,
     centerlineStationing,
     engine,
+    interacting,
     overlays,
     scene,
     setBusy,
