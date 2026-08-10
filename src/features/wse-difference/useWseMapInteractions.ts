@@ -30,13 +30,13 @@ import {
 } from '../map-interactions/mapInteraction'
 import { useCanvasInteractionRuntime } from '../map-interactions/useCanvasInteractionRuntime'
 import { createStationLabelInteractionTool } from '../stationing/stationLabelInteractionTool'
+import { createFigureElementInteractionTool } from '../figure-elements/figureElementInteractionTool'
 import type { SettingsSectionKey } from './workspaceConfiguration'
 import { createAnnotationMapTool } from './map-tools/annotationTool'
 import {
   createAssessmentCalloutTool,
   createAssessmentLineTool,
 } from './map-tools/assessmentTools'
-import { createFigureElementTool } from './map-tools/figureElementTool'
 
 type Options = {
   scene: WseDifferenceScene | null
@@ -71,9 +71,14 @@ type Options = {
   appendNotices(notices: IngestNotice[]): void
   setAnnotationDragging(dragging: boolean): void
   selectFigureElement(key: FigureElementPanelKey): void
-  updateElementPosition(
+  previewElementPosition(
     key: MapElementKey,
     position: FigureSettings['elementPositions'][MapElementKey],
+  ): void
+  commitElementPosition(
+    key: MapElementKey,
+    before: FigureSettings['elementPositions'][MapElementKey],
+    after: FigureSettings['elementPositions'][MapElementKey],
   ): void
   setElementDragging(dragging: boolean): void
   setHoveredElement(key: MapElementKey | null): void
@@ -130,12 +135,13 @@ export function useWseMapInteractions(options: Options) {
   const tools = (): MapInteractionTool[] => {
     const bounds = options.engine.commonBounds()
     return [
-      createFigureElementTool({
+      createFigureElementInteractionTool({
         enabled: options.activeSettingsSection === 'elements',
         settings: options.settings,
         elementBounds: () => options.elementBoundsRef.current ?? [],
         selectElement: options.selectFigureElement,
-        updatePosition: options.updateElementPosition,
+        previewPosition: options.previewElementPosition,
+        commitPosition: options.commitElementPosition,
         setDragging: options.setElementDragging,
         setHovered: options.setHoveredElement,
       }),

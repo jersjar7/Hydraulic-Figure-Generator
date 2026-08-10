@@ -300,6 +300,7 @@ export function PlanViewResultSettingsPanel(props: Props) {
           activeElement={activeElement}
           onActiveElementChange={onActiveElementChange}
           onVisibilityChange={elements.updateElementVisibility}
+          onLockChange={elements.updateElementLock}
           onTitleTemplateChange={(value) =>
             onSettingsChange('titleTemplate', value)
           }
@@ -307,6 +308,12 @@ export function PlanViewResultSettingsPanel(props: Props) {
           onPositionChange={elements.updateElementPosition}
           onNudge={elements.nudgeElement}
           onResetElement={elements.resetElement}
+          onUndo={elements.undo}
+          onRedo={elements.redo}
+          canUndo={elements.canUndo}
+          canRedo={elements.canRedo}
+          undoLabel={elements.undoLabel}
+          redoLabel={elements.redoLabel}
         />
       </ControlSection>
     )

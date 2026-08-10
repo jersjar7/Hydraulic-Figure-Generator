@@ -12,7 +12,7 @@ import type {
   WseDifferenceScene,
 } from '../src/core/types'
 import { createAnnotationMapTool } from '../src/features/wse-difference/map-tools/annotationTool'
-import { createFigureElementTool } from '../src/features/wse-difference/map-tools/figureElementTool'
+import { createFigureElementInteractionTool } from '../src/features/figure-elements/figureElementInteractionTool'
 
 describe('WSE map tools', () => {
   it('moves and cancels a report-element drag through its own session', () => {
@@ -20,16 +20,17 @@ describe('WSE map tools', () => {
     const original = { ...settings.elementPositions.title }
     let current = original
     const dragging: boolean[] = []
-    const tool = createFigureElementTool({
+    const tool = createFigureElementInteractionTool({
       enabled: true,
       settings,
       elementBounds: () => [
         { key: 'title', x: 10, y: 20, width: 100, height: 50 },
       ],
       selectElement: () => {},
-      updatePosition: (_key, position) => {
+      previewPosition: (_key, position) => {
         current = position
       },
+      commitPosition: () => {},
       setDragging: (value) => dragging.push(value),
       setHovered: () => {},
     })
@@ -48,6 +49,53 @@ describe('WSE map tools', () => {
     started?.session?.cancel?.()
     assert.deepEqual(current, original)
     assert.deepEqual(dragging, [true, false])
+  })
+
+  it('commits one report-element move and selects locked elements without dragging', () => {
+    const settings = createDefaultFigureSettings()
+    const original = { ...settings.elementPositions.title }
+    let selected: string | null = null
+    let committed: {
+      before: typeof original
+      after: typeof original
+    } | null = null
+    const tool = createFigureElementInteractionTool({
+      enabled: true,
+      settings,
+      elementBounds: () => [
+        { key: 'title', x: 10, y: 20, width: 100, height: 50 },
+      ],
+      selectElement: (key) => { selected = key },
+      previewPosition: () => {},
+      commitPosition: (_key, before, after) => {
+        committed = { before, after }
+      },
+      setDragging: () => {},
+      setHovered: () => {},
+    })
+    const started = tool.begin({
+      screenPoint: { x: 20, y: 30 },
+      mapPoint: { x: 0, y: 0 },
+    })
+    started?.session?.finish?.({
+      screenPoint: { x: 55, y: 75 },
+      mapPoint: { x: 0, y: 0 },
+    })
+
+    assert.equal(selected, 'title')
+    assert.deepEqual(committed?.before, original)
+    assert.equal(committed?.after.offX, original.offX + 35)
+    assert.equal(committed?.after.offY, original.offY + 45)
+
+    settings.elementPositions.title.locked = true
+    committed = null
+    const locked = tool.begin({
+      screenPoint: { x: 20, y: 30 },
+      mapPoint: { x: 0, y: 0 },
+    })
+    assert.equal(locked?.handled, true)
+    assert.equal(locked?.session, undefined)
+    assert.equal(committed, null)
   })
 
   it('selects and moves an annotation through the annotation tool', () => {

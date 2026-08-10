@@ -134,6 +134,12 @@ the same tool has the same settings and shortcuts in every workspace.
 
 ## Phase 5: Figure Elements And Legends
 
+**Status: implemented for map workspaces.** WSE Difference and Plan-View now
+share frame-object adapters, canvas selection and dragging, position locking,
+nudge/reset, isolated undo/redo history, element editors, and one numeric legend
+shell. Chart-title and chart-legend adoption remains with the chart-style phase,
+where plot-specific placement can be introduced without coupling map state.
+
 **Purpose:** remove WSE-only interaction advantages from shared report elements.
 
 - Adapt Title, Legend, Wet/Dry Key, North Arrow, and Scale Bar to the shared

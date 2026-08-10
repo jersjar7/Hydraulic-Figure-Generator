@@ -6,6 +6,7 @@ import type { ScenarioRoleOption } from '../../components/project-data/projectWo
 import type {
   FigureElementPanelKey,
   IngestNotice,
+  MapElementBounds,
   PlanViewResultScene,
   PlanViewResultSettings,
 } from '../../core/types'
@@ -79,6 +80,7 @@ export function PlanViewResultWorkspace() {
     useState<FigureElementPanelKey>('title')
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const canvasFrameRef = useRef<HTMLDivElement>(null)
+  const elementBoundsRef = useRef<MapElementBounds[]>([])
   const projectInputRef = useRef<HTMLInputElement>(null)
   const stationingSource = useCenterlineStationingSource()
   const displaySize = useFittedCanvasAspect(
@@ -99,7 +101,12 @@ export function PlanViewResultWorkspace() {
       setNotices((current) => [...current, ...incoming].slice(-40))
     }
   }, [])
-  const elements = useMapElementController(settings, setSettings)
+  const elements = useMapElementController(
+    settings,
+    setSettings,
+    activeElement,
+    productionMode === 'figure' && activeSection === 'elements',
+  )
   const stationing = usePlanViewStationing({
     engine,
     scenarioId: baselineId,
@@ -120,11 +127,19 @@ export function PlanViewResultWorkspace() {
     enabled: Boolean(scene && productionMode === 'figure'),
     bounds: mapBounds,
     settings,
+    activeSection,
+    elementBoundsRef,
+    elements,
     annotations,
     stationLayers: stationing.layers,
     setActiveCenterline: stationingSource.setActiveCenterline,
     selectStationLabel: stationing.panelProps.onSelectLabel,
     updateStationOverride: stationing.controller.updateLabelOverride,
+    selectElement: setActiveElement,
+    openElements: () => {
+      setActiveSection('elements')
+      setRightOpen(true)
+    },
     openAnnotations: () => {
       setActiveSection('annotations')
       setRightOpen(true)
@@ -206,6 +221,7 @@ export function PlanViewResultWorkspace() {
 
   usePlanViewResultRendering({
     canvasRef,
+    elementBoundsRef,
     scene,
     engine,
     settings,
@@ -213,6 +229,8 @@ export function PlanViewResultWorkspace() {
     centerlineStationing: stationing.layers,
     annotations: annotations.annotations,
     selectedAnnotationId: annotations.selectedId,
+    selectedElementKey:
+      activeSection === 'elements' ? activeElement : null,
     setBusy,
     appendNotices,
     interacting: mapInteractions.dragging,
@@ -256,6 +274,7 @@ export function PlanViewResultWorkspace() {
     usePlanViewWorkspacePersistence({
       settings, setSettings, scenarios, projectSession, projectDocument,
       figureSet, figureDocument, stationingSource, stationing, annotations,
+      elements,
       setScene, appendNotices,
     })
 
@@ -266,6 +285,8 @@ export function PlanViewResultWorkspace() {
     stationingSource.reset()
     stationing.clearSelection()
     annotations.reset()
+    elements.clearHistory()
+    elementBoundsRef.current = []
     setSettings(createDefaultPlanViewResultSettings())
     figureSet.reset()
     figureDocument.reset()
@@ -292,6 +313,7 @@ export function PlanViewResultWorkspace() {
       }),
     )
     setEditingFigureSetItemId(item.id)
+    elements.clearHistory()
     setProductionMode('figure')
     setActiveSection('result')
   }
@@ -411,11 +433,14 @@ export function PlanViewResultWorkspace() {
           figureDocument={figureDocument}
           onOpenFigure={openFigureSetItem}
           stationLabelDragging={mapInteractions.stationLabelDragging}
+          elementDragging={mapInteractions.elementDragging}
+          hoveredElement={mapInteractions.hoveredElement}
           annotationTool={annotations.tool}
           onPointerDown={mapInteractions.handlePointerDown}
           onPointerMove={mapInteractions.handlePointerMove}
           onPointerUp={mapInteractions.handlePointerUp}
           onPointerCancel={mapInteractions.handlePointerCancel}
+          onPointerLeave={mapInteractions.handlePointerLeave}
         />
       }
       settingsContent={

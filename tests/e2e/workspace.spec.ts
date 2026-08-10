@@ -906,6 +906,37 @@ test('Plan-View loads a zipped centerline and renders station ticks', async ({
     'Generated plan-view hydraulic result figure',
   )
   await expect(canvas).toHaveClass(/is-visible/)
+  await page.getByRole('tab', { name: 'Elements', exact: true }).click()
+  let titlePoint = { x: 0, y: 0 }
+  await expect.poll(async () => {
+    const canvasBox = await canvas.boundingBox()
+    const canvasSize = await canvas.evaluate((element) => ({
+      height: (element as HTMLCanvasElement).height,
+    }))
+    expect(canvasBox).toBeTruthy()
+    titlePoint = {
+      x: canvasBox!.x + canvasBox!.width / 2,
+      y: canvasBox!.y + (35 * canvasBox!.height) / canvasSize.height,
+    }
+    await page.mouse.move(titlePoint.x - 2, titlePoint.y)
+    await page.mouse.move(titlePoint.x, titlePoint.y)
+    return canvas.getAttribute('data-element-hover')
+  }).toBe('title')
+  await page.mouse.down()
+  await expect(canvas).toHaveAttribute('data-element-dragging', 'true')
+  await page.mouse.move(titlePoint.x + 55, titlePoint.y + 30)
+  await page.mouse.up()
+  const offset = settingsPanel.getByText(/Offset .* px/)
+  await expect(offset).not.toContainText('0, 0 px')
+
+  await settingsPanel.getByText('Lock position', { exact: true }).click()
+  const lockedOffset = await offset.textContent()
+  await expect(
+    settingsPanel.getByRole('button', { name: 'Move Title right' }),
+  ).toBeDisabled()
+  await expect(offset).toHaveText(lockedOffset ?? '')
+
+  await page.getByRole('tab', { name: 'Stationing', exact: true }).click()
   const stationLabel = settingsPanel.getByRole('combobox', {
     name: /^Station label/,
   })

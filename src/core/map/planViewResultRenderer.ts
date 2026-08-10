@@ -31,6 +31,7 @@ import {
   scalarContourLevels,
 } from './scalarResultScale'
 import { drawTitle } from './titleElement'
+import { drawMapElementSelection } from './mapElementLayout'
 import { FRAMES, makeMapView } from './view'
 
 export type PlanViewResultRenderDocument = FigureRenderDocument<
@@ -42,7 +43,10 @@ export type PlanViewResultRenderDocument = FigureRenderDocument<
     centerlineStationing: CenterlineStationLayer[]
     annotations: MapAnnotation[]
   },
-  { selectedAnnotationId: string | null }
+  {
+    selectedAnnotationId: string | null
+    selectedElementKey: MapElementBounds['key'] | null
+  }
 >
 
 export function resolvePlanViewTitle(
@@ -208,5 +212,9 @@ export async function renderPlanViewResultDocument(
       ),
     )
   }
+  const selectedElement = elementBounds.find(
+    (element) => element.key === document.selection?.selectedElementKey,
+  )
+  if (selectedElement) drawMapElementSelection(context, selectedElement)
   return elementBounds
 }

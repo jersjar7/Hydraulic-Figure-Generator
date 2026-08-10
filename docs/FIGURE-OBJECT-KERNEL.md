@@ -55,3 +55,11 @@ WSE Difference and Plan-View use this same adapter and tool. WSE project-file
 version 16 and Plan-View project-file version 8 persist the label-frame and
 leader fields; older map-coordinate overrides remain readable and migrate when
 edited.
+
+Frame-positioned report elements are also production adopters. WSE Difference
+and Plan-View use the same hit testing, selection outline, clamped drag, lock,
+nudge, reset, keyboard, and undo/redo behavior for titles, numeric legends,
+north arrows, scale bars, and the WSE-only wet/dry key. Each workspace retains
+its own persisted positions and styles. Difference and scalar result legends
+share one orientation-aware numeric legend shell, with figure-specific value
+and color adapters.

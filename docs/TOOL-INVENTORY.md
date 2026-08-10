@@ -69,17 +69,17 @@ Workspace abbreviations used below:
 ## Figure Elements
 
 The shared `FigureElementsPanel` defines Title, Difference/Result Legend,
-Wet/Dry Key, North Arrow, and Scale Bar. WSE and Plan use the same editors and
-position schema, but only WSE currently connects figure-element hit testing and
-dragging to the canvas.
+Wet/Dry Key, North Arrow, and Scale Bar. WSE and Plan use the same editors,
+position schema, selection outline, direct canvas manipulation, position lock,
+nudge/reset, keyboard actions, and isolated undo/redo history.
 
 | Element/tool | WSE | XS | Plan | Profiles | Current interaction |
 | --- | --- | --- | --- | --- | --- |
-| Figure title | Full | Separate chart title | Partial | Separate chart title | WSE: drag, anchor, nudge, reset, style. Plan: anchor, nudge, reset, style; no canvas drag. Charts use separate title fields. |
-| Difference/result legend | Full | Separate chart legend | Partial | Separate chart legend | WSE: draggable and fully styled. Plan: same panel but no canvas drag. Chart legends do not use this contract. |
+| Figure title | Full | Separate chart title | Full | Separate chart title | WSE and Plan share drag, anchor, lock, nudge, reset, style, and undo/redo behavior. Charts use separate title fields. |
+| Difference/result legend | Full | Separate chart legend | Full | Separate chart legend | WSE and Plan share a numeric legend shell plus direct manipulation; hydraulic labels, classes, and colors remain figure-specific. Chart legends do not yet use this contract. |
 | Wet/dry key | Full | N/A | N/A | N/A | Draggable, visible, styled, and independently positioned. |
-| North arrow | Full | Selection map only | Partial | N/A | WSE draggable; Plan panel-controlled only. |
-| Scale bar | Full | Selection map only | Partial | N/A | WSE draggable; Plan panel-controlled only. |
+| North arrow | Full | Selection map only | Full | N/A | WSE and Plan share direct manipulation and styling. |
+| Scale bar | Full | Selection map only | Full | N/A | WSE and Plan share direct manipulation and styling. |
 | Chart legend | N/A | Full | N/A | Full | Visibility and line styling exist, but chart legend position/style are not standardized with map legends. |
 
 ## Centerline Stationing And Labels
@@ -107,20 +107,19 @@ The shared stationing panel currently provides:
 
 ## Annotations And Callouts
 
-The current annotation implementation is wired only to WSE Difference even
-though reusable collection and capability helpers exist under
-`features/annotations/`.
+The generic manual annotation suite is shared by WSE Difference and Plan-View.
+WSE adds hydraulic result-label and extrema providers on top of that core.
 
 | Annotation tool | WSE | XS | Plan | Profiles | Current behavior |
 | --- | --- | --- | --- | --- | --- |
-| Select | Full | No | No | No | Selects and opens the placed-item editor. |
-| Text | Full | No | No | No | Editable text, color, fill, size, rotation, background, duplicate/delete, keyboard nudge, and canvas drag. WSE text movement now uses the shared figure-object kernel and undoable drag commit. |
-| Leader callout | Full | No | No | No | Kernel-backed independent label/anchor dragging, optional leader, position lock/reset, duplicate/delete, keyboard nudge, and undoable drag commit. |
-| Arrow | Full | No | No | No | Draggable line/endpoints with color, width, and dash controls. |
-| Straight line | Full | No | No | No | Draggable line/endpoints with color, width, and dash controls. |
+| Select | Full | No | Full | No | Selects and opens the placed-item editor. |
+| Text | Full | No | Full | No | Shared editable text, style, duplicate/delete, keyboard nudge, canvas drag, and undoable history. |
+| Leader callout | Full | No | Full | No | Shared independent label/anchor dragging, optional leader, lock/reset, duplicate/delete, and history. |
+| Arrow | Full | No | Full | No | Shared draggable line/endpoints with color, width, and dash controls. |
+| Straight line | Full | No | Full | No | Shared draggable line/endpoints with color, width, and dash controls. |
 | Automatic result label | Full | No | No | No | Kernel-backed callout that samples hydraulic fields, refreshes when its anchor moves, and supports optional leader, lock/reset, duplicate/delete, and undoable manipulation. |
 | Max/min WSE callouts | Full | No | No | No | Creates editable maximum-rise and maximum-reduction result callouts. |
-| Undo/redo | Full | No | No | No | Bounded command history is implemented around WSE annotations. |
+| Undo/redo | Full | No | Full | No | Each map workspace owns an independent bounded annotation history. |
 
 The executable tool registry now records XS annotations as **No**. A workspace
 can declare annotation support only when it supplies the required settings,
@@ -154,19 +153,12 @@ assessment-specific.
 
 ## Main Duplication And Consistency Gaps
 
-1. Shared map element editors do not imply shared canvas manipulation; WSE has
-   the complete pointer wiring while Plan does not.
-2. Annotation data and collection commands are partly shared, while its tool
-   registry, controller, settings UI, interaction tools, and renderer binding
-   remain WSE-specific.
-3. Map legends, chart legends, color classification, contour style, and chart
+1. Map legends, chart legends, color classification, contour style, and chart
    line styles use parallel contracts with inconsistent capability depth.
-4. Figure Set behavior is mature in Plan and all-station generation exists in
+2. Figure Set behavior is mature in Plan and all-station generation exists in
    Profiles, but there is no common batch-production contract presented to
    every workspace.
-5. Boolean figure metadata can claim support without proving that UI,
-   interaction, rendering, persistence, and export are all wired.
-6. Draggable objects use several coordinate/state shapes: map annotations,
-   anchored map elements, station-label overrides, assessment callouts, and
-   Export Collection ordering. A shared object-manipulation contract is needed
-   before applying drag behavior consistently to every figure surface.
+3. Map report elements use the shared frame-object contract, while chart titles
+   and legends still need plot-aware adapters and equivalent direct controls.
+4. Assessment WSE labels use anchored behavior but retain an
+   assessment-specific controller and style contract.

@@ -4,6 +4,8 @@ import type {
   IngestNotice,
   CenterlineStationLayer,
   MapAnnotation,
+  MapElementBounds,
+  MapElementKey,
   MapOverlay,
   PlanViewResultScene,
   PlanViewResultSettings,
@@ -20,6 +22,8 @@ type Options = {
   centerlineStationing?: CenterlineStationLayer[]
   annotations?: MapAnnotation[]
   selectedAnnotationId?: string | null
+  selectedElementKey?: MapElementKey | null
+  elementBoundsRef: RefObject<MapElementBounds[]>
   setBusy(busy: boolean): void
   appendNotices(notices: IngestNotice[]): void
   interacting?: boolean
@@ -34,6 +38,8 @@ export function usePlanViewResultRendering({
   centerlineStationing,
   annotations,
   selectedAnnotationId,
+  selectedElementKey,
+  elementBoundsRef,
   setBusy,
   appendNotices,
   interacting = false,
@@ -57,11 +63,13 @@ export function usePlanViewResultRendering({
           centerlineStationing,
           annotations,
           selectedAnnotationId,
+          selectedElementKey,
         }),
         signal: controller.signal,
       })
-      .then(() => {
+      .then((elementBounds) => {
         if (renderSequence.current !== sequence || !canvasRef.current) return
+        elementBoundsRef.current = elementBounds
         const canvas = canvasRef.current
         canvas.width = output.width
         canvas.height = output.height
@@ -85,11 +93,13 @@ export function usePlanViewResultRendering({
     annotations,
     canvasRef,
     centerlineStationing,
+    elementBoundsRef,
     engine,
     interacting,
     overlays,
     scene,
     selectedAnnotationId,
+    selectedElementKey,
     setBusy,
     settings,
   ])

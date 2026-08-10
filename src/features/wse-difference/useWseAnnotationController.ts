@@ -77,6 +77,7 @@ type WseAnnotationControllerOptions = {
   tool: AnnotationTool
   drawing: boolean
   selectedId: string | null
+  keyboardEnabled?: boolean
   setAnnotations: StateSetter<MapAnnotation[]>
   setAnnotationDefaults: StateSetter<AnnotationDefaults>
   setPanelView: StateSetter<AnnotationPanelView>
@@ -102,6 +103,7 @@ export function useWseAnnotationController({
   tool,
   drawing,
   selectedId,
+  keyboardEnabled = true,
   setAnnotations,
   setAnnotationDefaults,
   setPanelView,
@@ -487,7 +489,7 @@ export function useWseAnnotationController({
   }
 
   useFigureObjectKeyboard({
-    enabled: true,
+    enabled: keyboardEnabled,
     hasSelection: Boolean(selectedId),
     onCancel: () => {
       setAnnotationStart(null)

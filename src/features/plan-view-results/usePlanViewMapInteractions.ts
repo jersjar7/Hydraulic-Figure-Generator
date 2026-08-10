@@ -1,13 +1,16 @@
 import {
   useCallback,
   useState,
+  type RefObject,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { canvasPointToMap } from '../../core/mapRenderer'
 import type {
   Bounds,
   CenterlineStationLayer,
-  FigureSettings,
+  MapElementBounds,
+  MapElementKey,
+  PlanViewResultSettings,
   StationLabelOverride,
 } from '../../core/types'
 import { createManualAnnotationMapTool } from '../annotations/manualAnnotationMapTool'
@@ -15,22 +18,31 @@ import type { usePlanViewAnnotations } from './usePlanViewAnnotations'
 import type { MapPointerInput } from '../map-interactions/mapInteraction'
 import { useCanvasInteractionRuntime } from '../map-interactions/useCanvasInteractionRuntime'
 import { createStationLabelInteractionTool } from '../stationing/stationLabelInteractionTool'
+import { createFigureElementInteractionTool } from '../figure-elements/figureElementInteractionTool'
+import type { useMapElementController } from '../figures/useMapElementController'
 
 type Options = {
   enabled: boolean
   bounds: Bounds
-  settings: FigureSettings
+  settings: PlanViewResultSettings
+  activeSection: string
+  elementBoundsRef: RefObject<MapElementBounds[]>
+  elements: ReturnType<typeof useMapElementController<PlanViewResultSettings>>
   annotations: ReturnType<typeof usePlanViewAnnotations>
   stationLayers: CenterlineStationLayer[]
   setActiveCenterline(id: string): void
   selectStationLabel(id: string | null): void
   updateStationOverride(id: string, override: StationLabelOverride | null): void
+  selectElement(key: MapElementKey): void
+  openElements(): void
   openAnnotations(): void
   openStationing(): void
 }
 
 export function usePlanViewMapInteractions(options: Options) {
   const [stationLabelDragging, setStationLabelDragging] = useState(false)
+  const [elementDragging, setElementDragging] = useState(false)
+  const [hoveredElement, setHoveredElement] = useState<MapElementKey | null>(null)
   const pointerInput = useCallback(
     (event: ReactPointerEvent<HTMLCanvasElement>): MapPointerInput => {
       const canvas = event.currentTarget
@@ -62,6 +74,19 @@ export function usePlanViewMapInteractions(options: Options) {
     enabled: options.enabled,
     pointerInput,
     tools: () => [
+      createFigureElementInteractionTool({
+        enabled: options.activeSection === 'elements',
+        settings: options.settings,
+        elementBounds: () => options.elementBoundsRef.current,
+        selectElement: (key) => {
+          options.selectElement(key)
+          options.openElements()
+        },
+        previewPosition: options.elements.previewElementPosition,
+        commitPosition: options.elements.commitElementPosition,
+        setDragging: setElementDragging,
+        setHovered: setHoveredElement,
+      }),
       createManualAnnotationMapTool({
         tool: options.annotations.tool,
         annotations: options.annotations.annotations,
@@ -98,12 +123,20 @@ export function usePlanViewMapInteractions(options: Options) {
     onReset: () => {
       options.annotations.setDragging(false)
       setStationLabelDragging(false)
+      setElementDragging(false)
+      setHoveredElement(null)
     },
   })
 
   return {
     ...runtime,
     stationLabelDragging,
-    dragging: options.annotations.dragging || stationLabelDragging,
+    elementDragging,
+    hoveredElement,
+    handlePointerLeave: () => {
+      if (!elementDragging) setHoveredElement(null)
+    },
+    dragging:
+      options.annotations.dragging || stationLabelDragging || elementDragging,
   }
 }

@@ -110,10 +110,6 @@ export function WseDifferenceWorkspace() {
     setElementDragging,
   } = editorUi
   const [scene, setScene] = useState<WseDifferenceScene | null>(null)
-  const workspaceDraft = useWseDraftRetention({
-    projectSession, projectDocument, figureDocument,
-    assessmentWorkflow, stationingSource, setScene,
-  })
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const canvasFrameRef = useRef<HTMLDivElement>(null)
   const canvasDisplaySize = useFittedCanvasSize(
@@ -145,8 +141,16 @@ export function WseDifferenceWorkspace() {
     settings,
     stationingLayer: centerlineStationLayer,
     selectedStationLabelId,
+    selectedElement: activeElement,
+    keyboardEnabled: activeSettingsSection === 'elements',
     setSettings,
     setSelectedStationLabelId,
+  })
+  const workspaceDraft = useWseDraftRetention({
+    projectSession, projectDocument, figureDocument,
+    assessmentWorkflow, stationingSource,
+    clearElementHistory: figureElements.clearHistory,
+    setScene,
   })
   const stationingSourceActions = createWseStationingSourceActions({
     sourceController: stationingSource,
@@ -173,6 +177,7 @@ export function WseDifferenceWorkspace() {
     tool: annotationTool,
     drawing: Boolean(annotationStart),
     selectedId: selectedAnnotationId,
+    keyboardEnabled: activeSettingsSection === 'annotations',
     setAnnotations,
     setAnnotationDefaults,
     setPanelView: setAnnotationPanelView,
@@ -275,7 +280,8 @@ export function WseDifferenceWorkspace() {
     appendNotices,
     setAnnotationDragging,
     selectFigureElement: (key) => setActiveElement(key),
-    updateElementPosition: figureElements.updateElementPosition,
+    previewElementPosition: figureElements.previewElementPosition,
+    commitElementPosition: figureElements.commitElementPosition,
     setElementDragging,
     setHoveredElement,
     selectStationLabel: (id, centerlineId) => {
@@ -312,6 +318,7 @@ export function WseDifferenceWorkspace() {
     setLeftCollapsed(false)
     setSelectedStationLabelId(null)
     elementBoundsRef.current = []
+    figureElements.clearHistory()
     setActiveElement('title')
     setScene(null)
     assessmentWorkflow.reset(1)
@@ -320,10 +327,7 @@ export function WseDifferenceWorkspace() {
   }
 
   const downloadMap = createWseMapExportAction({
-    scene,
-    engine,
-    settings,
-    overlays,
+    scene, engine, settings, overlays,
     assessment: assessmentExportLayer,
     annotations,
     setBusy,
@@ -335,12 +339,10 @@ export function WseDifferenceWorkspace() {
   }
 
   const persistence = createWseProjectPersistenceController({
-    projectSession,
-    projectDocument,
-    figureDocument,
-    assessmentWorkflow,
-    stationingSource,
+    projectSession, projectDocument, figureDocument,
+    assessmentWorkflow, stationingSource,
     editorUi,
+    clearElementHistory: figureElements.clearHistory,
     snapshot: workspaceDraft.snapshot,
     setScene,
     appendNotices,

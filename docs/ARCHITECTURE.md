@@ -83,6 +83,12 @@ infrastructure directly.
   settings, state, render, persistence, interaction, and export bindings.
   Workspace metadata and compatibility flags are derived from that manifest;
   extension tests reject incomplete or misleading support claims.
+- `features/figure-elements/` owns frame-positioned title, legend, wet/dry key,
+  north-arrow, and scale-bar manipulation. It projects each workspace's own
+  settings into the shared figure-object kernel, commits drag/nudge/style
+  changes to an element-only history slice, and never shares positions between
+  figures. Numeric map legends share their layout shell under `core/map/` while
+  hydraulic class values and colors remain figure-owned adapters.
 - `features/figures/workspaceRegistry.ts` is the single figure manifest. It
   associates headless modules with lazy React workspaces and lazy versioned
   workspace draft codecs, then derives figure IDs, picker entries, routing,

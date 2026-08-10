@@ -19,6 +19,7 @@ type Options = {
   assessmentWorkflow: ReturnType<typeof useAssessmentWorkflow>
   stationingSource: ReturnType<typeof useCenterlineStationingSource>
   editorUi: ReturnType<typeof useWseEditorUi>
+  clearElementHistory(): void
   snapshot: WseProjectState
   setScene: Dispatch<SetStateAction<WseDifferenceScene | null>>
   appendNotices(notices: IngestNotice[]): void
@@ -31,6 +32,7 @@ export function createWseProjectPersistenceController({
   assessmentWorkflow,
   stationingSource,
   editorUi,
+  clearElementHistory,
   snapshot,
   setScene,
   appendNotices,
@@ -70,6 +72,7 @@ export function createWseProjectPersistenceController({
       loaded.document.settings.assessmentLineInterval,
     )
     stationingSource.load(loaded.assessment.stationingSource ?? {})
+    clearElementHistory()
     appendNotices([
       {
         level: 'success',

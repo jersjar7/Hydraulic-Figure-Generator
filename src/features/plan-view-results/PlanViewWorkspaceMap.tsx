@@ -1,6 +1,10 @@
 import type { RefObject } from 'react'
 import type { PointerEventHandler } from 'react'
-import type { AnnotationTool, PlanViewResultScene } from '../../core/types'
+import type {
+  AnnotationTool,
+  MapElementKey,
+  PlanViewResultScene,
+} from '../../core/types'
 import type { FigureProductionMode } from '../figure-sets/FigureProductionModeSwitcher'
 import type { CanvasDisplaySize } from '../figures/useFittedCanvasAspect'
 import { PlanViewFigureSetGallery } from './PlanViewFigureSetGallery'
@@ -21,11 +25,14 @@ type Props = {
     item: ReturnType<typeof usePlanViewFigureSet>['figureSet']['items'][number],
   ): void
   stationLabelDragging: boolean
+  elementDragging: boolean
+  hoveredElement: MapElementKey | null
   annotationTool: AnnotationTool
   onPointerDown: PointerEventHandler<HTMLCanvasElement>
   onPointerMove: PointerEventHandler<HTMLCanvasElement>
   onPointerUp: PointerEventHandler<HTMLCanvasElement>
   onPointerCancel: PointerEventHandler<HTMLCanvasElement>
+  onPointerLeave: PointerEventHandler<HTMLCanvasElement>
 }
 
 export function PlanViewWorkspaceMap({
@@ -38,11 +45,14 @@ export function PlanViewWorkspaceMap({
   figureDocument,
   onOpenFigure,
   stationLabelDragging,
+  elementDragging,
+  hoveredElement,
   annotationTool,
   onPointerDown,
   onPointerMove,
   onPointerUp,
   onPointerCancel,
+  onPointerLeave,
 }: Props) {
   if (mode === 'document') {
     return (
@@ -73,11 +83,14 @@ export function PlanViewWorkspaceMap({
       canvasFrameRef={canvasFrameRef}
       displaySize={displaySize}
       stationLabelDragging={stationLabelDragging}
+      elementDragging={elementDragging}
+      hoveredElement={hoveredElement}
       annotationTool={annotationTool}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
+      onPointerLeave={onPointerLeave}
     />
   )
 }

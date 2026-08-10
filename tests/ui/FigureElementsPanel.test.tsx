@@ -7,20 +7,28 @@ import { createDefaultFigureSettings } from '../../src/core/defaults'
 function renderPanel() {
   const onActiveElementChange = vi.fn()
   const onVisibilityChange = vi.fn()
+  const onLockChange = vi.fn()
   render(
     <FigureElementsPanel
       settings={createDefaultFigureSettings()}
       activeElement="title"
       onActiveElementChange={onActiveElementChange}
       onVisibilityChange={onVisibilityChange}
+      onLockChange={onLockChange}
       onTitleTemplateChange={vi.fn()}
       onStyleChange={vi.fn()}
       onPositionChange={vi.fn()}
       onNudge={vi.fn()}
       onResetElement={vi.fn()}
+      onUndo={vi.fn()}
+      onRedo={vi.fn()}
+      canUndo={false}
+      canRedo={false}
+      undoLabel={null}
+      redoLabel={null}
     />,
   )
-  return { onActiveElementChange, onVisibilityChange }
+  return { onActiveElementChange, onVisibilityChange, onLockChange }
 }
 
 describe('FigureElementsPanel', () => {
@@ -40,5 +48,14 @@ describe('FigureElementsPanel', () => {
     await user.click(screen.getByRole('checkbox', { name: /show on figure/i }))
 
     expect(onVisibilityChange).toHaveBeenCalledWith('title', false)
+  })
+
+  it('routes position locking through the shared element controller', async () => {
+    const user = userEvent.setup()
+    const { onLockChange } = renderPanel()
+
+    await user.click(screen.getByRole('checkbox', { name: /lock position/i }))
+
+    expect(onLockChange).toHaveBeenCalledWith('title', true)
   })
 })

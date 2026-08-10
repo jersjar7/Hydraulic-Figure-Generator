@@ -120,11 +120,13 @@ export function PositionControls({
   label,
   onChange,
   onNudge,
+  disabled = false,
 }: {
   position: ElementPosition
   label: string
   onChange(patch: Partial<ElementPosition>): void
   onNudge(dx: number, dy: number): void
+  disabled?: boolean
 }) {
   return (
     <>
@@ -132,6 +134,7 @@ export function PositionControls({
         <span>Anchor</span>
         <select
           value={position.anchor}
+          disabled={disabled}
           onChange={(event) =>
             onChange({ anchor: event.target.value as Anchor })
           }
@@ -150,24 +153,28 @@ export function PositionControls({
         <div className="nudge-buttons">
           <NudgeButton
             label={`Move ${label} left`}
+            disabled={disabled}
             onClick={() => onNudge(-10, 0)}
           >
             <ArrowLeft size={14} />
           </NudgeButton>
           <NudgeButton
             label={`Move ${label} up`}
+            disabled={disabled}
             onClick={() => onNudge(0, -10)}
           >
             <ArrowUp size={14} />
           </NudgeButton>
           <NudgeButton
             label={`Move ${label} down`}
+            disabled={disabled}
             onClick={() => onNudge(0, 10)}
           >
             <ArrowDown size={14} />
           </NudgeButton>
           <NudgeButton
             label={`Move ${label} right`}
+            disabled={disabled}
             onClick={() => onNudge(10, 0)}
           >
             <ArrowRight size={14} />
@@ -181,10 +188,12 @@ export function PositionControls({
 function NudgeButton({
   label,
   onClick,
+  disabled = false,
   children,
 }: {
   label: string
   onClick(): void
+  disabled?: boolean
   children: ReactNode
 }) {
   return (
@@ -193,6 +202,7 @@ function NudgeButton({
       type="button"
       title={label}
       aria-label={label}
+      disabled={disabled}
       onClick={onClick}
     >
       {children}

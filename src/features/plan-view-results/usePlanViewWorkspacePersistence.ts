@@ -15,6 +15,7 @@ import type { usePlanViewStationing } from './usePlanViewStationing'
 import type { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { useWorkspaceDraftRetention } from '../project-workspace/useWorkspaceDraftRetention'
 import type { useCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
+import type { useMapElementController } from '../figures/useMapElementController'
 import { usePlanViewResultProjectFiles } from './usePlanViewResultProjectFiles'
 import { planViewResultWorkspaceDraft } from './planViewResultWorkspaceDraft'
 
@@ -29,6 +30,7 @@ type Options = {
   stationingSource: ReturnType<typeof useCenterlineStationingSource>
   stationing: ReturnType<typeof usePlanViewStationing>
   annotations: ReturnType<typeof usePlanViewAnnotations>
+  elements: ReturnType<typeof useMapElementController<PlanViewResultSettings>>
   setScene: Dispatch<SetStateAction<PlanViewResultScene | null>>
   appendNotices(notices: IngestNotice[]): void
 }
@@ -62,6 +64,7 @@ export function usePlanViewWorkspacePersistence(options: Options) {
     options.figureDocument.load(loaded.figureDocument)
     options.stationingSource.load(loaded.stationingSource ?? {})
     options.annotations.load(loaded)
+    options.elements.clearHistory()
     options.stationing.clearSelection()
     options.setScene(null)
   }

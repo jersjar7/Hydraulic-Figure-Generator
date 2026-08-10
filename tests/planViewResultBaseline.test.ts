@@ -87,6 +87,7 @@ describe('Plan-View Hydraulic Results production baseline', () => {
         background: true,
       }],
       selectedAnnotationId: 'note-1',
+      selectedElementKey: 'title',
     })
     const published = createPlanViewResultRenderDocument({
       engine,
@@ -96,6 +97,7 @@ describe('Plan-View Hydraulic Results production baseline', () => {
       centerlineStationing: [centerlineStationing],
       annotations: editor.layers.annotations,
       selectedAnnotationId: 'note-1',
+      selectedElementKey: 'title',
       mode: 'published',
     })
 
@@ -107,7 +109,31 @@ describe('Plan-View Hydraulic Results production baseline', () => {
     assert.equal(published.layers.centerlineStationing[0]?.selectedLabelId, null)
     assert.equal(editor.selection.selectedAnnotationId, 'note-1')
     assert.equal(published.selection.selectedAnnotationId, null)
+    assert.equal(editor.selection.selectedElementKey, 'title')
+    assert.equal(published.selection.selectedElementKey, null)
     assert.equal(published.layers.annotations[0]?.text, 'Review bridge')
+  })
+
+  it('uses the shared horizontal numeric-legend layout', async () => {
+    const settings = createDefaultPlanViewResultSettings()
+    settings.basemapOpacity = 0
+    settings.elementStyles.diffLegend.orientation = 'horizontal'
+    const canvas = createCanvas(1650, 1275)
+    const elements = await renderPlanViewResultDocument(
+      canvas as unknown as HTMLCanvasElement,
+      {
+        scene: scene(),
+        view: {
+          bounds: { x0: -8, x1: 108, y0: -8, y1: 108 },
+          settings,
+        },
+        layers: { overlays: [] },
+        selection: {},
+      },
+    )
+    const legend = elements.find((element) => element.key === 'diffLegend')
+    assert.ok(legend)
+    assert.ok(legend.width > legend.height)
   })
 
   it('keeps scalar result and contour defaults explicit', () => {

@@ -82,7 +82,7 @@ export const planViewResultFigure = {
           state: 'figure-settings',
           render: ['figure'],
           persistence: 'workspace-draft',
-          interaction: 'panel',
+          interaction: 'canvas',
         },
       },
       {

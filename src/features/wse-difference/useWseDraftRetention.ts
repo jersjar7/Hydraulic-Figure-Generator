@@ -17,6 +17,7 @@ type Options = {
   figureDocument: ReturnType<typeof useWseFigureDocument>
   assessmentWorkflow: ReturnType<typeof useAssessmentWorkflow>
   stationingSource: ReturnType<typeof useCenterlineStationingSource>
+  clearElementHistory(): void
   setScene: Dispatch<SetStateAction<WseDifferenceScene | null>>
 }
 
@@ -26,6 +27,7 @@ export function useWseDraftRetention({
   figureDocument,
   assessmentWorkflow,
   stationingSource,
+  clearElementHistory,
   setScene,
 }: Options) {
   const assessment = assessmentWorkflow.state
@@ -65,6 +67,7 @@ export function useWseDraftRetention({
         draft.document.settings.assessmentLineInterval,
       )
       stationingSource.load(draft.assessment.stationingSource ?? {})
+      clearElementHistory()
       setScene(null)
     },
   })

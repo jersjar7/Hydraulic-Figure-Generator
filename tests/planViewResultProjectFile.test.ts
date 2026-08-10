@@ -18,6 +18,13 @@ describe('plan-view result project files', () => {
         resultParameter: 'Froude',
         ramp: 'froude' as const,
         legendMax: 2,
+        elementPositions: {
+          ...createDefaultPlanViewResultSettings().elementPositions,
+          title: {
+            ...createDefaultPlanViewResultSettings().elementPositions.title,
+            locked: true,
+          },
+        },
         centerlineStationing: {
           ...createDefaultPlanViewResultSettings().centerlineStationing,
           overrides: {

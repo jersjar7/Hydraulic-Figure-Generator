@@ -112,6 +112,7 @@ function elementPositions(value: unknown, path: string) {
       ]),
       offX: finite,
       offY: finite,
+      locked: bool,
     })
   }
   return output

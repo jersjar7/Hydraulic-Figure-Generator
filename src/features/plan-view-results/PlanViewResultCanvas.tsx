@@ -1,7 +1,11 @@
 import { Layers3 } from 'lucide-react'
 import type { RefObject } from 'react'
 import type { PointerEventHandler } from 'react'
-import type { AnnotationTool, PlanViewResultScene } from '../../core/types'
+import type {
+  AnnotationTool,
+  MapElementKey,
+  PlanViewResultScene,
+} from '../../core/types'
 
 type Props = {
   scene: PlanViewResultScene | null
@@ -9,11 +13,14 @@ type Props = {
   canvasFrameRef: RefObject<HTMLDivElement | null>
   displaySize: { width: number; height: number }
   stationLabelDragging: boolean
+  elementDragging: boolean
+  hoveredElement: MapElementKey | null
   annotationTool: AnnotationTool
   onPointerDown: PointerEventHandler<HTMLCanvasElement>
   onPointerMove: PointerEventHandler<HTMLCanvasElement>
   onPointerUp: PointerEventHandler<HTMLCanvasElement>
   onPointerCancel: PointerEventHandler<HTMLCanvasElement>
+  onPointerLeave: PointerEventHandler<HTMLCanvasElement>
 }
 
 export function PlanViewResultCanvas({
@@ -22,11 +29,14 @@ export function PlanViewResultCanvas({
   canvasFrameRef,
   displaySize,
   stationLabelDragging,
+  elementDragging,
+  hoveredElement,
   annotationTool,
   onPointerDown,
   onPointerMove,
   onPointerUp,
   onPointerCancel,
+  onPointerLeave,
 }: Props) {
   return (
     <>
@@ -50,10 +60,13 @@ export function PlanViewResultCanvas({
           data-station-label-dragging={
             stationLabelDragging ? 'true' : undefined
           }
+          data-element-hover={hoveredElement ?? undefined}
+          data-element-dragging={elementDragging ? 'true' : undefined}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerCancel}
+          onPointerLeave={onPointerLeave}
           style={{
             width: displaySize.width || undefined,
             height: displaySize.height || undefined,

@@ -13,6 +13,7 @@ export type ElementPosition = {
   anchor: Anchor
   offX: number
   offY: number
+  locked?: boolean
 }
 
 export type MapElementKey = 'title' | 'diffLegend' | 'north' | 'scale' | 'wetDry'

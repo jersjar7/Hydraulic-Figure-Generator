@@ -1,4 +1,4 @@
-import { Eye, EyeOff, RotateCcw } from 'lucide-react'
+import { Eye, EyeOff, Redo2, RotateCcw, Undo2 } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
 import type {
   ElementPosition,
@@ -29,6 +29,7 @@ type Props = {
   activeElement: FigureElementPanelKey
   onActiveElementChange(key: FigureElementPanelKey): void
   onVisibilityChange(key: MapElementKey, visible: boolean): void
+  onLockChange(key: MapElementKey, locked: boolean): void
   onTitleTemplateChange(value: string): void
   onStyleChange(
     key: MapElementKey,
@@ -37,6 +38,12 @@ type Props = {
   onPositionChange(key: MapElementKey, patch: Partial<ElementPosition>): void
   onNudge(key: MapElementKey, dx: number, dy: number): void
   onResetElement(key: MapElementKey): void
+  onUndo(): void
+  onRedo(): void
+  canUndo: boolean
+  canRedo: boolean
+  undoLabel: string | null
+  redoLabel: string | null
 }
 
 export function FigureElementsPanel({
@@ -45,11 +52,18 @@ export function FigureElementsPanel({
   activeElement,
   onActiveElementChange,
   onVisibilityChange,
+  onLockChange,
   onTitleTemplateChange,
   onStyleChange,
   onPositionChange,
   onNudge,
   onResetElement,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
+  undoLabel,
+  redoLabel,
 }: Props) {
   const elementDefinitions = availableElements
     ? FIGURE_ELEMENTS.filter((element) =>
@@ -91,14 +105,37 @@ export function FigureElementsPanel({
     <>
       <div className="element-menu-header">
         <strong>{activeDefinition.label}</strong>
-        <button
-          className="button secondary compact element-reset"
-          type="button"
-          onClick={() => onResetElement(activeElement)}
-        >
-          <RotateCcw size={13} aria-hidden="true" />
-          Reset
-        </button>
+        <span className="annotation-history-actions">
+          <button
+            className="icon-button"
+            type="button"
+            title={undoLabel ? `Undo ${undoLabel}` : 'Nothing to undo'}
+            aria-label={undoLabel ? `Undo ${undoLabel}` : 'Nothing to undo'}
+            disabled={!canUndo}
+            onClick={onUndo}
+          >
+            <Undo2 size={14} aria-hidden="true" />
+          </button>
+          <button
+            className="icon-button"
+            type="button"
+            title={redoLabel ? `Redo ${redoLabel}` : 'Nothing to redo'}
+            aria-label={redoLabel ? `Redo ${redoLabel}` : 'Nothing to redo'}
+            disabled={!canRedo}
+            onClick={onRedo}
+          >
+            <Redo2 size={14} aria-hidden="true" />
+          </button>
+          <button
+            className="icon-button"
+            type="button"
+            title={`Reset ${activeDefinition.label}`}
+            aria-label={`Reset ${activeDefinition.label}`}
+            onClick={() => onResetElement(activeElement)}
+          >
+            <RotateCcw size={14} aria-hidden="true" />
+          </button>
+        </span>
       </div>
       <Toggle
         label="Show on figure"
@@ -106,6 +143,11 @@ export function FigureElementsPanel({
         onChange={(nextVisible) =>
           onVisibilityChange(activeElement, nextVisible)
         }
+      />
+      <Toggle
+        label="Lock position"
+        checked={position.locked ?? false}
+        onChange={(locked) => onLockChange(activeElement, locked)}
       />
     </>
   )
@@ -181,6 +223,7 @@ export function FigureElementsPanel({
         <PositionControls
           position={position!}
           label={activeDefinition.label}
+          disabled={position.locked}
           onChange={(patch) => onPositionChange(activeElement, patch)}
           onNudge={(dx, dy) => onNudge(activeElement, dx, dy)}
         />
