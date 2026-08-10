@@ -50,6 +50,8 @@ export function createDefaultChartAxesSettings(
 ): ChartAxesSettings {
   return {
     showGrid: true,
+    xGridSpacing: null,
+    yGridSpacing: null,
     yMinimum: null,
     yMaximum: null,
     fontSize: 18,
@@ -104,6 +106,12 @@ export function chartStyleValidationIssues({
   }
   if (!Number.isFinite(axes.frameWidth) || axes.frameWidth < 0.5 || axes.frameWidth > 8) {
     issues.push('Plot frame width must be between 0.5 and 8 pixels.')
+  }
+  if (axes.xGridSpacing != null && (!Number.isFinite(axes.xGridSpacing) || axes.xGridSpacing <= 0)) {
+    issues.push('Horizontal grid spacing must be greater than zero or automatic.')
+  }
+  if (axes.yGridSpacing != null && (!Number.isFinite(axes.yGridSpacing) || axes.yGridSpacing <= 0)) {
+    issues.push('Vertical grid spacing must be greater than zero or automatic.')
   }
   if (typeof axes.xLabel !== 'string' || typeof axes.yLabel !== 'string') {
     issues.push('Axis labels must be text.')

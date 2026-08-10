@@ -6,28 +6,28 @@ import type { AppWorkspaceId } from '../project-workspace/hydraulicProjectWorksp
 import { REPORT_ASSEMBLY_WORKSPACE_ID } from '../report-assembly/reportAssemblyWorkspaceId'
 
 export function FigurePicker() {
-  const { activeFigureId, setActiveFigureId, reportAssembly } =
+  const { activeFigureId, setActiveFigureId } =
     useHydraulicProjectWorkspace()
-  const options = [
-    ...FIGURE_WORKSPACES.map((workspace) => ({
+  const options = FIGURE_WORKSPACES.map((workspace) => ({
       id: workspace.id,
       label: workspace.figure.label,
-    })),
-    {
-      id: REPORT_ASSEMBLY_WORKSPACE_ID,
-      label: `Export Collection (${reportAssembly.figureCount})`,
-    },
-  ].sort((left, right) => left.label.localeCompare(right.label))
+    })).sort((left, right) => left.label.localeCompare(right.label))
+  const selectedValue = activeFigureId === REPORT_ASSEMBLY_WORKSPACE_ID
+    ? ''
+    : activeFigureId
   return (
     <label className="figure-picker">
       <span className="visually-hidden">Workspace</span>
       <select
         aria-label="Workspace"
-        value={activeFigureId}
+        value={selectedValue}
         onChange={(event) =>
           setActiveFigureId(event.currentTarget.value as AppWorkspaceId)
         }
       >
+        {selectedValue === '' ? (
+          <option value="" disabled>Choose figure workspace</option>
+        ) : null}
         {options.map((option) => (
           <option value={option.id} key={option.id}>
             {option.label}

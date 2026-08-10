@@ -69,4 +69,55 @@ export type HydraulicProfileDataset = {
 export type HydraulicProfileScene = {
   conditionLabel: string
   section: HydraulicProfileSection
+  culvert?: HydraulicCrossSectionCulvert | null
+}
+
+export type HydraulicProfileView = 'cross-sections' | 'longitudinal'
+
+export type HydraulicCulvertKind = 'box' | 'arch' | 'circle' | 'ellipse'
+
+export type HydraulicCrossSectionCulvert = {
+  sectionId: string
+  name: string
+  kind: HydraulicCulvertKind
+  scour: number
+  bed: number
+  center: number | null
+  width: number
+  height: number
+  span: number
+  legHeight: number
+  rise: number
+  diameter: number
+  color: string
+  lineWidth: number
+  dash: number[]
+}
+
+export type HydraulicLongitudinalCulvert = {
+  id: string
+  name: string
+  leftStation: number
+  rightStation: number
+  invertLeft: number
+  invertRight: number
+  height: number
+  color: string
+  lineWidth: number
+  dash: number[]
+}
+
+export type HydraulicLongitudinalMarker = {
+  station: number
+  label: string
+}
+
+export type HydraulicLongitudinalScene = {
+  conditionLabel: string
+  lines: HydraulicProfileLine[]
+  grounds: HydraulicProfileLine[]
+  surfaces: HydraulicProfileLine[]
+  markers: HydraulicLongitudinalMarker[]
+  culverts: HydraulicLongitudinalCulvert[]
+  warnings: string[]
 }

@@ -1,4 +1,4 @@
-import type { MapCoordinate } from '../../core/types'
+import type { CrossSectionLine, MapCoordinate } from '../../core/types'
 
 export function lineDistanceToPoint(
   point: MapCoordinate,
@@ -37,4 +37,23 @@ export function mapPolylineLengthFeet(
     )
   }
   return length * feetPerMapUnit
+}
+
+export function moveManualCrossSectionEndpoint(
+  line: CrossSectionLine,
+  pointIndex: number,
+  point: MapCoordinate,
+  feetPerMapUnit: number,
+) {
+  if (line.source !== 'manual' || pointIndex < 0 || pointIndex >= line.points.length) {
+    return line
+  }
+  const points = line.points.map((candidate, index) =>
+    index === pointIndex ? point : candidate,
+  )
+  return {
+    ...line,
+    points,
+    lengthFeet: mapPolylineLengthFeet(points, feetPerMapUnit),
+  }
 }

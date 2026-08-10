@@ -14,6 +14,8 @@ export type HydraulicProfileFigureSettings = {
   title: string
   lookingDirection: 'downstream' | 'upstream'
   showGrid: boolean
+  xGridSpacing: number | null
+  yGridSpacing: number | null
   showLegend: boolean
   showEarthFill: boolean
   showInundation: boolean
@@ -81,6 +83,8 @@ export function createDefaultHydraulicProfileSettings(): HydraulicProfileFigureS
     title: 'Hydraulic Cross Section',
     lookingDirection: 'downstream',
     showGrid: true,
+    xGridSpacing: axes.xGridSpacing,
+    yGridSpacing: axes.yGridSpacing,
     showLegend: true,
     showEarthFill: true,
     showInundation: true,

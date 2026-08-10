@@ -24,7 +24,7 @@ Workspace abbreviations used below:
 
 | Tool | Availability | Current owner | Notes |
 | --- | --- | --- | --- |
-| Workspace selection | All | `features/figures/workspaceRegistry.ts` | Registry-driven and lazy-loaded. Export Collection is the separate assembly destination. |
+| Workspace selection | All | `features/figures/workspaceRegistry.ts` | Registry-driven and lazy-loaded. Export Collection is a persistent header action rather than a figure-workspace option. |
 | New/Open/Save folder project | All | `features/project-lifecycle/` | Explicit saves, dirty-state tracking, refresh/close warning, portable workspace session, and active-workspace restoration. |
 | Continue without project | All | `ProjectLifecycleGate` | Allows an intentionally transient session. |
 | Editable workspace drafts | WSE, XS, Plan, Profiles | `features/figures/workspaceDraftRepository.ts` | One validated draft per workspace, retained across workspace navigation and stored in folder projects. |
@@ -44,6 +44,7 @@ Workspace abbreviations used below:
 | Assessment-line stationing/review | Full | Partial | No | N/A | Review workflow; centerline intersection choice, include/review/exclude state, and per-line callout placement. XS consumes reviewed lines but does not display the review tools in its output settings. |
 | SMS Summary Table input | N/A | N/A | N/A | Full | Paste or `.txt` drop; parses station labels and Z-min diagnostics. |
 | SMS Profile Values input | N/A | N/A | N/A | Full | Paste or `.txt` drop; parses neutral datasets without guessing final engineering roles. |
+| Longitudinal SMS Profile Values input | N/A | N/A | N/A | Full | Paste or `.txt` drop; uses the engineer-defined dataset names and roles without reclassifying lines. |
 | Profile dataset definition | N/A | N/A | N/A | Full | Existing/Proposed presets, add/remove, editable legend name, Ground/WSE/Other classification, and explicit station-order ground selection. |
 
 ## Map And Chart Tool Matrix
@@ -60,12 +61,13 @@ Workspace abbreviations used below:
 | Newly wet/dry classification | Full | N/A | N/A | N/A | WSE-specific hydraulic layer and legend key. |
 | Basemap frame/view | Full | Map selection view only | Full | N/A | WSE and Plan share orientation, rotation, zoom, aerial opacity, pan, and reset controls. |
 | Shapefile display toggle | Full | Selection map only | Full | N/A | Overlay data is shared; output-level visibility is not expressed consistently. |
-| Cross-section line selection/drawing | N/A | Full | N/A | N/A | Select generated assessment line or draw/remove a manual line; Reverse A/B and flip look direction. |
+| Cross-section line selection/drawing | N/A | Full | N/A | N/A | Select a generated assessment line or draw/remove a manual line. Manual endpoints are draggable and Reverse A/B controls chart orientation; look-direction controls remain only for assessment lines. |
 | Cross-section sampling | N/A | Full | N/A | N/A | Dry depth, sample spacing, Existing/Proposed ground and WSE, discharge-weighted averages, and rise/drop arrow. |
 | Profile station generation/navigation | N/A | N/A | N/A | Full | Generates all detected stations, provides station tabs/previous/next navigation, and supports add-all-to-export. |
 | Ground/WSE relationship controls | N/A | N/A | N/A | Full | Selects clipping ground, earth-fill ground, inundation ground, and shading WSE without assuming only one ground or surface. |
 | Chart line styles | N/A | Full | N/A | Full | Shared series controls provide editable names, visibility, ordering, color, width, and line pattern; workspace adapters preserve each chart's semantic series IDs. |
-| Chart axes and text | N/A | Full | N/A | Full | Shared axes controls provide labels, optional Y bounds, grid visibility/color, typography, plot fill, and frame styling. |
+| Chart axes and text | N/A | Full | N/A | Full | Shared axes controls provide labels, optional Y bounds, independent horizontal/vertical grid spacing, grid visibility/color, typography, plot fill, and frame styling. |
+| Culvert geometry | N/A | N/A | N/A | Full | Cross sections support box, arch, circular, and elliptical culverts with scour/bed offsets; longitudinal profiles support editable positioned box culverts. |
 
 ## Figure Elements
 

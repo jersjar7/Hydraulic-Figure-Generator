@@ -23,6 +23,8 @@ export type CrossSectionFigureSettings = {
   lookingDirection: 'downstream' | 'upstream'
   downstreamSide: 'left' | 'right'
   showGrid: boolean
+  xGridSpacing: number | null
+  yGridSpacing: number | null
   showLegend: boolean
   showExistingGround: boolean
   showProposedGround: boolean
@@ -68,6 +70,8 @@ export function createDefaultCrossSectionSettings(): CrossSectionFigureSettings 
     lookingDirection: 'downstream',
     downstreamSide: 'right',
     showGrid: true,
+    xGridSpacing: axes.xGridSpacing,
+    yGridSpacing: axes.yGridSpacing,
     showLegend: true,
     showExistingGround: true,
     showProposedGround: true,

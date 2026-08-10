@@ -13,12 +13,16 @@ export const hydraulicProfileFolderAdapter: ProjectWorkspaceFolderAdapter<Hydrau
     inputPaths: {
       summaryTable: 'inputs/profiles/summary-table.txt',
       profileValues: 'inputs/profiles/profile-values.txt',
+      longitudinalProfileValues: 'inputs/profiles/longitudinal-profile-values.txt',
     },
   },
   fingerprint: serializeHydraulicProfileProject,
   write: async ({ storage, directory, entry, state }) => {
     await storage.writeText(directory, entry.inputPaths.summaryTable, state.summaryText)
     await storage.writeText(directory, entry.inputPaths.profileValues, state.profileText)
+    if (entry.inputPaths.longitudinalProfileValues) {
+      await storage.writeText(directory, entry.inputPaths.longitudinalProfileValues, state.longitudinalProfileText)
+    }
     await storage.writeText(
       directory,
       entry.documentPath,
@@ -29,10 +33,13 @@ export const hydraulicProfileFolderAdapter: ProjectWorkspaceFolderAdapter<Hydrau
     const savedProfile = parseHydraulicProfileProject(
       await storage.readText(directory, entry.documentPath),
     )
-    const [summaryText, profileText] = await Promise.all([
+    const [summaryText, profileText, longitudinalProfileText] = await Promise.all([
       storage.readText(directory, entry.inputPaths.summaryTable),
       storage.readText(directory, entry.inputPaths.profileValues),
+      entry.inputPaths.longitudinalProfileValues
+        ? storage.readText(directory, entry.inputPaths.longitudinalProfileValues)
+        : Promise.resolve(savedProfile.longitudinalProfileText),
     ])
-    return { ...savedProfile, summaryText, profileText }
+    return { ...savedProfile, summaryText, profileText, longitudinalProfileText }
   },
 }

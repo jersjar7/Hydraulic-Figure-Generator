@@ -10,29 +10,33 @@ import '../../App.css'
 import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspaceScaffold'
 import { WorkspaceActionBar } from '../../components/settings/WorkspaceActionBar'
 import { buildHydraulicProfileDataset } from '../../core/hydraulic-profiles/buildHydraulicProfileDataset'
+import { buildHydraulicLongitudinalScene } from '../../core/hydraulic-profiles/buildHydraulicLongitudinalScene'
 import {
   parseSmsProfileValues,
   parseSmsSummaryTable,
 } from '../../core/hydraulic-profiles/smsClipboard'
 import type {
   HydraulicProfileScene,
+  HydraulicProfileView,
   IngestNotice,
 } from '../../core/types'
 import { FigurePicker } from '../figures/FigurePicker'
+import { ExportCollectionButton } from '../report-assembly/ExportCollectionButton'
 import { createWorkspaceDraftSnapshot } from '../figures/workspaceDraftRepository'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { useWorkspaceDraftRetention } from '../project-workspace/useWorkspaceDraftRetention'
 import { ProjectSaveStatus } from '../project-lifecycle/ProjectSaveStatus'
-import { downloadHydraulicProfilePng } from './exportHydraulicProfile'
+import { downloadHydraulicLongitudinalPng, downloadHydraulicProfilePng } from './exportHydraulicProfile'
 import { HydraulicProfileCanvas } from './HydraulicProfileCanvas'
 import type { HydraulicProfileSettingsSectionKey } from './hydraulicProfileDefinition'
 import { hydraulicProfileFigure } from './hydraulicProfileFigure'
-import { createHydraulicProfileReportFigure } from './hydraulicProfileReportAdapter'
+import { createHydraulicLongitudinalReportFigure, createHydraulicProfileReportFigure } from './hydraulicProfileReportAdapter'
 import { HydraulicProfileInputPanel } from './HydraulicProfileInputPanel'
 import { HydraulicProfileSettingsPanel } from './HydraulicProfileSettingsPanel'
 import { HYDRAULIC_PROFILE_WORKSPACE_SETTINGS } from './hydraulicProfileSettingsSections'
 import { hydraulicProfileWorkspaceDraft } from './hydraulicProfileWorkspaceDraft'
 import { ReportFigureExportActions } from '../project-workspace/ReportFigureExportActions'
+import { renderHydraulicLongitudinalDocument } from './hydraulicLongitudinalRenderer'
 
 export function HydraulicProfilesWorkspace() {
   const {
@@ -45,16 +49,24 @@ export function HydraulicProfilesWorkspace() {
       conditionLabel,
       summaryText,
       profileText,
+      longitudinalProfileText,
+      view,
       datasetConfiguration,
       selectedSectionId,
+      crossSectionCulverts,
+      longitudinalCulverts,
       settings,
     },
     hydrationRevision,
     setConditionLabel,
     setSummaryText,
     setProfileText,
+    setLongitudinalProfileText,
+    setView,
     setDatasetConfiguration,
     setSelectedSectionId,
+    setCrossSectionCulverts,
+    setLongitudinalCulverts,
     setSettings,
     reset: resetDocument,
   } = hydraulicProfiles
@@ -64,6 +76,7 @@ export function HydraulicProfilesWorkspace() {
     hydrate: hydraulicProfiles.hydrate,
   })
   const [scenes, setScenes] = useState<HydraulicProfileScene[]>([])
+  const [longitudinalGenerated, setLongitudinalGenerated] = useState(false)
   const [runtimeNotices, setRuntimeNotices] = useState<IngestNotice[]>([])
   const [leftOpen, setLeftOpen] = useState(false)
   const [leftCollapsed, setLeftCollapsed] = useState(false)
@@ -73,17 +86,42 @@ export function HydraulicProfilesWorkspace() {
 
   const parsedSummary = useMemo(() => parseSmsSummaryTable(summaryText), [summaryText])
   const parsedProfile = useMemo(() => parseSmsProfileValues(profileText), [profileText])
+  const parsedLongitudinal = useMemo(
+    () => parseSmsProfileValues(longitudinalProfileText),
+    [longitudinalProfileText],
+  )
   const dataset = useMemo(() => buildHydraulicProfileDataset(
     parsedProfile.value,
     parsedSummary.value,
     { datasetConfiguration },
   ), [datasetConfiguration, parsedProfile.value, parsedSummary.value])
   const selectedSection = dataset.sections.find((section) => section.id === selectedSectionId) ?? null
-  const scene = scenes.find(({ section }) => section.id === selectedSectionId) ?? scenes[0] ?? null
-  const ready = dataset.sections.length > 0 && dataset.mappingStatus.ready
-  const generationLabel = dataset.sections.length > 0
-    ? `${scenes.length > 0 ? 'Regenerate' : 'Generate'} ${dataset.sections.length} cross section${dataset.sections.length === 1 ? '' : 's'}`
-    : 'Generate cross sections'
+  const baseScene = scenes.find(({ section }) => section.id === selectedSectionId) ?? scenes[0] ?? null
+  const currentCrossSectionCulvert = selectedSection
+    ? crossSectionCulverts.find(({ sectionId }) => sectionId === selectedSection.id) ?? null
+    : null
+  const scene = useMemo(
+    () => baseScene ? { ...baseScene, culvert: currentCrossSectionCulvert } : null,
+    [baseScene, currentCrossSectionCulvert],
+  )
+  const longitudinalCandidate = useMemo(() => buildHydraulicLongitudinalScene(
+    parsedLongitudinal.value,
+    {
+      conditionLabel,
+      configuration: datasetConfiguration,
+      summaryRows: parsedSummary.value,
+      culverts: longitudinalCulverts,
+    },
+  ), [conditionLabel, datasetConfiguration, longitudinalCulverts, parsedLongitudinal.value, parsedSummary.value])
+  const longitudinalScene = longitudinalGenerated ? longitudinalCandidate : null
+  const crossSectionsReady = dataset.sections.length > 0 && dataset.mappingStatus.ready
+  const longitudinalReady = Boolean(longitudinalCandidate && longitudinalCandidate.lines.length > 0)
+  const ready = view === 'longitudinal' ? longitudinalReady : crossSectionsReady
+  const generationLabel = view === 'longitudinal'
+    ? `${longitudinalGenerated ? 'Regenerate' : 'Generate'} longitudinal profile`
+    : dataset.sections.length > 0
+      ? `${scenes.length > 0 ? 'Regenerate' : 'Generate'} ${dataset.sections.length} cross section${dataset.sections.length === 1 ? '' : 's'}`
+      : 'Generate cross sections'
 
   useEffect(() => {
     if (!dataset.sections.some((section) => section.id === selectedSectionId)) {
@@ -93,21 +131,26 @@ export function HydraulicProfilesWorkspace() {
   }, [dataset.sections, selectedSectionId, setSelectedSectionId])
 
   useEffect(() => setScenes([]), [conditionLabel, dataset])
+  useEffect(() => setLongitudinalGenerated(false), [longitudinalProfileText, datasetConfiguration])
 
   useEffect(() => {
-    if (hydrationRevision === 0 || !ready) return
-    setScenes(dataset.sections.map((section) =>
-      hydraulicProfileFigure.buildScene({ conditionLabel, section }),
-    ))
-  }, [conditionLabel, dataset, hydrationRevision, ready])
+    if (hydrationRevision === 0) return
+    if (crossSectionsReady) {
+      setScenes(dataset.sections.map((section) =>
+        hydraulicProfileFigure.buildScene({ conditionLabel, section }),
+      ))
+    }
+    setLongitudinalGenerated(Boolean(longitudinalCandidate?.lines.length))
+  }, [conditionLabel, crossSectionsReady, dataset, hydrationRevision, longitudinalCandidate?.lines.length])
 
   useEffect(() => {
-    if (!scene || !canvasRef.current) return
-    void hydraulicProfileFigure.render({
-      canvas: canvasRef.current,
-      document: { scene, settings },
-    })
-  }, [scene, settings])
+    if (!canvasRef.current) return
+    if (view === 'longitudinal' && longitudinalScene) {
+      renderHydraulicLongitudinalDocument(canvasRef.current, { scene: longitudinalScene, settings })
+    } else if (view === 'cross-sections' && scene) {
+      void hydraulicProfileFigure.render({ canvas: canvasRef.current, document: { scene, settings } })
+    }
+  }, [longitudinalScene, scene, settings, view])
 
   const appendNotices = useCallback((notices: IngestNotice[]) => {
     if (notices.length > 0) setRuntimeNotices((current) => [...current, ...notices].slice(-20))
@@ -117,11 +160,21 @@ export function HydraulicProfilesWorkspace() {
     if (summaryText.trim()) current.push(...parsedSummary.warnings.map((text) => ({ level: 'warning' as const, text })))
     if (profileText.trim()) current.push(...parsedProfile.warnings.map((text) => ({ level: 'warning' as const, text })))
     if (profileText.trim()) current.push(...dataset.warnings.map((text) => ({ level: 'warning' as const, text })))
+    if (longitudinalProfileText.trim()) current.push(...parsedLongitudinal.warnings.map((text) => ({ level: 'warning' as const, text })))
+    if (longitudinalProfileText.trim()) current.push(...(longitudinalCandidate?.warnings ?? []).map((text) => ({ level: 'warning' as const, text })))
     return [...current, ...runtimeNotices]
-  }, [dataset.warnings, parsedProfile.warnings, parsedSummary.warnings, profileText, runtimeNotices, summaryText])
+  }, [dataset.warnings, longitudinalCandidate?.warnings, longitudinalProfileText, parsedLongitudinal.warnings, parsedProfile.warnings, parsedSummary.warnings, profileText, runtimeNotices, summaryText])
 
   const generate = () => {
     try {
+      if (view === 'longitudinal') {
+        if (!longitudinalCandidate || longitudinalCandidate.lines.length === 0) {
+          throw new Error('Add one complete Longitudinal SMS Profile Values set that matches the dataset definitions.')
+        }
+        setLongitudinalGenerated(true)
+        appendNotices([{ level: 'success', text: 'Generated longitudinal hydraulic profile.' }])
+        return
+      }
       const nextScenes = dataset.sections.map((section) =>
         hydraulicProfileFigure.buildScene({ conditionLabel, section }),
       )
@@ -139,6 +192,14 @@ export function HydraulicProfilesWorkspace() {
   }
 
   const createExportFigure = () => {
+    if (view === 'longitudinal') {
+      if (!longitudinalScene) return null
+      return createHydraulicLongitudinalReportFigure(
+        longitudinalScene,
+        settings,
+        createWorkspaceDraftSnapshot(hydraulicProfileWorkspaceDraft, hydraulicProfiles.snapshot),
+      )
+    }
     if (!scene) return null
     const workspaceDraft = createWorkspaceDraftSnapshot(
       hydraulicProfileWorkspaceDraft,
@@ -187,15 +248,36 @@ export function HydraulicProfilesWorkspace() {
     if (!projectLifecycle.confirmDiscard()) return
     resetDocument()
     setScenes([])
+    setLongitudinalGenerated(false)
     setRuntimeNotices([])
     setLeftCollapsed(false)
+  }
+
+  const changeView = (nextView: HydraulicProfileView) => {
+    setView(nextView)
+    setSettings((current) => ({
+      ...current,
+      title: current.title === 'Hydraulic Cross Section' || current.title === 'Longitudinal Hydraulic Profile'
+        ? nextView === 'longitudinal' ? 'Longitudinal Hydraulic Profile' : 'Hydraulic Cross Section'
+        : current.title,
+      xAxisLabel: current.xAxisLabel === 'Distance (feet)' || current.xAxisLabel === 'Station (feet)'
+        ? nextView === 'longitudinal' ? 'Station (feet)' : 'Distance (feet)'
+        : current.xAxisLabel,
+    }))
+  }
+
+  const updateCrossSectionCulvert = (culvert: typeof currentCrossSectionCulvert) => {
+    if (!selectedSection) return
+    setCrossSectionCulverts((current) => culvert
+      ? [...current.filter(({ sectionId }) => sectionId !== selectedSection.id), culvert]
+      : current.filter(({ sectionId }) => sectionId !== selectedSection.id))
   }
 
   return (
     <>
       <FigureWorkspaceScaffold<HydraulicProfileSettingsSectionKey>
         figureLabel={hydraulicProfileFigure.label}
-      comparisonDescription={selectedSection ? `${conditionLabel} | Station ${selectedSection.stationLabel}` : 'SMS Summary Table + Profile Values'}
+      comparisonDescription={view === 'longitudinal' ? `${conditionLabel} | Longitudinal profile` : selectedSection ? `${conditionLabel} | Station ${selectedSection.stationLabel}` : 'SMS Summary Table + Profile Values'}
       inputsCollapsed={leftCollapsed}
       leftPanelOpen={leftOpen}
       rightPanelOpen={rightOpen}
@@ -231,12 +313,15 @@ export function HydraulicProfilesWorkspace() {
           conditionLabel={conditionLabel}
           summaryText={summaryText}
           profileText={profileText}
+          longitudinalProfileText={longitudinalProfileText}
+          longitudinalSeriesCount={parsedLongitudinal.value.length}
           dataset={dataset}
           summaryRows={parsedSummary.value}
           selectedSectionId={selectedSectionId}
           onConditionLabelChange={setConditionLabel}
           onSummaryTextChange={setSummaryText}
           onProfileTextChange={setProfileText}
+          onLongitudinalProfileTextChange={setLongitudinalProfileText}
           onSelectedSectionChange={setSelectedSectionId}
           onDatasetConfigurationChange={setDatasetConfiguration}
           onCollapse={() => setLeftCollapsed(true)}
@@ -245,29 +330,38 @@ export function HydraulicProfilesWorkspace() {
           onReset={reset}
         />
       }
-      mapContent={<HydraulicProfileCanvas scene={scene} scenes={scenes} selectedSectionId={scene?.section.id ?? selectedSectionId} orientation={settings.orientation} canvasRef={canvasRef} onStationSelect={setSelectedSectionId} />}
+      mapContent={<HydraulicProfileCanvas scene={scene} longitudinalScene={longitudinalScene} view={view} scenes={scenes} selectedSectionId={scene?.section.id ?? selectedSectionId} orientation={settings.orientation} canvasRef={canvasRef} onStationSelect={setSelectedSectionId} onViewChange={changeView} />}
       settingsContent={
         <HydraulicProfileSettingsPanel
           section={activeSection}
           settings={settings}
           profileSection={selectedSection}
-          canDownload={Boolean(scene)}
+          canDownload={view === 'longitudinal' ? Boolean(longitudinalScene) : Boolean(scene)}
           datasetConfiguration={dataset.configuration}
+          view={view}
+          longitudinalScene={longitudinalScene ?? longitudinalCandidate}
+          crossSectionCulvert={currentCrossSectionCulvert}
+          longitudinalCulverts={longitudinalCulverts}
           onSettingsChange={setSettings}
           onDatasetConfigurationChange={setDatasetConfiguration}
+          onCrossSectionCulvertChange={updateCrossSectionCulvert}
+          onLongitudinalCulvertsChange={setLongitudinalCulverts}
           exportActions={
             <ReportFigureExportActions
               workspaceId={hydraulicProfileFigure.id}
-              canExport={Boolean(scene)}
+              canExport={view === 'longitudinal' ? Boolean(longitudinalScene) : Boolean(scene)}
               createFigure={createExportFigure}
-              addLabel="Add current station to export"
-              addVariant={scenes.length > 1 ? 'secondary' : 'primary'}
+              addLabel={view === 'longitudinal' ? 'Add longitudinal profile to export' : 'Add current station to export'}
+              addVariant={view === 'cross-sections' && scenes.length > 1 ? 'secondary' : 'primary'}
               onSuccess={(text) => appendNotices([{ level: 'success', text }])}
             />
           }
-          generatedCount={scenes.length}
+          generatedCount={view === 'cross-sections' ? scenes.length : 0}
           onAddAllToExport={addAllToExport}
-          onDownload={() => { if (scene) downloadHydraulicProfilePng(scene, settings) }}
+          onDownload={() => {
+            if (view === 'longitudinal' && longitudinalScene) downloadHydraulicLongitudinalPng(longitudinalScene, settings)
+            else if (scene) downloadHydraulicProfilePng(scene, settings)
+          }}
         />
       }
       settingsFooter={
@@ -277,7 +371,9 @@ export function HydraulicProfilesWorkspace() {
           disabled={!ready}
           testId="generate-hydraulic-profile"
           hint={!ready
-            ? dataset.sections.length > 0
+            ? view === 'longitudinal'
+              ? 'Add Longitudinal SMS Profile Values matching the dataset definitions'
+              : dataset.sections.length > 0
               ? 'Review the dataset mapping before generating'
               : 'Paste and review one complete SMS profile first'
             : undefined}
@@ -285,6 +381,7 @@ export function HydraulicProfilesWorkspace() {
         />
       }
         figurePicker={<FigurePicker />}
+        headerActions={<ExportCollectionButton />}
       />
     </>
   )

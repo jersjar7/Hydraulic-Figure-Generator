@@ -19,7 +19,6 @@ type AssessmentMapLayerOptions = {
   stationingSource?: ReturnType<typeof useCenterlineStationingSource>
   selectedStationLabelId: string | null
   setCenterline?: (id: string) => void
-  setSelectedLabelId?: (id: string | null) => void
 }
 
 const EMPTY_STATIONING_SOURCE = {
@@ -36,7 +35,6 @@ export function useAssessmentMapLayers({
   stationingSource,
   selectedStationLabelId,
   setCenterline,
-  setSelectedLabelId,
 }: AssessmentMapLayerOptions) {
   const legacyStationing = useCenterlineStationingLayer({
     modelWkt,
@@ -47,7 +45,6 @@ export function useAssessmentMapLayers({
     startStation: state.startStation,
     selectedLabelId: selectedStationLabelId,
     setCenterline: setCenterline ?? ignoreCenterlineChange,
-    setSelectedLabelId,
   })
   const centerlineStationing = useCenterlineStationingLayers({
     modelWkt,
@@ -57,7 +54,6 @@ export function useAssessmentMapLayers({
     selectedLabelId: selectedStationLabelId,
     toggleCenterline:
       stationingSource?.toggleCenterline ?? ignoreCenterlineChange,
-    setSelectedLabelId,
   })
   const multiCenterline = Boolean(stationingSource)
   const selectedCenterline = multiCenterline

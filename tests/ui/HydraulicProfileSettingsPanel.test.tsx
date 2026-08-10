@@ -54,9 +54,40 @@ function Panel() {
     profileSection={profileSection}
     canDownload={false}
     datasetConfiguration={null}
+    view="cross-sections"
+    longitudinalScene={null}
+    crossSectionCulvert={null}
+    longitudinalCulverts={[]}
+    exportActions={null}
     onSettingsChange={setSettings}
     onDatasetConfigurationChange={vi.fn()}
-    onAddToExport={vi.fn()}
+    onCrossSectionCulvertChange={vi.fn()}
+    onLongitudinalCulvertsChange={vi.fn()}
+    generatedCount={2}
+    onAddAllToExport={vi.fn()}
+    onDownload={vi.fn()}
+  />
+}
+
+function AxesPanel() {
+  const [settings, setSettings] = useState<HydraulicProfileFigureSettings>(
+    createDefaultHydraulicProfileSettings,
+  )
+  return <HydraulicProfileSettingsPanel
+    section="axes"
+    settings={settings}
+    profileSection={profileSection}
+    canDownload={false}
+    datasetConfiguration={null}
+    view="cross-sections"
+    longitudinalScene={null}
+    crossSectionCulvert={null}
+    longitudinalCulverts={[]}
+    exportActions={null}
+    onSettingsChange={setSettings}
+    onDatasetConfigurationChange={vi.fn()}
+    onCrossSectionCulvertChange={vi.fn()}
+    onLongitudinalCulvertsChange={vi.fn()}
     generatedCount={2}
     onAddAllToExport={vi.fn()}
     onDownload={vi.fn()}
@@ -77,5 +108,16 @@ describe('HydraulicProfileSettingsPanel', () => {
     await user.selectOptions(screen.getByLabelText('WSE extent'), 'raw')
     expect(screen.getByLabelText('WSE extent')).toHaveValue('raw')
     expect(screen.queryByLabelText('WSE clipping ground')).not.toBeInTheDocument()
+  })
+
+  it('sets independent horizontal and vertical grid spacing', async () => {
+    const user = userEvent.setup()
+    render(<AxesPanel />)
+
+    await user.type(screen.getByLabelText('Horizontal grid spacing'), '25')
+    await user.type(screen.getByLabelText('Vertical grid spacing'), '2')
+
+    expect(screen.getByLabelText('Horizontal grid spacing')).toHaveValue(25)
+    expect(screen.getByLabelText('Vertical grid spacing')).toHaveValue(2)
   })
 })

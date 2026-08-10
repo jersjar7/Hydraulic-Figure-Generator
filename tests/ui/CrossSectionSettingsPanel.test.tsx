@@ -49,13 +49,13 @@ describe('CrossSectionSettingsPanel', () => {
       'Manual section · 42 ft',
     )
     await user.click(screen.getByRole('button', { name: 'Reverse A/B' }))
-    await user.click(screen.getByRole('button', { name: 'Flip look arrow' }))
+    expect(screen.queryByRole('button', { name: 'Flip look arrow' })).not.toBeInTheDocument()
     await user.click(
       screen.getByRole('button', { name: 'Remove selected section' }),
     )
 
     expect(callbacks.onReverseLine).toHaveBeenCalledOnce()
-    expect(callbacks.onFlipViewSide).toHaveBeenCalledOnce()
+    expect(callbacks.onFlipViewSide).not.toHaveBeenCalled()
     expect(callbacks.onClearLine).toHaveBeenCalledOnce()
   })
 

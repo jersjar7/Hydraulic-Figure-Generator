@@ -37,6 +37,8 @@ export type ChartLegendSettings = {
 
 export type ChartAxesSettings = {
   showGrid: boolean
+  xGridSpacing: number | null
+  yGridSpacing: number | null
   yMinimum: number | null
   yMaximum: number | null
   fontSize: number

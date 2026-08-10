@@ -9,6 +9,7 @@ import {
   interpolateHydraulicProfileLine,
   type HydraulicProfileSegment,
 } from '../../core/hydraulic-profiles/clipHydraulicProfileLine'
+import { hydraulicCrossSectionCulvertPoints } from '../../core/hydraulic-profiles/culvertGeometry'
 import type {
   HydraulicProfileFigureSettings,
   HydraulicProfileLineStyle,
@@ -37,11 +38,11 @@ export type HydraulicProfileRenderDocument = {
   settings: HydraulicProfileFigureSettings
 }
 
-function linePoints(line: HydraulicProfileLine) {
+export function hydraulicProfileLinePoints(line: HydraulicProfileLine) {
   return hydraulicProfileLineSegments(line).flat()
 }
 
-function drawLineSegments(
+export function drawHydraulicProfileLineSegments(
   context: CanvasRenderingContext2D,
   segments: HydraulicProfileSegment[],
   x: (value: number) => number,
@@ -65,7 +66,7 @@ function drawLineSegments(
   context.restore()
 }
 
-function drawEarthFill(
+export function drawHydraulicProfileEarthFill(
   context: CanvasRenderingContext2D,
   ground: HydraulicProfileLine,
   x: (value: number) => number,
@@ -86,7 +87,7 @@ function drawEarthFill(
   context.restore()
 }
 
-function drawInundation(
+export function drawHydraulicProfileInundation(
   context: CanvasRenderingContext2D,
   ground: HydraulicProfileLine,
   surface: HydraulicProfileLine | undefined,
@@ -156,7 +157,11 @@ export function renderHydraulicProfileDocument(
   const visibleSlots = new Set(series.filter((item) => item.visible).map((item) => item.id))
   const lineBySlot = new Map(scene.section.lines.map((line) => [line.datasetSlot, line]))
   const lines = series.map((item) => lineBySlot.get(item.id)!).filter(Boolean)
-  const points = lines.flatMap(linePoints)
+  const culvertGround = scene.section.primaryGround ?? scene.section.grounds[0]
+  const culvertPoints = scene.culvert && culvertGround
+    ? hydraulicCrossSectionCulvertPoints(scene.culvert, culvertGround)
+    : []
+  const points = [...lines.flatMap(hydraulicProfileLinePoints), ...culvertPoints]
   const rawXMinimum = Math.min(...points.map((point) => point.distance))
   const rawXMaximum = Math.max(...points.map((point) => point.distance))
   const rawYMinimum = Math.min(...points.map((point) => point.elevation))
@@ -194,12 +199,12 @@ export function renderHydraulicProfileDocument(
     ({ datasetSlot }) => datasetSlot === settings.wseClippingGroundSlot,
   ) ?? earthFillGround ?? scene.section.primaryGround
   if (settings.showEarthFill && earthFillGround) {
-    drawEarthFill(context, earthFillGround, x, y, plot.top + plot.height)
+    drawHydraulicProfileEarthFill(context, earthFillGround, x, y, plot.top + plot.height)
   }
   if (settings.showInundation && inundationGround) {
-    drawInundation(context, inundationGround, inundationSurface, x, y)
+    drawHydraulicProfileInundation(context, inundationGround, inundationSurface, x, y)
   }
-  lines.filter((profileLine) => visibleSlots.has(profileLine.datasetSlot)).forEach((profileLine) => drawLineSegments(
+  lines.filter((profileLine) => visibleSlots.has(profileLine.datasetSlot)).forEach((profileLine) => drawHydraulicProfileLineSegments(
     context,
     settings.clipWseAtGround && profileLine.kind === 'wse' && wseClippingGround
       ? clipHydraulicProfileLineAtGround(profileLine, wseClippingGround)
@@ -208,9 +213,22 @@ export function renderHydraulicProfileDocument(
     y,
     hydraulicProfileLineStyle(settings, profileLine.datasetSlot),
   ))
+  if (scene.culvert && culvertPoints.length > 1) {
+    drawHydraulicProfileLineSegments(
+      context,
+      [culvertPoints],
+      x,
+      y,
+      {
+        color: scene.culvert.color,
+        width: scene.culvert.lineWidth,
+        dash: scene.culvert.dash,
+      },
+    )
+  }
 
-  if (settings.showThalweg && earthFillGround && visibleSlots.has(earthFillGround.datasetSlot) && linePoints(earthFillGround).length > 0) {
-    const groundPoints = linePoints(earthFillGround)
+  if (settings.showThalweg && earthFillGround && visibleSlots.has(earthFillGround.datasetSlot) && hydraulicProfileLinePoints(earthFillGround).length > 0) {
+    const groundPoints = hydraulicProfileLinePoints(earthFillGround)
     const thalweg = groundPoints.reduce((best, point) => point.elevation < best.elevation ? point : best)
     context.save()
     context.fillStyle = hydraulicProfileLineStyle(settings, earthFillGround.datasetSlot).color
@@ -224,7 +242,17 @@ export function renderHydraulicProfileDocument(
   }
   drawChartLegend(
     context,
-    series.filter((item) => item.visible).map((item) => ({ label: item.label, style: item.style })),
+    [
+      ...series.filter((item) => item.visible).map((item) => ({ label: item.label, style: item.style })),
+      ...(scene.culvert ? [{
+        label: scene.culvert.name,
+        style: {
+          color: scene.culvert.color,
+          width: scene.culvert.lineWidth,
+          dash: scene.culvert.dash,
+        },
+      }] : []),
+    ],
     plot,
     hydraulicProfileChartLegend(settings),
     axes.textColor,

@@ -10,6 +10,7 @@ import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicP
 import { exportReportAssembly } from './exportReportAssembly'
 import { ReportFigurePreview } from './ReportFigurePreview'
 import { ReportWorkspaceRow } from './ReportWorkspaceRow'
+import { ExportCollectionButton } from './ExportCollectionButton'
 
 export function ReportAssemblyWorkspace() {
   const {
@@ -92,6 +93,7 @@ export function ReportAssemblyWorkspace() {
         saveLabel="Save project"
         loadLabel="Open project"
         figurePicker={<FigurePicker />}
+        headerActions={<ExportCollectionButton />}
       >
         <div className="report-assembly-page">
           <header className="report-assembly-toolbar">

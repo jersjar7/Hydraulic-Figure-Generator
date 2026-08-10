@@ -234,20 +234,22 @@ export function drawCrossSectionSelectionOverlay(
 
   endpointMarker(context, screenPoints[0], 'A')
   endpointMarker(context, screenPoints.at(-1)!, 'B')
-  endpointChevron(
-    context,
-    pathLocation(screenPoints, 0),
-    crossSectionSettings,
-  )
-  endpointChevron(
-    context,
-    pathLocation(screenPoints, 1),
-    crossSectionSettings,
-  )
-  viewArrow(
-    context,
-    pathLocation(screenPoints, 0.5),
-    crossSectionSettings,
-  )
+  if (line.source !== 'manual') {
+    endpointChevron(
+      context,
+      pathLocation(screenPoints, 0),
+      crossSectionSettings,
+    )
+    endpointChevron(
+      context,
+      pathLocation(screenPoints, 1),
+      crossSectionSettings,
+    )
+    viewArrow(
+      context,
+      pathLocation(screenPoints, 0.5),
+      crossSectionSettings,
+    )
+  }
   context.restore()
 }

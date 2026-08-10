@@ -17,7 +17,7 @@ function renderSelection(downstreamSide: 'left' | 'right') {
     {
       id: 'manual-1',
       label: 'Manual section',
-      source: 'manual',
+      source: 'assessment',
       points: [
         { x: 20, y: 50 },
         { x: 80, y: 50 },

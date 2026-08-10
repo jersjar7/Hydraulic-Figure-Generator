@@ -19,6 +19,7 @@ import type {
 import {
   lineDistanceToPoint,
   mapPolylineLengthFeet,
+  moveManualCrossSectionEndpoint,
 } from './crossSectionSelectionGeometry'
 
 type Options = {
@@ -47,7 +48,20 @@ export function useCrossSectionSelection({
   const [selectedAssessmentLineId, setSelectedAssessmentLineId] = useState('')
   const [drawingStart, setDrawingStart] = useState<MapCoordinate | null>(null)
   const [drawing, setDrawing] = useState(false)
+  const [draggingEndpoint, setDraggingEndpoint] = useState<{
+    pointIndex: number
+    pointerId: number
+  } | null>(null)
   const [view, setView] = useState<'map' | 'chart'>('map')
+
+  const canvasPoint = (event: PointerEvent<HTMLCanvasElement>) => {
+    const canvas = event.currentTarget
+    const bounds = canvas.getBoundingClientRect()
+    return {
+      x: ((event.clientX - bounds.left) * canvas.width) / bounds.width,
+      y: ((event.clientY - bounds.top) * canvas.height) / bounds.height,
+    }
+  }
 
   const cancelDrawing = useCallback(() => {
     setDrawing(false)
@@ -141,16 +155,11 @@ export function useCrossSectionSelection({
 
   const handleCanvasPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
     if (!mapReady) return
-    const canvas = event.currentTarget
-    const bounds = canvas.getBoundingClientRect()
-    const canvasPoint = {
-      x: ((event.clientX - bounds.left) * canvas.width) / bounds.width,
-      y: ((event.clientY - bounds.top) * canvas.height) / bounds.height,
-    }
+    const point = canvasPoint(event)
     if (drawing) {
       const mapPoint = canvasPointToMap(
-        canvasPoint.x,
-        canvasPoint.y,
+        point.x,
+        point.y,
         engine.commonBounds(),
         mapSettings,
       )
@@ -177,6 +186,23 @@ export function useCrossSectionSelection({
       return
     }
 
+    if (selectedLine?.source === 'manual') {
+      const endpointIndex = selectedLine.points.findIndex((candidate) => {
+        const screen = mapPointToCanvas(
+          candidate,
+          engine.commonBounds(),
+          mapSettings,
+        )
+        return Math.hypot(point.x - screen.x, point.y - screen.y) <= 18
+      })
+      if (endpointIndex >= 0) {
+        event.currentTarget.setPointerCapture(event.pointerId)
+        setDraggingEndpoint({ pointIndex: endpointIndex, pointerId: event.pointerId })
+        event.preventDefault()
+        return
+      }
+    }
+
     let closest: { id: string; distance: number } | null = null
     for (const line of assessmentLines) {
       for (let index = 1; index < line.points.length; index += 1) {
@@ -190,7 +216,7 @@ export function useCrossSectionSelection({
           engine.commonBounds(),
           mapSettings,
         )
-        const distance = lineDistanceToPoint(canvasPoint, start, end)
+        const distance = lineDistanceToPoint(point, start, end)
         if (!closest || distance < closest.distance) {
           closest = { id: line.id, distance }
         }
@@ -201,11 +227,44 @@ export function useCrossSectionSelection({
     }
   }
 
+  const handleCanvasPointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (!draggingEndpoint || event.pointerId !== draggingEndpoint.pointerId) return
+    const point = canvasPoint(event)
+    const mapPoint = canvasPointToMap(
+      point.x,
+      point.y,
+      engine.commonBounds(),
+      mapSettings,
+    )
+    const feetPerMapUnit = engine.condition(baselineId)?.projected?.ftPerMerc ?? 1
+    setSelectedLine((current) => {
+      if (!current || current.source !== 'manual') return current
+      return moveManualCrossSectionEndpoint(
+        current,
+        draggingEndpoint.pointIndex,
+        mapPoint,
+        feetPerMapUnit,
+      )
+    })
+    onSelectionChanged()
+    event.preventDefault()
+  }
+
+  const endEndpointDrag = (event: PointerEvent<HTMLCanvasElement>) => {
+    if (!draggingEndpoint || event.pointerId !== draggingEndpoint.pointerId) return
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    setDraggingEndpoint(null)
+    event.preventDefault()
+  }
+
   return {
     selectedLine,
     selectedAssessmentLineId,
     drawingStart,
     drawing,
+    draggingEndpoint: draggingEndpoint != null,
     view,
     setView,
     chooseAssessmentLine,
@@ -214,5 +273,8 @@ export function useCrossSectionSelection({
     reverseLine,
     loadSelection,
     handleCanvasPointerDown,
+    handleCanvasPointerMove,
+    handleCanvasPointerUp: endEndpointDrag,
+    handleCanvasPointerCancel: endEndpointDrag,
   }
 }

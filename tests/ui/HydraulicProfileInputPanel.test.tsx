@@ -17,6 +17,7 @@ describe('HydraulicProfileInputPanel', () => {
     const user = userEvent.setup()
     const onSummaryTextChange = vi.fn()
     const onProfileTextChange = vi.fn()
+    const onLongitudinalProfileTextChange = vi.fn()
     const configuration = createHydraulicProfilePresetConfiguration('existing')
     const dataset = buildHydraulicProfileDataset([], [], {
       datasetConfiguration: configuration,
@@ -28,12 +29,15 @@ describe('HydraulicProfileInputPanel', () => {
         conditionLabel="Existing Conditions"
         summaryText=""
         profileText=""
+        longitudinalProfileText=""
+        longitudinalSeriesCount={0}
         dataset={dataset}
         summaryRows={[]}
         selectedSectionId=""
         onConditionLabelChange={vi.fn()}
         onSummaryTextChange={onSummaryTextChange}
         onProfileTextChange={onProfileTextChange}
+        onLongitudinalProfileTextChange={onLongitudinalProfileTextChange}
         onSelectedSectionChange={vi.fn()}
         onDatasetConfigurationChange={vi.fn()}
         onCollapse={vi.fn()}
@@ -63,6 +67,20 @@ describe('HydraulicProfileInputPanel', () => {
     await waitFor(() => expect(onProfileTextChange).toHaveBeenCalledWith(
       'Distance\tValue\n0\t25',
     ))
+
+    await user.click(screen.getByRole('tab', { name: 'Longitudinal' }))
+    const longitudinalFile = new File(
+      ['Distance\tValue\n0\t25\n10\t26'],
+      'LongitudinalProfileValues.txt',
+      { type: 'text/plain' },
+    )
+    await user.upload(
+      screen.getByTestId('longitudinal-profile-text-file-drop').querySelector('input')!,
+      longitudinalFile,
+    )
+    await waitFor(() => expect(onLongitudinalProfileTextChange).toHaveBeenCalledWith(
+      'Distance\tValue\n0\t25\n10\t26',
+    ))
   })
 
   it('applies condition presets and lets the engineer add datasets', async () => {
@@ -82,12 +100,15 @@ describe('HydraulicProfileInputPanel', () => {
         conditionLabel="Proposed"
         summaryText="summary"
         profileText="profile"
+        longitudinalProfileText=""
+        longitudinalSeriesCount={0}
         dataset={dataset}
         summaryRows={[{ reach: 'Site2', station: 44, zMinimum: 25 }]}
         selectedSectionId="profile-section-1"
         onConditionLabelChange={onConditionLabelChange}
         onSummaryTextChange={vi.fn()}
         onProfileTextChange={vi.fn()}
+        onLongitudinalProfileTextChange={vi.fn()}
         onSelectedSectionChange={vi.fn()}
         onDatasetConfigurationChange={onDatasetConfigurationChange}
         onCollapse={vi.fn()}
@@ -134,12 +155,15 @@ describe('HydraulicProfileInputPanel', () => {
         conditionLabel="Existing Conditions"
         summaryText="summary"
         profileText="profile"
+        longitudinalProfileText=""
+        longitudinalSeriesCount={0}
         dataset={dataset}
         summaryRows={[{ reach: 'Site2', station: 44, zMinimum: 28 }]}
         selectedSectionId="profile-section-1"
         onConditionLabelChange={vi.fn()}
         onSummaryTextChange={vi.fn()}
         onProfileTextChange={vi.fn()}
+        onLongitudinalProfileTextChange={vi.fn()}
         onSelectedSectionChange={vi.fn()}
         onDatasetConfigurationChange={onDatasetConfigurationChange}
         onCollapse={vi.fn()}
@@ -175,12 +199,15 @@ describe('HydraulicProfileInputPanel', () => {
         conditionLabel="Existing Conditions"
         summaryText="summary"
         profileText="profile"
+        longitudinalProfileText=""
+        longitudinalSeriesCount={0}
         dataset={dataset}
         summaryRows={summaryRows}
         selectedSectionId="profile-section-1"
         onConditionLabelChange={vi.fn()}
         onSummaryTextChange={vi.fn()}
         onProfileTextChange={vi.fn()}
+        onLongitudinalProfileTextChange={vi.fn()}
         onSelectedSectionChange={vi.fn()}
         onDatasetConfigurationChange={onDatasetConfigurationChange}
         onCollapse={vi.fn()}

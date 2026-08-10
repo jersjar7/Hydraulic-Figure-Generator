@@ -163,14 +163,16 @@ export function CrossSectionSettingsPanel({
                   <ArrowLeftRight size={15} aria-hidden="true" />
                   Reverse A/B
                 </button>
-                <button
-                  className="button secondary compact"
-                  type="button"
-                  onClick={onFlipViewSide}
-                >
-                  <Eye size={15} aria-hidden="true" />
-                  Flip look arrow
-                </button>
+                {selectedLine.source !== 'manual' ? (
+                  <button
+                    className="button secondary compact"
+                    type="button"
+                    onClick={onFlipViewSide}
+                  >
+                    <Eye size={15} aria-hidden="true" />
+                    Flip look arrow
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -180,27 +182,29 @@ export function CrossSectionSettingsPanel({
               onChange={(event) => update('sectionName', event.currentTarget.value)}
             />
           </Field>
-          <div className="field-grid two">
-            <Field label="Looking">
-              <select
-                value={settings.lookingDirection}
-                onChange={(event) =>
-                  update(
-                    'lookingDirection',
-                    event.currentTarget.value as 'downstream' | 'upstream',
-                  )
-                }
-              >
-                <option value="downstream">Downstream</option>
-                <option value="upstream">Upstream</option>
-              </select>
-            </Field>
-            <Field label="View arrow side">
-              <span className="field-readout">
-                {settings.downstreamSide === 'right' ? 'Right of A→B' : 'Left of A→B'}
-              </span>
-            </Field>
-          </div>
+          {selectedLine?.source === 'assessment' ? (
+            <div className="field-grid two">
+              <Field label="Looking">
+                <select
+                  value={settings.lookingDirection}
+                  onChange={(event) =>
+                    update(
+                      'lookingDirection',
+                      event.currentTarget.value as 'downstream' | 'upstream',
+                    )
+                  }
+                >
+                  <option value="downstream">Downstream</option>
+                  <option value="upstream">Upstream</option>
+                </select>
+              </Field>
+              <Field label="View arrow side">
+                <span className="field-readout">
+                  {settings.downstreamSide === 'right' ? 'Right of A→B' : 'Left of A→B'}
+                </span>
+              </Field>
+            </div>
+          ) : null}
           <div className="field-grid two">
             <Field label="Dry depth (ft)">
               <input

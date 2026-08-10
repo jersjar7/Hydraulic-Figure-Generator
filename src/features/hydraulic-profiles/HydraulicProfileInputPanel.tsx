@@ -9,6 +9,7 @@ import {
   Settings2,
   Table2,
   Trash2,
+  TrendingUp,
   X,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -30,7 +31,7 @@ import {
 } from './hydraulicProfilePresets'
 import { HydraulicProfileTextField } from './HydraulicProfileTextField'
 
-type InputSection = 'scenario' | 'summary' | 'profile' | 'review'
+type InputSection = 'scenario' | 'summary' | 'profile' | 'longitudinal' | 'review'
 
 type Props = {
   mobileOpen: boolean
@@ -38,12 +39,15 @@ type Props = {
   conditionLabel: string
   summaryText: string
   profileText: string
+  longitudinalProfileText: string
+  longitudinalSeriesCount: number
   dataset: HydraulicProfileDataset
   summaryRows: SmsSummaryRow[]
   selectedSectionId: string
   onConditionLabelChange(value: string): void
   onSummaryTextChange(value: string): void
   onProfileTextChange(value: string): void
+  onLongitudinalProfileTextChange(value: string): void
   onSelectedSectionChange(id: string): void
   onDatasetConfigurationChange(configuration: HydraulicProfileDatasetConfiguration | null): void
   onCollapse(): void
@@ -56,6 +60,7 @@ const SECTIONS = [
   { key: 'scenario', label: 'Scenario', icon: Settings2 },
   { key: 'summary', label: 'Summary', icon: Table2 },
   { key: 'profile', label: 'Profile', icon: ClipboardPaste },
+  { key: 'longitudinal', label: 'Longitudinal', icon: TrendingUp },
   { key: 'review', label: 'Review', icon: CheckSquare },
 ] as const
 
@@ -70,12 +75,15 @@ export function HydraulicProfileInputPanel({
   conditionLabel,
   summaryText,
   profileText,
+  longitudinalProfileText,
+  longitudinalSeriesCount,
   dataset,
   summaryRows,
   selectedSectionId,
   onConditionLabelChange,
   onSummaryTextChange,
   onProfileTextChange,
+  onLongitudinalProfileTextChange,
   onSelectedSectionChange,
   onDatasetConfigurationChange,
   onCollapse,
@@ -246,6 +254,17 @@ export function HydraulicProfileInputPanel({
             dropTestId="profile-text-file-drop"
             status={<div className="profile-parse-status"><ListPlus size={16} /><span>{dataset.seriesCount} series parsed · {dataset.sections.length} cross sections detected</span></div>}
             onChange={onProfileTextChange}
+          />
+        ) : null}
+        {active === 'longitudinal' ? (
+          <HydraulicProfileTextField
+            label="Longitudinal SMS Profile Values"
+            value={longitudinalProfileText}
+            large
+            dropTitle="Add Longitudinal Profile Values .txt"
+            dropTestId="longitudinal-profile-text-file-drop"
+            status={<div className="profile-parse-status"><TrendingUp size={16} /><span>{longitudinalSeriesCount} longitudinal series parsed</span></div>}
+            onChange={onLongitudinalProfileTextChange}
           />
         ) : null}
         {active === 'review' ? (

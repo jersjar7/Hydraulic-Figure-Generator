@@ -1,7 +1,10 @@
 import { HYDRAULIC_PROFILES_FIGURE_ID } from '../../core/figureIds'
 import type {
+  HydraulicCrossSectionCulvert,
+  HydraulicLongitudinalCulvert,
   HydraulicProfileDatasetConfiguration,
   HydraulicProfileDatasetDefinition,
+  HydraulicProfileView,
 } from '../../core/types'
 import {
   createDefaultHydraulicProfileSettings,
@@ -17,13 +20,17 @@ import {
   hydraulicProfileChartLegend,
 } from './hydraulicProfileChartStyle'
 
-export const HYDRAULIC_PROFILE_PROJECT_VERSION = 5
+export const HYDRAULIC_PROFILE_PROJECT_VERSION = 6
 
 export type HydraulicProfileProjectState = {
   conditionLabel: string
   summaryText: string
   profileText: string
+  longitudinalProfileText: string
+  view: HydraulicProfileView
   selectedSectionId: string
+  crossSectionCulverts: HydraulicCrossSectionCulvert[]
+  longitudinalCulverts: HydraulicLongitudinalCulvert[]
   datasetConfiguration: HydraulicProfileDatasetConfiguration | null
   settings: HydraulicProfileFigureSettings
 }
@@ -68,6 +75,55 @@ function isConfiguration(value: unknown): value is HydraulicProfileDatasetConfig
   return slots.size === configuration.datasetsPerSection
     && (configuration.stationReferenceSlot == null
       || slots.has(configuration.stationReferenceSlot))
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+function isDash(value: unknown): value is number[] {
+  return Array.isArray(value) && value.every((item) => isFiniteNumber(item) && item >= 0)
+}
+
+function isCrossSectionCulvert(value: unknown): value is HydraulicCrossSectionCulvert {
+  if (!value || typeof value !== 'object') return false
+  const culvert = value as Partial<HydraulicCrossSectionCulvert>
+  return typeof culvert.sectionId === 'string'
+    && typeof culvert.name === 'string'
+    && ['box', 'arch', 'circle', 'ellipse'].includes(String(culvert.kind))
+    && isFiniteNumber(culvert.scour)
+    && culvert.scour >= 0
+    && isFiniteNumber(culvert.bed)
+    && culvert.bed >= 0
+    && (culvert.center == null || isFiniteNumber(culvert.center))
+    && [culvert.width, culvert.height, culvert.span, culvert.rise, culvert.diameter]
+      .every((item) => isFiniteNumber(item) && item > 0)
+    && isFiniteNumber(culvert.legHeight)
+    && culvert.legHeight >= 0
+    && typeof culvert.color === 'string'
+    && isFiniteNumber(culvert.lineWidth)
+    && culvert.lineWidth > 0
+    && isDash(culvert.dash)
+}
+
+function isLongitudinalCulvert(value: unknown): value is HydraulicLongitudinalCulvert {
+  if (!value || typeof value !== 'object') return false
+  const culvert = value as Partial<HydraulicLongitudinalCulvert>
+  return typeof culvert.id === 'string'
+    && typeof culvert.name === 'string'
+    && [
+      culvert.leftStation,
+      culvert.rightStation,
+      culvert.invertLeft,
+      culvert.invertRight,
+    ].every(isFiniteNumber)
+    && Number(culvert.rightStation) > Number(culvert.leftStation)
+    && isFiniteNumber(culvert.height)
+    && culvert.height > 0
+    && typeof culvert.color === 'string'
+    && isFiniteNumber(culvert.lineWidth)
+    && culvert.lineWidth > 0
+    && isDash(culvert.dash)
 }
 
 function conditionGroundLabel(conditionLabel: string) {
@@ -219,7 +275,7 @@ export function serializeHydraulicProfileProject(state: HydraulicProfileProjectS
 export function parseHydraulicProfileProject(text: string): HydraulicProfileProjectState {
   const parsed = JSON.parse(text) as Partial<Envelope> & Record<string, unknown>
   if (parsed.figureId !== HYDRAULIC_PROFILES_FIGURE_ID) throw new Error('This is not a Hydraulic Profiles & Sections project file.')
-  if (![1, 2, 3, 4, HYDRAULIC_PROFILE_PROJECT_VERSION].includes(Number(parsed.version))) {
+  if (![1, 2, 3, 4, 5, HYDRAULIC_PROFILE_PROJECT_VERSION].includes(Number(parsed.version))) {
     throw new Error(`Hydraulic profile project version ${String(parsed.version)} is not supported.`)
   }
   if (
@@ -233,7 +289,11 @@ export function parseHydraulicProfileProject(text: string): HydraulicProfileProj
       conditionLabel: parsed.conditionLabel,
       summaryText: parsed.summaryText,
       profileText: parsed.profileText,
+      longitudinalProfileText: '',
+      view: 'cross-sections',
       selectedSectionId: typeof parsed.selectedSectionId === 'string' ? parsed.selectedSectionId : '',
+      crossSectionCulverts: [],
+      longitudinalCulverts: [],
       datasetConfiguration: legacy.configuration,
       settings: hydrateSettings(parsed.settings, legacy.mapping),
     }
@@ -245,11 +305,27 @@ export function parseHydraulicProfileProject(text: string): HydraulicProfileProj
         ? migratePresetStationReference(parsed.datasetConfiguration)
         : parsed.datasetConfiguration
       : (() => { throw new Error('The saved dataset definitions are malformed.') })()
+  const crossSectionCulverts = parsed.crossSectionCulverts == null
+    ? []
+    : Array.isArray(parsed.crossSectionCulverts)
+      && parsed.crossSectionCulverts.every(isCrossSectionCulvert)
+      ? parsed.crossSectionCulverts
+      : (() => { throw new Error('The saved cross-section culverts are malformed.') })()
+  const longitudinalCulverts = parsed.longitudinalCulverts == null
+    ? []
+    : Array.isArray(parsed.longitudinalCulverts)
+      && parsed.longitudinalCulverts.every(isLongitudinalCulvert)
+      ? parsed.longitudinalCulverts
+      : (() => { throw new Error('The saved longitudinal culverts are malformed.') })()
   return {
     conditionLabel: parsed.conditionLabel,
     summaryText: parsed.summaryText,
     profileText: parsed.profileText,
+    longitudinalProfileText: typeof parsed.longitudinalProfileText === 'string' ? parsed.longitudinalProfileText : '',
+    view: parsed.view === 'longitudinal' ? 'longitudinal' : 'cross-sections',
     selectedSectionId: typeof parsed.selectedSectionId === 'string' ? parsed.selectedSectionId : '',
+    crossSectionCulverts,
+    longitudinalCulverts,
     datasetConfiguration,
     settings: hydrateSettings(parsed.settings),
   }

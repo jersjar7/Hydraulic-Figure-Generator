@@ -64,8 +64,8 @@ export function drawChartAxes(
     + ((value - xDomain.minimum) / (xDomain.maximum - xDomain.minimum)) * plot.width
   const y = (value: number) => plot.top
     + ((yDomain.maximum - value) / (yDomain.maximum - yDomain.minimum)) * plot.height
-  const xStep = niceStep(xDomain.maximum - xDomain.minimum, targetXTicks)
-  const yStep = niceStep(yDomain.maximum - yDomain.minimum, 8)
+  const xStep = axes.xGridSpacing ?? niceStep(xDomain.maximum - xDomain.minimum, targetXTicks)
+  const yStep = axes.yGridSpacing ?? niceStep(yDomain.maximum - yDomain.minimum, 8)
 
   context.save()
   context.fillStyle = axes.plotBackgroundColor

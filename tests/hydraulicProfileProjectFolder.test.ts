@@ -54,7 +54,11 @@ function profile(): HydraulicProfileProjectState {
     conditionLabel: 'Existing Conditions',
     summaryText: 'Reach\tStation\tMin\nSite 6\t100\t25',
     profileText: 'Distance\tValue\n0\t25',
+    longitudinalProfileText: 'Distance\tValue\n0\t25',
+    view: 'cross-sections',
     selectedSectionId: 'profile-section-1',
+    crossSectionCulverts: [],
+    longitudinalCulverts: [],
     datasetConfiguration: null,
     settings: createDefaultHydraulicProfileSettings(),
   }
@@ -80,6 +84,7 @@ describe('folder-backed hydraulic profile projects', () => {
     assert.deepEqual(storage.writes, [
       'inputs/profiles/summary-table.txt',
       'inputs/profiles/profile-values.txt',
+      'inputs/profiles/longitudinal-profile-values.txt',
       'workspaces/hydraulic-profiles.hydfig.json',
       'project.hfg.json',
     ])
@@ -108,6 +113,7 @@ describe('folder-backed hydraulic profile projects', () => {
 
     assert.match(opened.profile.summaryText, /Edited/)
     assert.equal(opened.profile.profileText, profile().profileText)
+    assert.equal(opened.profile.longitudinalProfileText, profile().longitudinalProfileText)
     assert.equal(opened.profile.settings.title, 'Hydraulic Cross Section')
   })
 

@@ -305,7 +305,9 @@ export function renderCrossSectionDocument(
 
   context.save()
   context.font = `600 ${Math.max(14, settings.fontSize - 2)}px Arial`
-  const direction = `Cross section is looking ${settings.lookingDirection}`
+  const direction = scene.line.source === 'manual'
+    ? `Section order ${scene.line.direction === 'a-to-b' ? 'A to B' : 'B to A'}`
+    : `Cross section is looking ${settings.lookingDirection}`
   const sectionText = settings.sectionName || scene.line.label
   const infoWidth = Math.max(
     context.measureText(sectionText).width,

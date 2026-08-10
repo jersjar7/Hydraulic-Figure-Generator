@@ -36,6 +36,14 @@ export function ChartAxesControls({ axes, onChange }: Props) {
       </CompactFieldGrid>
       <Toggle label="Grid" checked={axes.showGrid} onChange={(showGrid) => onChange({ ...axes, showGrid })} />
       <CompactFieldGrid>
+        <Field label="Horizontal spacing">
+          <input aria-label="Horizontal grid spacing" type="number" min="0.01" step="0.1" placeholder="Auto" value={axes.xGridSpacing ?? ''} onChange={(event) => onChange({ ...axes, xGridSpacing: nullableNumber(event.currentTarget.value) })} />
+        </Field>
+        <Field label="Vertical spacing">
+          <input aria-label="Vertical grid spacing" type="number" min="0.01" step="0.1" placeholder="Auto" value={axes.yGridSpacing ?? ''} onChange={(event) => onChange({ ...axes, yGridSpacing: nullableNumber(event.currentTarget.value) })} />
+        </Field>
+      </CompactFieldGrid>
+      <CompactFieldGrid>
         <Field label="Text size">
           <input type="number" min="8" max="40" value={axes.fontSize} onChange={(event) => onChange({ ...axes, fontSize: Math.min(40, Math.max(8, Number(event.currentTarget.value) || 8)) })} />
         </Field>

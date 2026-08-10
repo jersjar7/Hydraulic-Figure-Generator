@@ -18,7 +18,6 @@ type Options = {
   startStation: number
   selectedLabelId?: string | null
   setCenterline(id: string): void
-  setSelectedLabelId?(id: string | null): void
 }
 
 export function useCenterlineStationingLayer({
@@ -30,7 +29,6 @@ export function useCenterlineStationingLayer({
   startStation,
   selectedLabelId = null,
   setCenterline,
-  setSelectedLabelId,
 }: Options) {
   const candidates = useMemo(() => {
     if (!modelWkt) return []
@@ -84,15 +82,6 @@ export function useCenterlineStationingLayer({
       setCenterline(candidates[0].id)
     }
   }, [candidates, centerlineId, modelWkt, overlays.length, setCenterline])
-
-  useEffect(() => {
-    if (
-      selectedLabelId &&
-      !ticks.some((tick) => tick.id === selectedLabelId && tick.label)
-    ) {
-      setSelectedLabelId?.(null)
-    }
-  }, [selectedLabelId, setSelectedLabelId, ticks])
 
   return { candidates, selectedCenterline, ticks, layer }
 }

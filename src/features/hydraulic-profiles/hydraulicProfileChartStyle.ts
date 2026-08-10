@@ -44,6 +44,8 @@ export function hydraulicProfileChartAxes(
 ): ChartAxesSettings {
   return {
     showGrid: settings.showGrid,
+    xGridSpacing: settings.xGridSpacing,
+    yGridSpacing: settings.yGridSpacing,
     yMinimum: settings.yMinimum,
     yMaximum: settings.yMaximum,
     fontSize: settings.fontSize,
@@ -101,6 +103,8 @@ export function applyHydraulicProfileChartAxes(
   return {
     ...settings,
     showGrid: value.showGrid,
+    xGridSpacing: value.xGridSpacing,
+    yGridSpacing: value.yGridSpacing,
     yMinimum: value.yMinimum,
     yMaximum: value.yMaximum,
     fontSize: value.fontSize,

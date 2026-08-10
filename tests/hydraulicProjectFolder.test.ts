@@ -63,7 +63,11 @@ function profile(conditionLabel = 'Existing Conditions'): HydraulicProfileProjec
     conditionLabel,
     summaryText: 'Reach\tStation\tMin\nSite 6\t100\t25',
     profileText: 'Distance\tValue\n0\t25',
+    longitudinalProfileText: 'Distance\tValue\n0\t25',
+    view: 'cross-sections',
     selectedSectionId: 'profile-section-1',
+    crossSectionCulverts: [],
+    longitudinalCulverts: [],
     datasetConfiguration: null,
     settings: createDefaultHydraulicProfileSettings(),
   }
@@ -144,6 +148,7 @@ describe('multi-workspace hydraulic project folders', () => {
     assert.deepEqual(storage.writes, [
       'inputs/profiles/summary-table.txt',
       'inputs/profiles/profile-values.txt',
+      'inputs/profiles/longitudinal-profile-values.txt',
       'workspaces/hydraulic-profiles.hydfig.json',
       'workspaces/export-collection.hydreport.json',
       'workspaces/workspace-session.hfg.json',

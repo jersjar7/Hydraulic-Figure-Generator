@@ -7,8 +7,12 @@ export function createInitialHydraulicProfileDocument(): HydraulicProfileProject
     conditionLabel: 'Proposed Conditions',
     summaryText: '',
     profileText: '',
+    longitudinalProfileText: '',
+    view: 'cross-sections',
     datasetConfiguration: createHydraulicProfilePresetConfiguration('proposed'),
     selectedSectionId: '',
+    crossSectionCulverts: [],
+    longitudinalCulverts: [],
     settings: createDefaultHydraulicProfileSettings(),
   }
 }

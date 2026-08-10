@@ -35,7 +35,6 @@ export function usePlanViewStationing({
     source: state,
     selectedLabelId,
     toggleCenterline: sourceController.toggleCenterline,
-    setSelectedLabelId,
   })
   const controller = useCenterlineStationingController({
     bounds: engine.commonBounds([scenarioId]),

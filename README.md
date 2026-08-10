@@ -19,13 +19,16 @@ The application currently provides four independently registered workspaces:
   assembles included figures into ordered, captioned Letter pages, previews
   portrait or landscape output, and exports a client-side Word document.
 - **Hydraulic Profiles & Sections** converts SMS Summary Table and Profile
-  Values clipboard exports into report-ready cross sections. Inputs may be
-  pasted or loaded from local `.txt` files. Existing and
+  Values exports into report-ready cross sections and longitudinal profiles.
+  Inputs may be pasted or loaded from local `.txt` files. Existing and
   Proposed presets provide an editable starting point; engineers can add,
   remove, classify, and name any number of Ground, WSE, and Other lines, select
   and review the station-order ground, generate every detected station in one
   action, and choose ground/WSE relationships for earth fill and inundation
-  shading. Station labels are paired by thalweg order; Summary Z-min values are
+  shading. Cross sections support configurable culvert geometry, while
+  longitudinal profiles support positioned box culverts and station markers.
+  Shared chart controls include explicit horizontal and vertical grid spacing.
+  Station labels are paired by thalweg order; Summary Z-min values are
   retained as an independent diagnostic rather than used as a greedy join key.
   This workspace also supports folder-backed projects: New Project creates a
   versioned manifest plus editable Summary/Profile input files, Save writes

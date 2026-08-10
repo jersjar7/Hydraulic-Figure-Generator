@@ -62,11 +62,11 @@ test('shared figure workspace exposes scalable project and settings navigation',
   await continueWithoutProject(page)
   await expect(page.getByLabel('Workspace', { exact: true }).locator('option')).toHaveText([
     'Cross-Section Comparison',
-    'Export Collection (0)',
     'Hydraulic Profiles & Sections',
     'Plan-View Hydraulic Results',
     'WSE Difference',
   ])
+  await expect(page.getByRole('button', { name: 'Export Collection (0)' })).toBeVisible()
 
   await expect(
     page.getByRole('heading', { name: 'Hydraulic Figure Generator' }),
@@ -173,9 +173,7 @@ test('figure workspace drafts survive navigation through the Export Collection',
   await page.getByRole('tab', { name: /frame/i }).click()
   await page.getByRole('button', { name: 'Portrait' }).click()
 
-  await page.getByLabel('Workspace', { exact: true }).selectOption(
-    'report-assembly',
-  )
+  await page.getByRole('button', { name: /Export Collection/ }).click()
   await page.getByLabel('Workspace', { exact: true }).selectOption(
     'fra-wse-difference',
   )
@@ -294,7 +292,7 @@ test('folder project saves and restores profiles with the Export Collection', as
   await page.getByRole('button', { name: 'Save project' }).click()
   await expect(page.getByLabel('Site 6 FRA: Saved')).toBeVisible()
 
-  await page.getByLabel('Workspace', { exact: true }).selectOption('report-assembly')
+  await page.getByRole('button', { name: /Export Collection/ }).click()
   await expect(page.getByLabel('Site 6 FRA: Unsaved changes')).toBeVisible()
   await page.getByLabel('Document title').fill('Site 6 Hydraulic Report')
   await expect(page.getByLabel('Site 6 FRA: Unsaved changes')).toBeVisible()
@@ -304,7 +302,7 @@ test('folder project saves and restores profiles with the Export Collection', as
 
   page.once('dialog', (dialog) => dialog.accept())
   await page.getByRole('button', { name: 'Open project' }).click()
-  await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue('report-assembly')
+  await expect(page.getByRole('button', { name: /Export Collection/ })).toHaveClass(/active/)
   await expect(page.getByLabel('Document title')).toHaveValue('Site 6 Hydraulic Report')
   await expect(page.getByLabel('Site 6 FRA: Saved')).toBeVisible()
 
@@ -396,7 +394,7 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
 
   await page.getByRole('tab', { name: 'Export', exact: true }).click()
   await page.getByRole('button', { name: 'Add current station to export' }).click()
-  await expect(page.getByRole('option', { name: 'Export Collection (1)' })).toBeAttached()
+  await expect(page.getByRole('button', { name: 'Export Collection (1)' })).toBeVisible()
   const downloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Download PNG' }).click()
   const download = await downloadPromise
@@ -405,7 +403,7 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
   await page.getByRole('tab', { name: 'Scenario', exact: true }).click()
   await page.getByLabel('Condition label').fill('Later workspace edit')
 
-  await page.getByLabel('Workspace', { exact: true }).selectOption('report-assembly')
+  await page.getByRole('button', { name: 'Export Collection (1)' }).click()
   await expect(page.getByRole('heading', { name: 'Hydraulic Profiles & Sections' })).toBeVisible()
   await page.getByRole('button', { name: /Preview Hydraulic Cross Section/ }).click()
   await page.getByLabel('Caption').fill('Reviewed profile caption.')
@@ -431,10 +429,10 @@ test('SMS profile paste maps, renders, and assembles one fitted station cross se
   await page.getByLabel('Figure title').fill('Updated Hydraulic Cross Section')
   await page.getByRole('tab', { name: 'Export', exact: true }).click()
   await page.getByRole('button', { name: 'Update exported figure' }).click()
-  await expect(page.getByRole('option', { name: 'Export Collection (1)' })).toBeAttached()
+  await expect(page.getByRole('button', { name: 'Export Collection (1)' })).toBeVisible()
   await page.getByRole('button', { name: 'Save as new figure' }).click()
-  await expect(page.getByRole('option', { name: 'Export Collection (2)' })).toBeAttached()
-  await page.getByLabel('Workspace', { exact: true }).selectOption('report-assembly')
+  await expect(page.getByRole('button', { name: 'Export Collection (2)' })).toBeVisible()
+  await page.getByRole('button', { name: 'Export Collection (2)' }).click()
   await expect(page.getByRole('button', {
     name: /Preview Updated Hydraulic Cross Section/,
   })).toHaveCount(2)
@@ -462,6 +460,43 @@ test('SMS Summary and Profile Values text files feed the profile parser', async 
   await expect(page.getByLabel('SMS Profile Values')).toHaveValue(PROFILE_VALUES)
   await expect(page.getByText('5 series parsed · 1 cross sections detected')).toBeVisible()
   await expect(page.getByTestId('generate-hydraulic-profile')).toBeEnabled()
+})
+
+test('longitudinal SMS values render with culvert and grid controls', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto('.')
+  await openHydraulicProfiles(page)
+
+  await page.getByRole('tab', { name: 'Summary', exact: true }).click()
+  await page.getByLabel('SMS Summary Table').fill(PROFILE_SUMMARY)
+  await page.getByRole('tab', { name: 'Longitudinal', exact: true }).click()
+  await page.getByLabel('Longitudinal SMS Profile Values').fill(PROFILE_VALUES)
+  await page.getByRole('tab', { name: 'Longitudinal profile', exact: true }).click()
+  await page.getByTestId('generate-hydraulic-profile').click()
+
+  const canvas = page.getByLabel('Generated SMS hydraulic profile')
+  await expect(canvas).toHaveClass(/is-visible/)
+  await expect.poll(() => canvas.evaluate((element) => {
+    const chart = element as HTMLCanvasElement
+    const pixels = chart.getContext('2d')?.getImageData(0, 0, chart.width, chart.height).data
+    if (!pixels) return 0
+    let nonWhite = 0
+    for (let index = 0; index < pixels.length; index += 128) {
+      if (pixels[index] < 245 || pixels[index + 1] < 245 || pixels[index + 2] < 245) nonWhite += 1
+    }
+    return nonWhite
+  })).toBeGreaterThan(100)
+
+  await page.getByRole('tab', { name: 'Axes', exact: true }).click()
+  await page.getByLabel('Horizontal grid spacing').fill('20')
+  await page.getByLabel('Vertical grid spacing').fill('1')
+  await expect(page.getByLabel('Horizontal grid spacing')).toHaveValue('20')
+  await expect(page.getByLabel('Vertical grid spacing')).toHaveValue('1')
+
+  await page.getByRole('tab', { name: 'Structures', exact: true }).click()
+  await page.getByRole('button', { name: 'Add box culvert' }).click()
+  await expect(page.getByLabel('Selected culvert')).not.toHaveValue('')
+  await expect(page.getByLabel('Legend name')).toHaveValue('Box Culvert 1')
 })
 
 test('one profile generation exposes every detected station and batch export', async ({ page }) => {
@@ -726,12 +761,30 @@ test('loaded scenarios carry into the cross-section map-to-chart workflow', asyn
     position: { x: box!.width * 0.68, y: box!.height * 0.5 },
   })
   await expect(page.getByTestId('selected-section-card')).toBeVisible()
+  await page.mouse.move(
+    box!.x + box!.width * 0.68,
+    box!.y + box!.height * 0.5,
+  )
+  await page.mouse.down()
+  await expect(selectionMap).toHaveAttribute(
+    'data-cross-section-endpoint-dragging',
+    'true',
+  )
+  await page.mouse.move(
+    box!.x + box!.width * 0.78,
+    box!.y + box!.height * 0.62,
+    { steps: 4 },
+  )
+  await page.mouse.up()
+  await expect(selectionMap).not.toHaveAttribute(
+    'data-cross-section-endpoint-dragging',
+  )
   await expect(
     page.getByRole('button', { name: 'Reverse A/B' }),
   ).toBeVisible()
   await expect(
     page.getByRole('button', { name: 'Flip look arrow' }),
-  ).toBeVisible()
+  ).toHaveCount(0)
 
   const generate = page.getByTestId('generate-cross-section')
   await expect(generate).toBeEnabled()
@@ -979,6 +1032,9 @@ test('Plan-View loads a zipped centerline and renders station ticks', async ({
   const firstStationId = await stationLabel.locator('option').nth(1).getAttribute('value')
   expect(firstStationId).toBeTruthy()
   await stationLabel.selectOption(firstStationId!)
+  await expect(settingsPanel.getByText('Show leader', { exact: true }))
+    .toBeVisible()
+  await page.waitForTimeout(300)
   await expect(settingsPanel.getByText('Show leader', { exact: true }))
     .toBeVisible()
   await settingsPanel.getByRole('button', { name: 'Move label right' }).click()

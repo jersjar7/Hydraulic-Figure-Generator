@@ -8,6 +8,7 @@ import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { createHydraulicProjectInputActions } from '../project-workspace/hydraulicProjectInputActions'
 import { FigurePicker } from '../figures/FigurePicker'
+import { ExportCollectionButton } from '../report-assembly/ExportCollectionButton'
 import { useAssessmentMapLayers } from './useAssessmentMapLayers'
 import { wseDifferenceFigure } from './wseDifferenceFigure'
 import type { FigureSettings, IngestNotice, WseDifferenceScene } from '../../core/types'
@@ -109,8 +110,7 @@ export function WseDifferenceWorkspace() {
     setElementDragging,
   } = editorUi
   const [scene, setScene] = useState<WseDifferenceScene | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const canvasFrameRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null), canvasFrameRef = useRef<HTMLDivElement>(null)
   const canvasDisplaySize = useFittedCanvasSize(
     canvasFrameRef,
     settings.orientation,
@@ -133,7 +133,6 @@ export function WseDifferenceWorkspace() {
     stationing: settings.centerlineStationing,
     stationingSource,
     selectedStationLabelId,
-    setSelectedLabelId: setSelectedStationLabelId,
   })
   const figureElements = useWseFigureElementController({
     engine,
@@ -494,6 +493,7 @@ export function WseDifferenceWorkspace() {
         />
       }
       figurePicker={<FigurePicker />}
+      headerActions={<ExportCollectionButton />}
     />
   )
 }

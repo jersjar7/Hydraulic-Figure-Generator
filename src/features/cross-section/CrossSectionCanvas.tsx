@@ -19,11 +19,15 @@ type Props = {
   ready: boolean
   drawing: boolean
   drawingStartSet: boolean
+  draggingEndpoint: boolean
   orientation: 'landscape' | 'portrait'
   canvasRef: RefObject<HTMLCanvasElement | null>
   onViewChange(view: 'map' | 'chart'): void
   onGenerateMap(): void
   onPointerDown: PointerEventHandler<HTMLCanvasElement>
+  onPointerMove: PointerEventHandler<HTMLCanvasElement>
+  onPointerUp: PointerEventHandler<HTMLCanvasElement>
+  onPointerCancel: PointerEventHandler<HTMLCanvasElement>
 }
 
 export function CrossSectionCanvas({
@@ -33,11 +37,15 @@ export function CrossSectionCanvas({
   ready,
   drawing,
   drawingStartSet,
+  draggingEndpoint,
   orientation,
   canvasRef,
   onViewChange,
   onGenerateMap,
   onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
 }: Props) {
   const canvasFrameRef = useRef<HTMLDivElement>(null)
   const visible = view === 'map' ? Boolean(mapScene) : Boolean(chartScene)
@@ -112,7 +120,11 @@ export function CrossSectionCanvas({
               : 'Generated hydraulic cross-section comparison'
           }
           data-cross-section-drawing={drawing ? 'true' : undefined}
+          data-cross-section-endpoint-dragging={draggingEndpoint ? 'true' : undefined}
           onPointerDown={view === 'map' ? onPointerDown : undefined}
+          onPointerMove={view === 'map' ? onPointerMove : undefined}
+          onPointerUp={view === 'map' ? onPointerUp : undefined}
+          onPointerCancel={view === 'map' ? onPointerCancel : undefined}
           style={{
             width: displaySize.width || undefined,
             height: displaySize.height || undefined,

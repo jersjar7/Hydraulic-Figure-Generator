@@ -231,7 +231,7 @@ contract.
 ## Frontend Growth
 
 `App.tsx` is a figure-workspace host. WSE Difference, Cross-Section Comparison,
-and Plan-View Hydraulic Results are separate composition roots; input, project-file, generation,
+Plan-View Hydraulic Results, and Hydraulic Profiles & Sections are separate composition roots; input, project-file, generation,
 map-canvas, settings, rendering, and interaction responsibilities live in
 focused controllers and components around them. Settings sections and tools
 are registered modules rather than conditional branches in a workspace.

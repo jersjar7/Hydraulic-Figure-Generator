@@ -12,7 +12,11 @@ function state(): HydraulicProfileProjectState {
     conditionLabel: 'Proposed Conditions',
     summaryText: 'Reach\tStation\tMin',
     profileText: 'Distance\tValue',
+    longitudinalProfileText: '',
+    view: 'cross-sections',
     selectedSectionId: 'profile-section-1',
+    crossSectionCulverts: [],
+    longitudinalCulverts: [],
     datasetConfiguration: {
       datasetsPerSection: 3,
       stationReferenceSlot: 1,
@@ -33,6 +37,37 @@ function state(): HydraulicProfileProjectState {
 describe('hydraulic profile project files', () => {
   it('round-trips clipboard inputs, mapping review, and figure settings', () => {
     const project = state()
+    project.longitudinalProfileText = 'Distance\tValue\n0\t25'
+    project.view = 'longitudinal'
+    project.crossSectionCulverts = [{
+      sectionId: 'profile-section-1',
+      name: 'Box Culvert',
+      kind: 'box',
+      scour: 2,
+      bed: 1,
+      center: null,
+      width: 10,
+      height: 6,
+      span: 10,
+      legHeight: 2,
+      rise: 5,
+      diameter: 6,
+      color: '#222222',
+      lineWidth: 2.5,
+      dash: [],
+    }]
+    project.longitudinalCulverts = [{
+      id: 'longitudinal-culvert-1',
+      name: 'Road Crossing',
+      leftStation: 100,
+      rightStation: 125,
+      invertLeft: 25,
+      invertRight: 25.5,
+      height: 8,
+      color: '#222222',
+      lineWidth: 2.5,
+      dash: [10, 6],
+    }]
     project.settings.legendPosition = 'bottom-right'
     project.settings.lineVisibility[2] = false
     project.settings.lineOrder = [1, 2, 0]
@@ -68,6 +103,12 @@ describe('hydraulic profile project files', () => {
     assert.throws(
       () => parseHydraulicProfileProject(JSON.stringify(malformed)),
       /invalid numeric values/,
+    )
+    const malformedCulvert = JSON.parse(serializeHydraulicProfileProject(state()))
+    malformedCulvert.crossSectionCulverts = [{ kind: 'box', width: -1 }]
+    assert.throws(
+      () => parseHydraulicProfileProject(JSON.stringify(malformedCulvert)),
+      /cross-section culverts are malformed/,
     )
   })
 

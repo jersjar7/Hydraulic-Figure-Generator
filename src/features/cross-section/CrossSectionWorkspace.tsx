@@ -1,6 +1,4 @@
-import {
-  LineChart,
-} from 'lucide-react'
+import { LineChart } from 'lucide-react'
 import {
   useCallback,
   useEffect,
@@ -25,18 +23,15 @@ import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { createHydraulicProjectInputActions } from '../project-workspace/hydraulicProjectInputActions'
 import { FigurePicker } from '../figures/FigurePicker'
+import { ExportCollectionButton } from '../report-assembly/ExportCollectionButton'
 import { useAssessmentMapLayers } from '../wse-difference/useAssessmentMapLayers'
 import { wseDifferenceFigure } from '../wse-difference/wseDifferenceFigure'
-import {
-  type CrossSectionSettingsSectionKey,
-} from './crossSectionDefinition'
+import { type CrossSectionSettingsSectionKey } from './crossSectionDefinition'
 import { crossSectionFigure } from './crossSectionFigure'
 import { createCrossSectionReportFigure } from './crossSectionReportAdapter'
 import { CrossSectionCanvas } from './CrossSectionCanvas'
 import { CrossSectionSettingsPanel } from './CrossSectionSettingsPanel'
-import {
-  createDefaultCrossSectionSettings,
-} from './crossSectionSettings'
+import { createDefaultCrossSectionSettings } from './crossSectionSettings'
 import { useCrossSectionProjectFiles } from './useCrossSectionProjectFiles'
 import { useCrossSectionRendering } from './useCrossSectionRendering'
 import { useCrossSectionSelection } from './useCrossSectionSelection'
@@ -440,11 +435,15 @@ export function CrossSectionWorkspace() {
           ready={ready}
           drawing={drawing}
           drawingStartSet={Boolean(drawingStart)}
+          draggingEndpoint={selection.draggingEndpoint}
           orientation={settings.orientation}
           canvasRef={canvasRef}
           onViewChange={selection.setView}
           onGenerateMap={buildSelectionMap}
           onPointerDown={selection.handleCanvasPointerDown}
+          onPointerMove={selection.handleCanvasPointerMove}
+          onPointerUp={selection.handleCanvasPointerUp}
+          onPointerCancel={selection.handleCanvasPointerCancel}
         />
       }
       settingsContent={
@@ -492,6 +491,7 @@ export function CrossSectionWorkspace() {
         />
       }
       figurePicker={<FigurePicker />}
+      headerActions={<ExportCollectionButton />}
     />
   )
 }

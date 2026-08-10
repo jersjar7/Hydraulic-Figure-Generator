@@ -21,6 +21,7 @@ type Props = {
   loadInput?: ReactNode
   figurePicker?: ReactNode
   projectStatus?: ReactNode
+  headerActions?: ReactNode
   saveLabel?: string
   loadLabel?: string
   workspaceClassName?: string
@@ -41,6 +42,7 @@ export function FigureEditorShell({
   loadInput,
   figurePicker,
   projectStatus,
+  headerActions,
   saveLabel = 'Save',
   loadLabel = 'Load',
   workspaceClassName = '',
@@ -87,6 +89,7 @@ export function FigureEditorShell({
             <FolderOpen size={16} aria-hidden="true" />
             <span>{loadLabel}</span>
           </button>
+          {headerActions}
           {showPanelButtons ? <button
             className="icon-button mobile-panel-button"
             type="button"
