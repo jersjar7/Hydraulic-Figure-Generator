@@ -108,6 +108,16 @@ for (const file of await sourceFiles(sourceRoot)) {
     )
   }
 
+  if (
+    relativeFile ===
+      'src/features/hydraulic-profiles/HydraulicProfilesWorkspace.tsx' &&
+    /buildHydraulicProfileDataset|buildHydraulicLongitudinalScene|parseSms(?:ProfileValues|SummaryTable)|createWorkspaceDraftSnapshot|createHydraulic(?:Longitudinal|Profile)ReportFigure|downloadHydraulic(?:Longitudinal|Profile)Png|renderHydraulicLongitudinalDocument|hydraulicProfileFigure\.buildScene/.test(source)
+  ) {
+    violations.push(
+      `${relativeFile}: profile analysis, generation, rendering, and output policies belong to feature controllers`,
+    )
+  }
+
   const allowedLayers = layerRules[layer]
   if (!allowedLayers) continue
   for (const match of source.matchAll(importPattern)) {

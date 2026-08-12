@@ -273,6 +273,13 @@ through `usePlanViewWorkspaceUi`; `usePlanViewSingleFigure` owns active-preview
 generation, invalidation, result selection, figure-set item editing, and reset.
 `withPlanViewOutputSettings` is the single policy for applying result metadata
 to auto-selected, manually selected, and figure-set output settings.
+Hydraulic Profiles & Sections routes SMS parsing, mapping review, and derived
+datasets through `useHydraulicProfileAnalysis`; station selection, batch scene
+generation, invalidation, and hydration through
+`useHydraulicProfileGeneration`; and canvas rendering and export construction
+through dedicated rendering and output controllers. Its composition root owns
+only project wiring and panel composition, while transient panel state and
+bounded runtime notices live in `useHydraulicProfilesWorkspaceUi`.
 
 The complete hydraulic left panel offers four project workflows:
 
