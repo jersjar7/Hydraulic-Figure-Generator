@@ -15,6 +15,10 @@ const layerRules: Record<string, Set<string>> = {
 }
 const maxLines = 600
 const workspaceMaxLines = 500
+const decompressedWorkspaceMaxLines: Record<string, number> = {
+  'src/features/plan-view-results/PlanViewResultWorkspace.tsx': 400,
+  'src/features/wse-difference/WseDifferenceWorkspace.tsx': 400,
+}
 const importPattern =
   /(?:import|export)\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?['"]([^'"]+)['"]/g
 
@@ -59,6 +63,12 @@ for (const file of await sourceFiles(sourceRoot)) {
       `${relativeFile}: ${lineCount} lines exceeds the ${workspaceMaxLines}-line workspace composition ceiling`,
     )
   }
+  const decompressedCeiling = decompressedWorkspaceMaxLines[relativeFile]
+  if (decompressedCeiling && lineCount > decompressedCeiling) {
+    violations.push(
+      `${relativeFile}: ${lineCount} lines exceeds its ${decompressedCeiling}-line decompressed workspace ceiling`,
+    )
+  }
 
   const layer = sourceLayer(file)
   if (
@@ -100,20 +110,20 @@ for (const file of await sourceFiles(sourceRoot)) {
   if (
     relativeFile ===
       'src/features/plan-view-results/PlanViewResultWorkspace.tsx' &&
-    /planViewResultFigure\.buildScene|withPlanView(?:Cartography|Output)Settings/.test(source)
+    /createHydraulicProjectInputActions|createCanvasReportFigure|exportPlanViewResult|planViewResultFigure\.buildScene|usePlanViewWorkspacePersistence|withPlanView(?:Cartography|Output)Settings/.test(source)
   ) {
     violations.push(
-      `${relativeFile}: Plan-View generation and output-setting policies belong to feature controllers`,
+      `${relativeFile}: Plan-View lifecycle, output, generation, and settings policies belong to feature controllers`,
     )
   }
 
   if (
     relativeFile ===
       'src/features/wse-difference/WseDifferenceWorkspace.tsx' &&
-    /createHydraulicProjectInputActions|createWse(?:MapExportAction|ProjectPersistenceController|ReportFigure|StationingSourceActions)|useWseDraftRetention|withWseCartographySettings/.test(source)
+    /createHydraulicProjectInputActions|createWse(?:MapExportAction|ProjectPersistenceController|ReportFigure|StationingSourceActions)|useAssessmentMapLayers|useAssessmentWorkflow|useCenterlineStationingSource|useWseDraftRetention|useWseMapInteractions|withWseCartographySettings/.test(source)
   ) {
     violations.push(
-      `${relativeFile}: WSE lifecycle, output, and settings policies belong to feature controllers`,
+      `${relativeFile}: WSE lifecycle, assessment, interactions, output, and settings policies belong to feature controllers`,
     )
   }
 

@@ -276,9 +276,16 @@ project inputs, draft retention, stationing-source actions,
 invalidation, and full reset. `createWseWorkspaceOutputController` owns map
 download and report-figure creation. Generation, rendering, annotations,
 figure elements, and pointer interactions remain independent controllers.
+`useWseAssessmentComposition` assembles the assessment workflow, stationing
+source, and derived map layers. `useWseWorkspaceMapInteractions` adapts those
+controllers to the shared canvas-interaction runtime, keeping assessment and
+station-label navigation out of the workspace root.
 Plan-View Hydraulic Results routes transient panel and production-mode state
 through `usePlanViewWorkspaceUi`; `usePlanViewSingleFigure` owns active-preview
 generation, invalidation, result selection, figure-set item editing, and reset.
+`usePlanViewWorkspaceLifecycle` owns project inputs, draft retention, and the
+ordered workspace reset. `createPlanViewWorkspaceOutputController` owns PNG
+download and report-artifact construction.
 `withPlanViewOutputSettings` is the single policy for applying result metadata
 to auto-selected, manually selected, and figure-set output settings.
 Hydraulic Profiles & Sections routes SMS parsing, mapping review, and derived

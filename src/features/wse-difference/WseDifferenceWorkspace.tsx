@@ -4,16 +4,13 @@ import '../../App.css'
 import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspaceScaffold'
 import { HydraulicProjectPanel } from '../../components/project-data/HydraulicProjectPanel'
 import { WorkspaceActionBar } from '../../components/settings/WorkspaceActionBar'
-import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
-import { useAssessmentMapLayers } from './useAssessmentMapLayers'
 import { wseDifferenceFigure } from './wseDifferenceFigure'
 import type { WseDifferenceScene } from '../../core/types'
 import type { SettingsSectionKey } from './workspaceConfiguration'
 import { useFittedCanvasSize } from './useFittedCanvasSize'
 import { useWseEditorUi } from './useWseEditorUi'
 import { useWseMapRendering } from './useWseMapRendering'
-import { useWseMapInteractions } from './useWseMapInteractions'
 import { useWseFigureDocument } from './useWseFigureDocument'
 import { useWseAnnotationController } from './useWseAnnotationController'
 import { useWseFigureElementController } from './useWseFigureElementController'
@@ -22,10 +19,11 @@ import { WseMapCanvas } from './components/WseMapCanvas'
 import { WseSettingsContent } from './components/WseSettingsContent'
 import { useWseGenerationController } from './useWseGenerationController'
 import { createWseScenarioContext } from './wseScenarioContext'
-import { useCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 import { ReportFigureExportActions } from '../project-workspace/ReportFigureExportActions'
 import { useWseWorkspaceLifecycle } from './useWseWorkspaceLifecycle'
 import { createWseWorkspaceOutputController } from './wseWorkspaceOutputController'
+import { useWseAssessmentComposition } from './useWseAssessmentComposition'
+import { useWseWorkspaceMapInteractions } from './useWseWorkspaceMapInteractions'
 const ACTIVE_FIGURE = wseDifferenceFigure
 export function WseDifferenceWorkspace() {
   const {
@@ -60,9 +58,6 @@ export function WseDifferenceWorkspace() {
     assessmentLabel,
     ready,
   } = createWseScenarioContext(projectSession, settings)
-  const assessmentWorkflow = useAssessmentWorkflow(1)
-  const assessmentState = assessmentWorkflow.state
-  const stationingSource = useCenterlineStationingSource()
   const {
     annotationTool,
     annotationPanelView,
@@ -89,9 +84,6 @@ export function WseDifferenceWorkspace() {
     setAnnotationEditorView,
     setSelectedAnnotationId,
     setAnnotationStart,
-    setAnnotationDragging,
-    setAssessmentCalloutDragging,
-    setStationLabelDragging,
     setBusy,
     setLeftOpen,
     setLeftCollapsed,
@@ -100,7 +92,6 @@ export function WseDifferenceWorkspace() {
     setActiveElement,
     setSelectedStationLabelId,
     setHoveredElement,
-    setElementDragging,
     appendNotices,
   } = editorUi
   const [scene, setScene] = useState<WseDifferenceScene | null>(null)
@@ -110,24 +101,22 @@ export function WseDifferenceWorkspace() {
     canvasFrameRef,
     settings.orientation,
   )
+  const assessment = useWseAssessmentComposition({
+    modelWkt: assessmentCondition?.geometry?.wkt,
+    overlays,
+    settings,
+    selectedStationLabelId,
+  })
   const {
     centerlineCandidates,
     selectedCenterline,
     centerlineStationTicks,
     centerlineStationLayer,
-    centerlineStationLayers,
     activeCenterlineEntry,
     stationedAssessmentLines,
     exportLayer: assessmentExportLayer,
     displayLayer: assessmentDisplayLayer,
-  } = useAssessmentMapLayers({
-    modelWkt: assessmentCondition?.geometry?.wkt,
-    overlays,
-    state: assessmentState,
-    stationing: settings.centerlineStationing,
-    stationingSource,
-    selectedStationLabelId,
-  })
+  } = assessment
   const figureElements = useWseFigureElementController({
     engine,
     settings,
@@ -176,7 +165,7 @@ export function WseDifferenceWorkspace() {
     assessmentLabel,
     settings,
     setScene,
-    setAssessmentCollection: assessmentWorkflow.setCollection,
+    setAssessmentCollection: assessment.workflow.setCollection,
     setBusy,
     appendNotices,
     closePanels: () => {
@@ -205,52 +194,16 @@ export function WseDifferenceWorkspace() {
     appendNotices,
   })
 
-  const mapInteractions = useWseMapInteractions({
+  const mapInteractions = useWseWorkspaceMapInteractions({
     scene,
     engine,
     settings,
     elementBoundsRef,
-    activeSettingsSection,
-    annotationTool,
-    annotations,
-    annotationStart,
-    annotationDefaults,
-    centerlineStationLayers,
-    assessmentDisplayLayer,
-    stationedAssessmentLines,
-    assessmentReviewOpen: assessmentState.panelView === 'review',
-    assessmentOverrides: assessmentState.overrides,
-    setAnnotations,
-    commitAnnotationChange: annotationController.commitAnnotationChange,
-    setAnnotationStart,
-    setSelectedAnnotationId,
-    showPlacedAnnotation: annotationController.selectPlacedAnnotation,
-    createAnnotation: annotationController.createAnnotation,
-    appendNotices,
-    setAnnotationDragging,
-    selectFigureElement: (key) => setActiveElement(key),
-    previewElementPosition: figureElements.previewElementPosition,
-    commitElementPosition: figureElements.commitElementPosition,
-    setElementDragging,
-    setHoveredElement,
-    selectStationLabel: (id, centerlineId) => {
-      stationingSource.setActiveCenterline(centerlineId)
-      setActiveSettingsSection('stationing')
-      setSelectedStationLabelId(id)
-      setRightOpen(true)
-    },
-    updateStationLabelOverride:
-      figureElements.updateStationLabelOverride,
-    setStationLabelDragging,
-    selectAssessmentLine: assessmentWorkflow.selectLine,
-    selectAssessmentStatus: assessmentWorkflow.setReviewTab,
-    updateAssessmentOverride: assessmentWorkflow.setOverride,
-    setAssessmentCalloutDragging,
-    openAssessmentReview: () => {
-      assessmentWorkflow.openReview()
-      setLeftCollapsed(false)
-      setLeftOpen(true)
-    },
+    editorUi,
+    figureDocument,
+    annotationController,
+    figureElements,
+    assessment,
   })
 
   const lifecycle = useWseWorkspaceLifecycle({
@@ -258,8 +211,8 @@ export function WseDifferenceWorkspace() {
     projectDocument,
     figureDocument,
     editorUi,
-    assessmentWorkflow,
-    stationingSource,
+    assessmentWorkflow: assessment.workflow,
+    stationingSource: assessment.stationingSource,
     figureElements,
     settings,
     setScene,
@@ -316,7 +269,7 @@ export function WseDifferenceWorkspace() {
           collapsed={leftCollapsed}
           busy={busy}
           projectSession={projectSession}
-          assessmentWorkflow={assessmentWorkflow}
+          assessmentWorkflow={assessment.workflow}
           assessmentInterval={settings.assessmentLineInterval}
           centerlineCandidates={centerlineCandidates}
           stationedAssessmentLines={stationedAssessmentLines}
@@ -370,8 +323,8 @@ export function WseDifferenceWorkspace() {
           centerlineStationTicks={centerlineStationTicks}
           hasCenterline={Boolean(selectedCenterline)}
           centerlineCandidates={centerlineCandidates}
-          centerlineId={stationingSource.state.activeCenterlineId}
-          selectedCenterlineIds={stationingSource.state.centerlines.map(
+          centerlineId={assessment.stationingSource.state.activeCenterlineId}
+          selectedCenterlineIds={assessment.stationingSource.state.centerlines.map(
             (entry) => entry.centerlineId,
           )}
           centerlineDirection={activeCenterlineEntry?.direction ?? 'a-to-b'}

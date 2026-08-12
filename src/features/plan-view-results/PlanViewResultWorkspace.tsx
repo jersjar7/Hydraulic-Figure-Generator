@@ -7,13 +7,10 @@ import type {
   MapElementBounds,
   PlanViewResultScene,
 } from '../../core/types'
-import { createCanvasReportFigure } from '../figures/canvasReportFigure'
 import { FigureProductionModeSwitcher } from '../figure-sets/FigureProductionModeSwitcher'
 import { useFittedCanvasAspect } from '../figures/useFittedCanvasAspect'
 import { useMapElementController } from '../figures/useMapElementController'
-import { createHydraulicProjectInputActions } from '../project-workspace/hydraulicProjectInputActions'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
-import { exportPlanViewResult } from './exportPlanViewResult'
 import type { PlanViewResultSettingsSectionKey } from './planViewResultDefinition'
 import { planViewResultFigure } from './planViewResultFigure'
 import { createDefaultPlanViewResultSettings } from './planViewResultSettings'
@@ -40,9 +37,10 @@ import { ReportFigureExportActions } from '../project-workspace/ReportFigureExpo
 import { usePlanViewResultSelection } from './usePlanViewResultSelection'
 import { usePlanViewAnnotations } from './usePlanViewAnnotations'
 import { usePlanViewMapInteractions } from './usePlanViewMapInteractions'
-import { usePlanViewWorkspacePersistence } from './usePlanViewWorkspacePersistence'
 import { usePlanViewWorkspaceUi } from './usePlanViewWorkspaceUi'
 import { usePlanViewSingleFigure } from './usePlanViewSingleFigure'
+import { usePlanViewWorkspaceLifecycle } from './usePlanViewWorkspaceLifecycle'
+import { createPlanViewWorkspaceOutputController } from './planViewWorkspaceOutputController'
 
 const SCENARIO_ROLES: readonly ScenarioRoleOption[] = [
   { role: 'baseline', label: 'Scenario', required: true },
@@ -60,7 +58,7 @@ export function PlanViewResultWorkspace() {
     projectCommands,
   } = useHydraulicProjectWorkspace()
   const { engine, scenarios, baselineId, runByScenario } = projectSession
-  const { overlays, setOverlays, resetDocument } = projectDocument
+  const { overlays } = projectDocument
   const runIndex = runByScenario[baselineId] ?? 0
   const [settings, setSettings] = useState(createDefaultPlanViewResultSettings)
   const [scene, setScene] = useState<PlanViewResultScene | null>(null)
@@ -190,22 +188,6 @@ export function PlanViewResultWorkspace() {
     },
     appendNotices,
   })
-  const projectInputs = createHydraulicProjectInputActions({
-    assessmentId: projectSession.assessmentId,
-    overlays,
-    ingest: projectSession.ingest,
-    removeCondition: projectSession.removeCondition,
-    renameCondition: projectSession.renameCondition,
-    changeRole: projectSession.changeRole,
-    changeRun: projectSession.changeRun,
-    setOverlays,
-    onFilesChanged: singleFigure.invalidate,
-    onSelectionChanged: singleFigure.invalidate,
-    onAssessmentSourceChanged: () => undefined,
-    setBusy,
-    appendNotices,
-  })
-
   usePlanViewResultRendering({
     canvasRef,
     elementBoundsRef,
@@ -223,54 +205,35 @@ export function PlanViewResultWorkspace() {
     interacting: mapInteractions.dragging,
   })
 
-  const { draftRetention } =
-    usePlanViewWorkspacePersistence({
-      settings, setSettings, scenarios, projectSession, projectDocument,
-      figureSet, figureDocument, stationingSource, stationing, annotations,
-      elements,
-      setScene,
-    })
-
-  const resetProject = () => {
-    mapInteractions.resetInteractions()
-    projectSession.reset()
-    resetDocument()
-    stationingSource.reset()
-    stationing.clearSelection()
-    annotations.reset()
-    elements.clearHistory()
-    elementBoundsRef.current = []
-    singleFigure.reset()
-    figureSet.reset()
-    figureDocument.reset()
-    ui.resetForProject()
-  }
-
-  const download = () => {
-    if (!scene) return
-    void exportPlanViewResult({
-      scene,
-      engine,
-      settings,
-      overlays,
-      centerlineStationing: stationing.layers,
-      annotations: annotations.annotations,
-      appendNotices,
-    })
-  }
-
-  const createExportFigure = () => {
-    if (!scene || !canvasRef.current) return null
-    const title = `${scene.condition.label} - ${scene.result.label}`
-    const run = scene.selection ? ` for ${scene.selection.run.name}` : ''
-    return createCanvasReportFigure(canvasRef.current, {
-      workspaceId: planViewResultFigure.id,
-      workspaceLabel: planViewResultFigure.label,
-      title,
-      caption: `${scene.result.label}${run}, ${scene.condition.label}.`,
-      workspaceDraft: draftRetention.capture(),
-    })
-  }
+  const lifecycle = usePlanViewWorkspaceLifecycle({
+    projectSession,
+    projectDocument,
+    settings,
+    setSettings,
+    setScene,
+    figureSet,
+    figureDocument,
+    stationingSource,
+    stationing,
+    annotations,
+    elements,
+    singleFigure,
+    ui,
+    elementBoundsRef,
+    resetMapInteractions: mapInteractions.resetInteractions,
+    appendNotices,
+  })
+  const output = createPlanViewWorkspaceOutputController({
+    canvasRef,
+    scene,
+    engine,
+    settings,
+    overlays,
+    centerlineStationing: stationing.layers,
+    annotations: annotations.annotations,
+    captureDraft: lifecycle.draftRetention.capture,
+    appendNotices,
+  })
 
   return (
     <FigureWorkspaceScaffold<WorkspaceSettingsSectionKey>
@@ -331,12 +294,14 @@ export function PlanViewResultWorkspace() {
           projectSession={projectSession}
           overlays={overlays}
           showOverlays={settings.showOverlays}
-          projectInputs={projectInputs}
+          projectInputs={lifecycle.projectInputs}
           onCollapse={() => setLeftCollapsed(true)}
           onExpand={() => setLeftCollapsed(false)}
           onMobileClose={() => setLeftOpen(false)}
           onShowOverlaysChange={(visible) => singleFigure.updateSetting('showOverlays', visible)}
-          onReset={() => projectCommands.confirmWorkspaceReset(resetProject)}
+          onReset={() =>
+            projectCommands.confirmWorkspaceReset(lifecycle.resetProject)
+          }
         />
       }
       mapContent={
@@ -379,11 +344,11 @@ export function PlanViewResultWorkspace() {
               <ReportFigureExportActions
                 workspaceId={planViewResultFigure.id}
                 canExport={Boolean(scene && canvasRef.current)}
-                createFigure={createExportFigure}
+                createFigure={output.createExportFigure}
                 onSuccess={(text) => appendNotices([{ level: 'success', text }])}
               />
             }
-            onDownload={download}
+            onDownload={output.download}
           />
         ) : productionMode === 'set' ? (
           <PlanViewFigureSetPanel
