@@ -88,6 +88,16 @@ for (const file of await sourceFiles(sourceRoot)) {
     )
   }
 
+  if (
+    relativeFile ===
+      'src/features/plan-view-results/PlanViewResultWorkspace.tsx' &&
+    /planViewResultFigure\.buildScene|withPlanView(?:Cartography|Output)Settings/.test(source)
+  ) {
+    violations.push(
+      `${relativeFile}: Plan-View generation and output-setting policies belong to feature controllers`,
+    )
+  }
+
   const allowedLayers = layerRules[layer]
   if (!allowedLayers) continue
   for (const match of source.matchAll(importPattern)) {

@@ -263,6 +263,11 @@ selection-map, chart, and assessment-line generation to
 `useCrossSectionGeneration`, while selection and rendering remain independent
 hooks. WSE Difference routes persisted settings through its figure-document
 controller and transient reset behavior through its editor-UI controller.
+Plan-View Hydraulic Results routes transient panel and production-mode state
+through `usePlanViewWorkspaceUi`; `usePlanViewSingleFigure` owns active-preview
+generation, invalidation, result selection, figure-set item editing, and reset.
+`withPlanViewOutputSettings` is the single policy for applying result metadata
+to auto-selected, manually selected, and figure-set output settings.
 
 The complete hydraulic left panel offers four project workflows:
 

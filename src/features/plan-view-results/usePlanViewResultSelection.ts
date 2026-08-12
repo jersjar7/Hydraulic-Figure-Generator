@@ -1,6 +1,7 @@
 import { useEffect, useMemo, type Dispatch, type SetStateAction } from 'react'
 import type { HydraulicEngine } from '../../core/hydraulicEngine'
 import type { PlanViewResultSettings } from '../../core/types'
+import { withPlanViewOutputSettings } from './planViewOutputSettings'
 
 type Options = {
   engine: HydraulicEngine
@@ -32,22 +33,7 @@ export function usePlanViewResultSelection({
     const next =
       resultOptions.find((option) => /Water_?Depth/i.test(option.paramName)) ??
       resultOptions[0]
-    setSettings((current) => ({
-      ...current,
-      resultParameter: next.paramName,
-      ramp: next.defaultRamp,
-      legendMin: null,
-      legendMax: null,
-      scalarLegendInterval: null,
-      elementStyles: {
-        ...current.elementStyles,
-        diffLegend: {
-          ...current.elementStyles.diffLegend,
-          title: next.label,
-          units: next.units,
-        },
-      },
-    }))
+    setSettings((current) => withPlanViewOutputSettings(current, next))
   }, [resultOptions, selectedResult, setSettings])
 
   return {

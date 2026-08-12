@@ -6,6 +6,7 @@ import {
   isPlanViewGeometryOutput,
   planViewGeometryOutputOptions,
 } from '../../core/hydraulics/planViewGeometryResults'
+import { withPlanViewOutputSettings } from './planViewOutputSettings'
 
 export const PLAN_VIEW_FIGURE_SET_RECIPE_ID = 'plan-view-scalar-results'
 
@@ -60,22 +61,7 @@ function itemSettings(
     defaultRamp: PlanViewResultSettings['ramp']
   },
 ) {
-  return {
-    ...structuredClone(baseSettings),
-    resultParameter: result.paramName,
-    ramp: result.defaultRamp,
-    legendMin: null,
-    legendMax: null,
-    scalarLegendInterval: null,
-    elementStyles: {
-      ...structuredClone(baseSettings.elementStyles),
-      diffLegend: {
-        ...baseSettings.elementStyles.diffLegend,
-        title: result.label,
-        units: result.units,
-      },
-    },
-  }
+  return withPlanViewOutputSettings(structuredClone(baseSettings), result)
 }
 
 export function expandPlanViewFigureSet(
