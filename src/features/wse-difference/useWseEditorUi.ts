@@ -59,10 +59,16 @@ export function useWseEditorUi() {
     () => dispatch({ type: 'editor/reset' }),
     [dispatch],
   )
+  const appendNotices = useCallback(
+    (notices: WseEditorUiState['notices']) =>
+      dispatch({ type: 'notices/append', notices }),
+    [dispatch],
+  )
 
   return {
     ...state,
     ...setters,
+    appendNotices,
     resetEditorUi,
   }
 }

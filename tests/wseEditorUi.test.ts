@@ -36,4 +36,24 @@ describe('WSE editor UI state', () => {
     assert.equal(reset.leftOpen, false)
     assert.equal(reset.rightOpen, false)
   })
+
+  it('appends diagnostics with a stable 40-message bound', () => {
+    const notices = Array.from({ length: 39 }, (_, index) => ({
+      level: 'warning' as const,
+      text: `Notice ${index + 1}`,
+    }))
+    const initial = { ...createWseEditorUiState(), notices }
+    const next = wseEditorUiReducer(initial, {
+      type: 'notices/append',
+      notices: [
+        { level: 'success', text: 'Notice 40' },
+        { level: 'error', text: 'Notice 41' },
+      ],
+    })
+
+    assert.equal(next.notices.length, 40)
+    assert.equal(next.notices[0].text, 'Notice 2')
+    assert.equal(next.notices.at(-1)?.text, 'Notice 41')
+    assert.deepEqual(initial.notices, notices)
+  })
 })

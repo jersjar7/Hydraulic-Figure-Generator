@@ -5,6 +5,7 @@ import {
 } from 'react'
 import type {
   AnnotationDefaults,
+  CartographySettings,
   FigureSettings,
   MapAnnotation,
 } from '../../core/types'
@@ -13,6 +14,7 @@ import {
   wseFigureDocumentReducer,
   type WseFigureDocument,
 } from './wseFigureDocument'
+import { withWseCartographySettings } from './wseCartography'
 
 export function useWseFigureDocument() {
   const [document, dispatch] = useReducer(
@@ -34,6 +36,14 @@ export function useWseFigureDocument() {
       type: 'settings/set',
       value: (current) => ({ ...current, [key]: value }),
     }),
+    [dispatch],
+  )
+  const updateCartography = useCallback(
+    (value: CartographySettings) =>
+      dispatch({
+        type: 'settings/set',
+        value: (current) => withWseCartographySettings(current, value),
+      }),
     [dispatch],
   )
   const setAnnotations = useCallback(
@@ -63,6 +73,7 @@ export function useWseFigureDocument() {
     annotationDefaults: document.annotationDefaults,
     setSettings,
     updateSetting,
+    updateCartography,
     setAnnotations,
     setAnnotationDefaults,
     loadDocument,

@@ -46,6 +46,7 @@ type EditorFieldAction = {
 
 export type WseEditorUiAction =
   | EditorFieldAction
+  | { type: 'notices/append'; notices: IngestNotice[] }
   | { type: 'editor/reset' }
 
 export function createWseEditorUiState(): WseEditorUiState {
@@ -77,6 +78,13 @@ export function wseEditorUiReducer(
   action: WseEditorUiAction,
 ): WseEditorUiState {
   if (action.type === 'editor/reset') return createWseEditorUiState()
+  if (action.type === 'notices/append') {
+    if (action.notices.length === 0) return state
+    return {
+      ...state,
+      notices: [...state.notices, ...action.notices].slice(-40),
+    }
+  }
 
   const current = state[action.field]
   const next =

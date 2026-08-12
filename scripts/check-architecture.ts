@@ -98,6 +98,16 @@ for (const file of await sourceFiles(sourceRoot)) {
     )
   }
 
+  if (
+    relativeFile ===
+      'src/features/wse-difference/WseDifferenceWorkspace.tsx' &&
+    /createHydraulicProjectInputActions|createWse(?:MapExportAction|ProjectPersistenceController|ReportFigure|StationingSourceActions)|useWseDraftRetention|withWseCartographySettings/.test(source)
+  ) {
+    violations.push(
+      `${relativeFile}: WSE lifecycle, output, and settings policies belong to feature controllers`,
+    )
+  }
+
   const allowedLayers = layerRules[layer]
   if (!allowedLayers) continue
   for (const match of source.matchAll(importPattern)) {

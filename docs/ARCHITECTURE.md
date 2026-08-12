@@ -261,8 +261,13 @@ Workspace composition roots coordinate established feature controllers; they
 do not own hydraulic generation algorithms. Cross-Section Comparison delegates
 selection-map, chart, and assessment-line generation to
 `useCrossSectionGeneration`, while selection and rendering remain independent
-hooks. WSE Difference routes persisted settings through its figure-document
-controller and transient reset behavior through its editor-UI controller.
+hooks. WSE Difference routes persisted settings and cartography updates through
+its figure-document controller, and bounded diagnostics and transient reset
+behavior through its editor-UI controller. `useWseWorkspaceLifecycle` owns
+project inputs, draft retention, file persistence, stationing-source actions,
+invalidation, and full reset. `createWseWorkspaceOutputController` owns map
+download and report-figure creation. Generation, rendering, annotations,
+figure elements, and pointer interactions remain independent controllers.
 Plan-View Hydraulic Results routes transient panel and production-mode state
 through `usePlanViewWorkspaceUi`; `usePlanViewSingleFigure` owns active-preview
 generation, invalidation, result selection, figure-set item editing, and reset.
