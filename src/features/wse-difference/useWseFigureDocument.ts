@@ -26,6 +26,16 @@ export function useWseFigureDocument() {
       dispatch({ type: 'settings/set', value }),
     [dispatch],
   )
+  const updateSetting = useCallback(
+    <Key extends keyof FigureSettings>(
+      key: Key,
+      value: FigureSettings[Key],
+    ) => dispatch({
+      type: 'settings/set',
+      value: (current) => ({ ...current, [key]: value }),
+    }),
+    [dispatch],
+  )
   const setAnnotations = useCallback(
     (value: SetStateAction<MapAnnotation[]>) =>
       dispatch({ type: 'annotations/set', value }),
@@ -52,6 +62,7 @@ export function useWseFigureDocument() {
     annotations: document.annotations,
     annotationDefaults: document.annotationDefaults,
     setSettings,
+    updateSetting,
     setAnnotations,
     setAnnotationDefaults,
     loadDocument,

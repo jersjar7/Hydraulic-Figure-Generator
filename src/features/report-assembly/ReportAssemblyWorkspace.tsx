@@ -4,13 +4,11 @@ import '../../App.css'
 import { flattenReportFigures } from '../../application/report-assembly/reportAssembly'
 import { FigureEditorShell } from '../../components/editor/FigureEditorShell'
 import type { ReportFigureArtifact } from '../../core/types'
-import { FigurePicker } from '../figures/FigurePicker'
 import { ProjectSaveStatus } from '../project-lifecycle/ProjectSaveStatus'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { exportReportAssembly } from './exportReportAssembly'
 import { ReportFigurePreview } from './ReportFigurePreview'
 import { ReportWorkspaceRow } from './ReportWorkspaceRow'
-import { ExportCollectionButton } from './ExportCollectionButton'
 
 export function ReportAssemblyWorkspace() {
   const {
@@ -92,8 +90,6 @@ export function ReportAssemblyWorkspace() {
         }
         saveLabel="Save project"
         loadLabel="Open project"
-        figurePicker={<FigurePicker />}
-        headerActions={<ExportCollectionButton />}
       >
         <div className="report-assembly-page">
           <header className="report-assembly-toolbar">

@@ -30,7 +30,6 @@ type Options = {
   assessmentLines: WseAssessmentLine[]
   labelForAssessmentLine(line: WseAssessmentLine): string
   onSectionNameChange(label: string): void
-  onSelectionChanged(): void
 }
 
 export function useCrossSectionSelection({
@@ -41,7 +40,6 @@ export function useCrossSectionSelection({
   assessmentLines,
   labelForAssessmentLine,
   onSectionNameChange,
-  onSelectionChanged,
 }: Options) {
   const [selectedLine, setSelectedLine] =
     useState<CrossSectionLine | null>(null)
@@ -74,7 +72,6 @@ export function useCrossSectionSelection({
       const line = assessmentLines.find((candidate) => candidate.id === id)
       if (!line) {
         setSelectedLine(null)
-        onSelectionChanged()
         return
       }
       const label = labelForAssessmentLine(line)
@@ -89,14 +86,12 @@ export function useCrossSectionSelection({
       })
       onSectionNameChange(label)
       cancelDrawing()
-      onSelectionChanged()
     },
     [
       assessmentLines,
       cancelDrawing,
       labelForAssessmentLine,
       onSectionNameChange,
-      onSelectionChanged,
     ],
   )
 
@@ -105,8 +100,7 @@ export function useCrossSectionSelection({
     setSelectedLine(null)
     setSelectedAssessmentLineId('')
     setView('map')
-    onSelectionChanged()
-  }, [cancelDrawing, onSelectionChanged])
+  }, [cancelDrawing])
 
   const startDrawing = useCallback(() => {
     if (drawing) {
@@ -118,8 +112,7 @@ export function useCrossSectionSelection({
     setDrawingStart(null)
     setSelectedLine(null)
     setSelectedAssessmentLineId('')
-    onSelectionChanged()
-  }, [cancelDrawing, drawing, onSelectionChanged])
+  }, [cancelDrawing, drawing])
 
   const reverseLine = useCallback(() => {
     setSelectedLine((current) =>
@@ -130,8 +123,7 @@ export function useCrossSectionSelection({
           }
         : null,
     )
-    onSelectionChanged()
-  }, [onSelectionChanged])
+  }, [])
 
   const loadSelection = useCallback(
     (line: CrossSectionLine | null, assessmentLineId: string) => {
@@ -139,9 +131,8 @@ export function useCrossSectionSelection({
       setSelectedAssessmentLineId(assessmentLineId)
       cancelDrawing()
       setView('map')
-      onSelectionChanged()
     },
-    [cancelDrawing, onSelectionChanged],
+    [cancelDrawing],
   )
 
   useEffect(() => {
@@ -182,7 +173,6 @@ export function useCrossSectionSelection({
       onSectionNameChange(label)
       setSelectedAssessmentLineId('')
       cancelDrawing()
-      onSelectionChanged()
       return
     }
 
@@ -246,7 +236,6 @@ export function useCrossSectionSelection({
         feetPerMapUnit,
       )
     })
-    onSelectionChanged()
     event.preventDefault()
   }
 

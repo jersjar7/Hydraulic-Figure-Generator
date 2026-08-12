@@ -3,6 +3,7 @@ import { SlidersHorizontal, Palette } from 'lucide-react'
 import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
 import { FigureWorkspaceScaffold } from '../../src/components/editor/FigureWorkspaceScaffold'
+import { EditorHeaderNavigationProvider } from '../../src/components/editor/EditorHeaderNavigation'
 
 const sections = [
   {
@@ -24,7 +25,15 @@ function Harness() {
     useState<(typeof sections)[number]['key']>('calculation')
 
   return (
-    <FigureWorkspaceScaffold
+    <EditorHeaderNavigationProvider
+      workspacePicker={
+        <select aria-label="Workspace" defaultValue="test">
+          <option value="test">Test figure</option>
+        </select>
+      }
+      actions={<button type="button">Export Collection (0)</button>}
+    >
+      <FigureWorkspaceScaffold
       figureLabel="Test figure"
       comparisonDescription="Comparison minus Baseline"
       inputsCollapsed={false}
@@ -37,11 +46,6 @@ function Harness() {
       projectPanel={<aside>Project panel</aside>}
       mapContent={<canvas aria-label="Test map" />}
       settingsContent={<div>{active} controls</div>}
-      figurePicker={
-        <select aria-label="Workspace" defaultValue="test">
-          <option value="test">Test figure</option>
-        </select>
-      }
       onSave={() => undefined}
       onLoad={() => undefined}
       onOpenLeftPanel={() => undefined}
@@ -52,7 +56,8 @@ function Harness() {
       onZoomOut={() => undefined}
       onZoomIn={() => undefined}
       onFitFrame={() => undefined}
-    />
+      />
+    </EditorHeaderNavigationProvider>
   )
 }
 
@@ -68,6 +73,7 @@ describe('FigureWorkspaceScaffold', () => {
       .closest('.brand')
     expect(brand).not.toBeNull()
     expect(within(brand!).getByLabelText('Workspace')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Export Collection (0)' })).toBeInTheDocument()
   })
 
   it('provides reusable keyboard navigation for settings sections', () => {

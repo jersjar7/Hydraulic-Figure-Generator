@@ -1,7 +1,6 @@
 import { LineChart } from 'lucide-react'
 import {
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -13,19 +12,11 @@ import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspace
 import { WorkspaceActionBar } from '../../components/settings/WorkspaceActionBar'
 import { createDefaultFigureSettings } from '../../core/defaults'
 import { formatStation } from '../../core/centerlineStationing'
-import type {
-  HydraulicCrossSectionScene,
-  IngestNotice,
-  WseAssessmentLine,
-  WseDifferenceScene,
-} from '../../core/types'
+import type { IngestNotice, WseAssessmentLine } from '../../core/types'
 import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { createHydraulicProjectInputActions } from '../project-workspace/hydraulicProjectInputActions'
-import { FigurePicker } from '../figures/FigurePicker'
-import { ExportCollectionButton } from '../report-assembly/ExportCollectionButton'
 import { useAssessmentMapLayers } from '../wse-difference/useAssessmentMapLayers'
-import { wseDifferenceFigure } from '../wse-difference/wseDifferenceFigure'
 import { type CrossSectionSettingsSectionKey } from './crossSectionDefinition'
 import { crossSectionFigure } from './crossSectionFigure'
 import { createCrossSectionReportFigure } from './crossSectionReportAdapter'
@@ -33,6 +24,7 @@ import { CrossSectionCanvas } from './CrossSectionCanvas'
 import { CrossSectionSettingsPanel } from './CrossSectionSettingsPanel'
 import { createDefaultCrossSectionSettings } from './crossSectionSettings'
 import { useCrossSectionProjectFiles } from './useCrossSectionProjectFiles'
+import { useCrossSectionGeneration } from './useCrossSectionGeneration'
 import { useCrossSectionRendering } from './useCrossSectionRendering'
 import { useCrossSectionSelection } from './useCrossSectionSelection'
 import { CROSS_SECTION_WORKSPACE_SETTINGS } from './crossSectionSettingsSections'
@@ -63,9 +55,6 @@ export function CrossSectionWorkspace() {
   const [assessmentInterval, setAssessmentInterval] = useState(1)
   const assessmentWorkflow = useAssessmentWorkflow(assessmentInterval)
   const assessmentState = assessmentWorkflow.state
-  const [mapScene, setMapScene] = useState<WseDifferenceScene | null>(null)
-  const [chartScene, setChartScene] =
-    useState<HydraulicCrossSectionScene | null>(null)
   const [notices, setNotices] = useState<IngestNotice[]>([])
   const [busy, setBusy] = useState(false)
   const [leftOpen, setLeftOpen] = useState(false)
@@ -88,31 +77,6 @@ export function CrossSectionWorkspace() {
       setNotices((current) => [...current, ...incoming].slice(-40))
     }
   }, [])
-  const invalidateChart = useCallback(() => setChartScene(null), [])
-  const invalidateFigures = useCallback(() => {
-    setMapScene(null)
-    setChartScene(null)
-  }, [])
-  const projectInputs = createHydraulicProjectInputActions({
-    assessmentId,
-    overlays,
-    ingest: projectSession.ingest,
-    removeCondition: projectSession.removeCondition,
-    renameCondition: projectSession.renameCondition,
-    changeRole: projectSession.changeRole,
-    changeRun: projectSession.changeRun,
-    setOverlays,
-    onFilesChanged: () => {
-      invalidateFigures()
-      assessmentWorkflow.invalidate(assessmentInterval)
-    },
-    onSelectionChanged: invalidateFigures,
-    onAssessmentSourceChanged: () =>
-      assessmentWorkflow.clear(assessmentInterval),
-    setBusy,
-    appendNotices,
-  })
-
   const assessmentLayers = useAssessmentMapLayers({
     modelWkt: assessmentCondition?.geometry?.wkt,
     overlays,
@@ -151,13 +115,12 @@ export function CrossSectionWorkspace() {
   const selection = useCrossSectionSelection({
     engine,
     baselineId,
-    mapReady: Boolean(mapScene),
+    mapReady: ready,
     mapSettings,
     assessmentLines: assessmentOptions,
     labelForAssessmentLine,
     onSectionNameChange: (sectionName) =>
       setSettings((current) => ({ ...current, sectionName })),
-    onSelectionChanged: invalidateChart,
   })
   const {
     selectedLine,
@@ -167,41 +130,44 @@ export function CrossSectionWorkspace() {
     view,
   } = selection
 
-  const buildSelectionMap = useCallback(() => {
-    if (!ready) return
-    try {
-      setMapScene(
-        wseDifferenceFigure.buildScene({
-          engine,
-          baselineId,
-          baselineRun,
-          comparisonId,
-          comparisonRun,
-          dryDepth: settings.dryDepth,
-        }),
-      )
-    } catch (error) {
-      appendNotices([
-        {
-          level: 'error',
-          text: error instanceof Error ? error.message : String(error),
-        },
-      ])
-    }
-  }, [
-    appendNotices,
+  const generation = useCrossSectionGeneration({
+    engine,
     baselineId,
     baselineRun,
     comparisonId,
     comparisonRun,
-    engine,
+    assessmentId,
+    assessmentRun,
+    assessmentInterval,
     ready,
-    settings.dryDepth,
-  ])
+    selectedLine,
+    settings,
+    assessmentWorkflow,
+    setBusy,
+    appendNotices,
+    showChart: () => selection.setView('chart'),
+  })
+  const { mapScene, chartScene } = generation
 
-  useEffect(() => {
-    if (ready && !mapScene) buildSelectionMap()
-  }, [buildSelectionMap, mapScene, ready])
+  const projectInputs = createHydraulicProjectInputActions({
+    assessmentId,
+    overlays,
+    ingest: projectSession.ingest,
+    removeCondition: projectSession.removeCondition,
+    renameCondition: projectSession.renameCondition,
+    changeRole: projectSession.changeRole,
+    changeRun: projectSession.changeRun,
+    setOverlays,
+    onFilesChanged: () => {
+      generation.invalidateFigures()
+      assessmentWorkflow.invalidate(assessmentInterval)
+    },
+    onSelectionChanged: generation.invalidateFigures,
+    onAssessmentSourceChanged: () =>
+      assessmentWorkflow.clear(assessmentInterval),
+    setBusy,
+    appendNotices,
+  })
 
   useCrossSectionRendering({
     canvasRef,
@@ -218,65 +184,6 @@ export function CrossSectionWorkspace() {
     appendNotices,
   })
 
-  const generateChart = () => {
-    if (!selectedLine || !ready) return
-    setBusy(true)
-    try {
-      const scene = crossSectionFigure.buildScene({
-        engine,
-        baselineId,
-        baselineRun,
-        comparisonId,
-        comparisonRun,
-        line: selectedLine,
-        dryDepth: settings.dryDepth,
-        sampleSpacing: settings.sampleSpacing,
-      })
-      setChartScene(scene)
-      appendNotices(
-        scene.warnings.map((text) => ({ level: 'warning' as const, text })),
-      )
-      selection.setView('chart')
-    } catch (error) {
-      appendNotices([
-        {
-          level: 'error',
-          text: `Cross section failed: ${error instanceof Error ? error.message : String(error)}`,
-        },
-      ])
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const generateAssessmentLines = () => {
-    setBusy(true)
-    try {
-      const collection = engine.buildWseAssessmentLines(
-        assessmentId,
-        assessmentRun,
-        settings.dryDepth,
-        assessmentInterval,
-      )
-      assessmentWorkflow.setCollection(collection)
-      appendNotices([
-        {
-          level: 'success',
-          text: `Generated ${collection.lines.length} assessment-line path${collection.lines.length === 1 ? '' : 's'}.`,
-        },
-      ])
-    } catch (error) {
-      appendNotices([
-        {
-          level: 'error',
-          text: error instanceof Error ? error.message : String(error),
-        },
-      ])
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const workspaceDraft = useCrossSectionDraftRetention({
     settings,
     selectedLine,
@@ -285,7 +192,7 @@ export function CrossSectionWorkspace() {
     projectDocument,
     setSettings,
     loadSelection: selection.loadSelection,
-    invalidateFigures,
+    invalidateFigures: generation.invalidateFigures,
   })
   const projectFiles = useCrossSectionProjectFiles({
     snapshot: workspaceDraft.snapshot,
@@ -338,8 +245,7 @@ export function CrossSectionWorkspace() {
       showAssessmentLabels: false,
     })
     setAssessmentInterval(1)
-    setMapScene(null)
-    setChartScene(null)
+    generation.invalidateFigures()
     selection.loadSelection(null, '')
     setLeftCollapsed(false)
     setNotices([])
@@ -420,7 +326,7 @@ export function CrossSectionWorkspace() {
             setAssessmentInterval(interval)
             assessmentWorkflow.clear(interval)
           }}
-          onGenerateAssessmentLines={generateAssessmentLines}
+          onGenerateAssessmentLines={generation.generateAssessmentLines}
           onShowOverlaysChange={(showOverlays) =>
             setMapSettings((current) => ({ ...current, showOverlays }))
           }
@@ -439,7 +345,7 @@ export function CrossSectionWorkspace() {
           orientation={settings.orientation}
           canvasRef={canvasRef}
           onViewChange={selection.setView}
-          onGenerateMap={buildSelectionMap}
+          onGenerateMap={generation.generateSelectionMap}
           onPointerDown={selection.handleCanvasPointerDown}
           onPointerMove={selection.handleCanvasPointerMove}
           onPointerUp={selection.handleCanvasPointerUp}
@@ -465,7 +371,7 @@ export function CrossSectionWorkspace() {
               downstreamSide:
                 current.downstreamSide === 'right' ? 'left' : 'right',
             }))
-            setChartScene(null)
+            generation.invalidateChart()
           }}
           onClearLine={selection.clearSelectedLine}
           onShowMap={() => selection.setView('map')}
@@ -487,11 +393,9 @@ export function CrossSectionWorkspace() {
           disabled={!ready || !selectedLine || busy}
           testId="generate-cross-section"
           hint={!selectedLine ? 'Select or draw one cross-section line first' : undefined}
-          onClick={generateChart}
+          onClick={generation.generateChart}
         />
       }
-      figurePicker={<FigurePicker />}
-      headerActions={<ExportCollectionButton />}
     />
   )
 }

@@ -145,6 +145,10 @@ infrastructure directly.
 - `components/editor/FigureWorkspaceScaffold.tsx` composes the reusable
   project/sidebar, map, and settings regions. Figure workspaces provide
   feature content and callbacks rather than rebuilding the editor frame.
+- `App.tsx` owns global editor-header composition through
+  `EditorHeaderNavigationProvider`. The workspace picker and Export Collection
+  action are injected once into `FigureEditorShell`; figure workspaces cannot
+  import or pass those global controls through their own props.
 - `application/hydraulics/` owns focused comparison, assessment, stationing,
   and extrema use cases behind `HydraulicAnalysisPort`. `HydraulicEngine`
   remains the H5-backed resource and value-cache adapter.
@@ -252,6 +256,13 @@ chart and table features should consume the
 shared, stationed assessment-line collection instead of duplicating it. Long
 review collections must scroll inside a fixed-height feature view rather than
 grow the workspace sidebar.
+
+Workspace composition roots coordinate established feature controllers; they
+do not own hydraulic generation algorithms. Cross-Section Comparison delegates
+selection-map, chart, and assessment-line generation to
+`useCrossSectionGeneration`, while selection and rendering remain independent
+hooks. WSE Difference routes persisted settings through its figure-document
+controller and transient reset behavior through its editor-UI controller.
 
 The complete hydraulic left panel offers four project workflows:
 

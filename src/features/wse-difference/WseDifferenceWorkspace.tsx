@@ -7,11 +7,9 @@ import { WorkspaceActionBar } from '../../components/settings/WorkspaceActionBar
 import { useAssessmentWorkflow } from '../assessment-lines/useAssessmentWorkflow'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { createHydraulicProjectInputActions } from '../project-workspace/hydraulicProjectInputActions'
-import { FigurePicker } from '../figures/FigurePicker'
-import { ExportCollectionButton } from '../report-assembly/ExportCollectionButton'
 import { useAssessmentMapLayers } from './useAssessmentMapLayers'
 import { wseDifferenceFigure } from './wseDifferenceFigure'
-import type { FigureSettings, IngestNotice, WseDifferenceScene } from '../../core/types'
+import type { IngestNotice, WseDifferenceScene } from '../../core/types'
 import type { SettingsSectionKey } from './workspaceConfiguration'
 import { useFittedCanvasSize } from './useFittedCanvasSize'
 import { useWseEditorUi } from './useWseEditorUi'
@@ -43,6 +41,7 @@ export function WseDifferenceWorkspace() {
     annotations,
     annotationDefaults,
     setSettings,
+    updateSetting,
     setAnnotations,
     setAnnotationDefaults,
     resetDocument,
@@ -108,6 +107,7 @@ export function WseDifferenceWorkspace() {
     setSelectedStationLabelId,
     setHoveredElement,
     setElementDragging,
+    resetEditorUi,
   } = editorUi
   const [scene, setScene] = useState<WseDifferenceScene | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null), canvasFrameRef = useRef<HTMLDivElement>(null)
@@ -187,12 +187,6 @@ export function WseDifferenceWorkspace() {
     appendNotices,
   })
 
-  const updateSettings = <Key extends keyof FigureSettings>(
-    key: Key,
-    value: FigureSettings[Key],
-  ) => {
-    setSettings((current) => ({ ...current, [key]: value }))
-  }
   const projectInputs = createHydraulicProjectInputActions({
     assessmentId: assessmentScenarioId,
     overlays,
@@ -306,21 +300,12 @@ export function WseDifferenceWorkspace() {
     projectSession.reset()
     resetProjectDocument()
     resetDocument()
-    setSelectedAnnotationId(null)
-    setAnnotationStart(null)
-    setAnnotationTool('select')
-    setAnnotationPanelView('create')
-    setAnnotationPlacedView('list')
-    setAnnotationEditorView('content')
-    setLeftCollapsed(false)
-    setSelectedStationLabelId(null)
+    resetEditorUi()
     elementBoundsRef.current = []
     figureElements.clearHistory()
-    setActiveElement('title')
     setScene(null)
     assessmentWorkflow.reset(1)
     stationingSource.reset()
-    setNotices([])
   }
 
   const downloadMap = createWseMapExportAction({
@@ -370,10 +355,10 @@ export function WseDifferenceWorkspace() {
       onCloseSettingsPanel={() => setRightOpen(false)}
       onSettingsSectionChange={setActiveSettingsSection}
       onZoomOut={() =>
-        updateSettings('zoom', Math.max(0.35, settings.zoom - 0.1))
+        updateSetting('zoom', Math.max(0.35, settings.zoom - 0.1))
       }
       onZoomIn={() =>
-        updateSettings('zoom', Math.min(4, settings.zoom + 0.1))
+        updateSetting('zoom', Math.min(4, settings.zoom + 0.1))
       }
       onFitFrame={figureElements.resetView}
       loadInput={
@@ -404,12 +389,12 @@ export function WseDifferenceWorkspace() {
           onExpand={() => setLeftCollapsed(false)}
           onMobileClose={() => setLeftOpen(false)}
           onAssessmentIntervalChange={(interval) => {
-            updateSettings('assessmentLineInterval', interval)
+            updateSetting('assessmentLineInterval', interval)
             assessmentWorkflow.clear(interval)
           }}
           onGenerateAssessmentLines={generation.generateAssessmentLines}
           onShowOverlaysChange={(visible) =>
-            updateSettings('showOverlays', visible)
+            updateSetting('showOverlays', visible)
           }
           onStationingChanged={() => {
             figureElements.updateCenterlineStationing({ overrides: {} })
@@ -459,7 +444,7 @@ export function WseDifferenceWorkspace() {
           sceneReady={Boolean(scene)}
           figureElements={figureElements}
           annotationController={annotationController}
-          updateSettings={updateSettings}
+          updateSettings={updateSetting}
           onCartographyChange={(cartography) => setSettings((current) =>
             withWseCartographySettings(current, cartography))}
           onActiveElementChange={setActiveElement}
@@ -469,7 +454,7 @@ export function WseDifferenceWorkspace() {
           onCenterlineDirectionChange={stationingSourceActions.changeDirection}
           onStartStationChange={stationingSourceActions.changeStartStation}
           onDryDepthChange={(dryDepth) => {
-            updateSettings('dryDepth', dryDepth)
+            updateSetting('dryDepth', dryDepth)
             setScene(null)
             assessmentWorkflow.clear(settings.assessmentLineInterval)
           }}
@@ -492,8 +477,6 @@ export function WseDifferenceWorkspace() {
           onClick={generation.generateMap}
         />
       }
-      figurePicker={<FigurePicker />}
-      headerActions={<ExportCollectionButton />}
     />
   )
 }

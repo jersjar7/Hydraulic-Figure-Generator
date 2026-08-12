@@ -7,6 +7,7 @@ import {
   Save,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { useEditorHeaderNavigation } from './useEditorHeaderNavigation'
 
 type Props = {
   inputsCollapsed: boolean
@@ -19,9 +20,7 @@ type Props = {
   onOpenRightPanel(): void
   onCloseMobilePanels(): void
   loadInput?: ReactNode
-  figurePicker?: ReactNode
   projectStatus?: ReactNode
-  headerActions?: ReactNode
   saveLabel?: string
   loadLabel?: string
   workspaceClassName?: string
@@ -40,15 +39,15 @@ export function FigureEditorShell({
   onOpenRightPanel,
   onCloseMobilePanels,
   loadInput,
-  figurePicker,
   projectStatus,
-  headerActions,
   saveLabel = 'Save',
   loadLabel = 'Load',
   workspaceClassName = '',
   showPanelButtons = true,
   children,
 }: Props) {
+  const headerNavigation = useEditorHeaderNavigation()
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -58,7 +57,7 @@ export function FigureEditorShell({
           </div>
           <div className="brand-content">
             <h1>Hydraulic Figure Generator</h1>
-            {figurePicker}
+            {headerNavigation?.workspacePicker}
           </div>
         </div>
         <div className="topbar-actions">
@@ -89,7 +88,7 @@ export function FigureEditorShell({
             <FolderOpen size={16} aria-hidden="true" />
             <span>{loadLabel}</span>
           </button>
-          {headerActions}
+          {headerNavigation?.actions}
           {showPanelButtons ? <button
             className="icon-button mobile-panel-button"
             type="button"

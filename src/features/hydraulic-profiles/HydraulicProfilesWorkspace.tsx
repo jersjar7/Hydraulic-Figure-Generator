@@ -20,8 +20,6 @@ import type {
   HydraulicProfileView,
   IngestNotice,
 } from '../../core/types'
-import { FigurePicker } from '../figures/FigurePicker'
-import { ExportCollectionButton } from '../report-assembly/ExportCollectionButton'
 import { createWorkspaceDraftSnapshot } from '../figures/workspaceDraftRepository'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { useWorkspaceDraftRetention } from '../project-workspace/useWorkspaceDraftRetention'
@@ -380,8 +378,6 @@ export function HydraulicProfilesWorkspace() {
           onClick={generate}
         />
       }
-        figurePicker={<FigurePicker />}
-        headerActions={<ExportCollectionButton />}
       />
     </>
   )

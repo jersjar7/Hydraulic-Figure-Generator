@@ -79,6 +79,15 @@ for (const file of await sourceFiles(sourceRoot)) {
     )
   }
 
+  if (
+    file.endsWith('Workspace.tsx') &&
+    /from\s+['"][^'"]*(?:FigurePicker|ExportCollectionButton)['"]/.test(source)
+  ) {
+    violations.push(
+      `${relativeFile}: global header navigation belongs to App.tsx, not a figure workspace`,
+    )
+  }
+
   const allowedLayers = layerRules[layer]
   if (!allowedLayers) continue
   for (const match of source.matchAll(importPattern)) {

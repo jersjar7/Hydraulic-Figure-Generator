@@ -7,8 +7,6 @@ import type {
   CartographySettings, FigureElementPanelKey, IngestNotice,
   MapElementBounds, PlanViewResultScene, PlanViewResultSettings,
 } from '../../core/types'
-import { FigurePicker } from '../figures/FigurePicker'
-import { ExportCollectionButton } from '../report-assembly/ExportCollectionButton'
 import { createCanvasReportFigure } from '../figures/canvasReportFigure'
 import { FigureProductionModeSwitcher, type FigureProductionMode } from '../figure-sets/FigureProductionModeSwitcher'
 import { useFittedCanvasAspect } from '../figures/useFittedCanvasAspect'
@@ -490,8 +488,6 @@ export function PlanViewResultWorkspace() {
           onGenerateFigure={generate}
         />
       }
-      figurePicker={<FigurePicker />}
-      headerActions={<ExportCollectionButton />}
     />
   )
 }
