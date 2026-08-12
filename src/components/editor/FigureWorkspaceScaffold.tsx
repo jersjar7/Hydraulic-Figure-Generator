@@ -22,16 +22,9 @@ type Props<Key extends string> = {
   mapContent: ReactNode
   settingsContent: ReactNode
   settingsFooter?: ReactNode
-  loadInput?: ReactNode
-  projectStatus?: ReactNode
-  saveLabel?: string
-  loadLabel?: string
   mapToolbarContent?: ReactNode
   showMapActions?: boolean
   settingsHeading?: string
-  onSave(): void
-  onLoad(): void
-  onNew?(): void
   onOpenLeftPanel(): void
   onOpenRightPanel(): void
   onCloseMobilePanels(): void
@@ -56,16 +49,9 @@ export function FigureWorkspaceScaffold<Key extends string>({
   mapContent,
   settingsContent,
   settingsFooter,
-  loadInput,
-  projectStatus,
-  saveLabel,
-  loadLabel,
   mapToolbarContent,
   showMapActions = true,
   settingsHeading,
-  onSave,
-  onLoad,
-  onNew,
   onOpenLeftPanel,
   onOpenRightPanel,
   onCloseMobilePanels,
@@ -85,16 +71,9 @@ export function FigureWorkspaceScaffold<Key extends string>({
       inputsCollapsed={inputsCollapsed}
       leftPanelOpen={leftPanelOpen}
       rightPanelOpen={rightPanelOpen}
-      onSave={onSave}
-      onLoad={onLoad}
-      onNew={onNew}
       onOpenLeftPanel={onOpenLeftPanel}
       onOpenRightPanel={onOpenRightPanel}
       onCloseMobilePanels={onCloseMobilePanels}
-      loadInput={loadInput}
-      projectStatus={projectStatus}
-      saveLabel={saveLabel}
-      loadLabel={loadLabel}
     >
       {projectPanel}
       <FigureMapWorkspace

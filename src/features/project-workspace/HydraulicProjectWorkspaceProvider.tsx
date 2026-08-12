@@ -11,6 +11,7 @@ import { hydraulicProfileFolderAdapter } from '../project-lifecycle/hydraulicPro
 import { bindProjectWorkspace } from '../project-lifecycle/projectWorkspaceFolderAdapter'
 import { reportAssemblyFolderAdapter } from '../project-lifecycle/reportAssemblyFolderAdapter'
 import { useHydraulicProjectLifecycle } from '../project-lifecycle/useHydraulicProjectLifecycle'
+import { useHydraulicProjectCommands } from '../project-lifecycle/useHydraulicProjectCommands'
 import {
   DEFAULT_FIGURE_WORKSPACE,
   FIGURE_WORKSPACES,
@@ -66,6 +67,7 @@ export function HydraulicProjectWorkspaceProvider({
     activeWorkspaceId: activeFigureId,
     setActiveWorkspace: setActiveFigureId,
   })
+  const projectCommands = useHydraulicProjectCommands(projectLifecycle)
   return (
     <HydraulicProjectWorkspaceContext.Provider
       value={{
@@ -81,6 +83,7 @@ export function HydraulicProjectWorkspaceProvider({
         unlinkReportFigureEditTarget: editingSession.unlinkReportFigureEditTarget,
         openReportFigureDraft: editingSession.openReportFigureDraft,
         projectLifecycle,
+        projectCommands,
       }}
     >
       {children}

@@ -25,6 +25,7 @@ export function createWorkspaceDraftRepository(
   const drafts = new Map(
     initialDrafts.map((draft) => [draft.workspaceId, { ...draft }]),
   )
+  let replacementGeneration = 0
 
   return {
     capture<WorkspaceId extends string, Draft>(
@@ -62,6 +63,7 @@ export function createWorkspaceDraftRepository(
       onChange()
     },
     replace(nextDrafts: readonly StoredWorkspaceDraft[]) {
+      replacementGeneration += 1
       const next = new Map(
         nextDrafts.map((draft) => [draft.workspaceId, { ...draft }]),
       )
@@ -76,6 +78,9 @@ export function createWorkspaceDraftRepository(
       drafts.clear()
       next.forEach((draft, workspaceId) => drafts.set(workspaceId, draft))
       onChange()
+    },
+    replacementGeneration() {
+      return replacementGeneration
     },
     entries() {
       return [...drafts.values()].map((draft) => ({ ...draft }))

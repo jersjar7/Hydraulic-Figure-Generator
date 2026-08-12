@@ -105,5 +105,11 @@ describe('workspace draft repository', () => {
       title: 'Restored',
       count: 8,
     })
+    assert.equal(repository.replacementGeneration(), 1)
+
+    repository.capture(draftModule, { title: 'Edited', count: 9 })
+    assert.equal(repository.replacementGeneration(), 1)
+    repository.replace(repository.entries())
+    assert.equal(repository.replacementGeneration(), 2)
   })
 })

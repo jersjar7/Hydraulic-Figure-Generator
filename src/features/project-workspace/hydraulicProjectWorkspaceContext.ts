@@ -6,6 +6,7 @@ import type { useProjectSession } from '../project-session/useProjectSession'
 import type { useReportAssembly } from '../report-assembly/useReportAssembly'
 import type { useHydraulicProfileDocument } from '../hydraulic-profiles/useHydraulicProfileDocument'
 import type { useHydraulicProjectLifecycle } from '../project-lifecycle/useHydraulicProjectLifecycle'
+import type { useHydraulicProjectCommands } from '../project-lifecycle/useHydraulicProjectCommands'
 import type { WorkspaceDraftRepository } from '../figures/workspaceDraftRepository'
 import type { ReportFigureArtifact } from '../../core/types'
 import type { ReportFigureEditTargets } from '../../application/report-assembly/reportFigureEditSession'
@@ -25,6 +26,7 @@ export type HydraulicProjectWorkspaceValue = {
   unlinkReportFigureEditTarget(workspaceId: FigureId): void
   openReportFigureDraft(figure: ReportFigureArtifact): Promise<void>
   projectLifecycle: ReturnType<typeof useHydraulicProjectLifecycle>
+  projectCommands: ReturnType<typeof useHydraulicProjectCommands>
 }
 
 export const HydraulicProjectWorkspaceContext =

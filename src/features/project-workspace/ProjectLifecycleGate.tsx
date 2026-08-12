@@ -2,7 +2,7 @@ import { ProjectStartDialog } from '../project-lifecycle/ProjectStartDialog'
 import { useHydraulicProjectWorkspace } from './useHydraulicProjectWorkspace'
 
 export function ProjectLifecycleGate() {
-  const { projectLifecycle } = useHydraulicProjectWorkspace()
+  const { projectLifecycle, projectCommands } = useHydraulicProjectWorkspace()
 
   return (
     <ProjectStartDialog
@@ -10,9 +10,9 @@ export function ProjectLifecycleGate() {
       supported={projectLifecycle.isSupported}
       busy={projectLifecycle.busy}
       error={projectLifecycle.error}
-      onNew={projectLifecycle.requestNewProject}
+      onNew={projectCommands.requestNewProject}
       onCreate={projectLifecycle.createProject}
-      onOpen={projectLifecycle.openProject}
+      onOpen={projectCommands.openProject}
       onContinue={projectLifecycle.dismissDialog}
       onBack={projectLifecycle.backToWelcome}
     />

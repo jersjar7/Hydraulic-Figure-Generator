@@ -72,6 +72,13 @@ infrastructure directly.
   behind `ProjectFolderStoragePort`; the browser adapter is the only layer that
   touches the File System Access API. Workspace adapters persist profile inputs,
   the Export Collection, and the shared editable workspace session.
+- `ProjectCommandBar` and `useHydraulicProjectCommands` are the single UI and
+  command boundary for project New, Save, and Open. They live in the global
+  header, report one consistent outcome, and are never reimplemented by a
+  figure workspace. Workspace Reset remains a local callback because its state
+  is figure-specific, but it must execute through the shared unsaved-change
+  confirmation. Opening a folder increments the lifecycle hydration revision,
+  remounting the active composition root after all workspace adapters apply.
 - Folder projects write `project.hfg.json` last, after their editable input and
   workspace documents. This keeps the manifest from claiming a partially
   completed save. Derived canvas scenes are regenerated from persisted inputs.
@@ -147,8 +154,9 @@ infrastructure directly.
   feature content and callbacks rather than rebuilding the editor frame.
 - `App.tsx` owns global editor-header composition through
   `EditorHeaderNavigationProvider`. The workspace picker and Export Collection
-  action are injected once into `FigureEditorShell`; figure workspaces cannot
-  import or pass those global controls through their own props.
+  action, project status, and project commands are injected once into
+  `FigureEditorShell`; figure workspaces cannot import or pass those global
+  controls through their own props.
 - `application/hydraulics/` owns focused comparison, assessment, stationing,
   and extrema use cases behind `HydraulicAnalysisPort`. `HydraulicEngine`
   remains the H5-backed resource and value-cache adapter.
@@ -264,7 +272,7 @@ selection-map, chart, and assessment-line generation to
 hooks. WSE Difference routes persisted settings and cartography updates through
 its figure-document controller, and bounded diagnostics and transient reset
 behavior through its editor-UI controller. `useWseWorkspaceLifecycle` owns
-project inputs, draft retention, file persistence, stationing-source actions,
+project inputs, draft retention, stationing-source actions,
 invalidation, and full reset. `createWseWorkspaceOutputController` owns map
 download and report-figure creation. Generation, rendering, annotations,
 figure elements, and pointer interactions remain independent controllers.

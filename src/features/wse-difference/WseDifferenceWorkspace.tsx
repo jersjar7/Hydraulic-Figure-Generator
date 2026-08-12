@@ -28,7 +28,11 @@ import { useWseWorkspaceLifecycle } from './useWseWorkspaceLifecycle'
 import { createWseWorkspaceOutputController } from './wseWorkspaceOutputController'
 const ACTIVE_FIGURE = wseDifferenceFigure
 export function WseDifferenceWorkspace() {
-  const { projectSession, projectDocument } = useHydraulicProjectWorkspace()
+  const {
+    projectSession,
+    projectDocument,
+    projectCommands,
+  } = useHydraulicProjectWorkspace()
   const figureDocument = useWseFigureDocument()
   const editorUi = useWseEditorUi()
   const {
@@ -106,7 +110,6 @@ export function WseDifferenceWorkspace() {
     canvasFrameRef,
     settings.orientation,
   )
-  const projectInputRef = useRef<HTMLInputElement>(null)
   const {
     centerlineCandidates,
     selectedCenterline,
@@ -288,8 +291,6 @@ export function WseDifferenceWorkspace() {
       notices={notices}
       settingsSections={WSE_SETTINGS_SECTIONS}
       activeSettingsSection={activeSettingsSection}
-      onSave={lifecycle.persistence.saveProject}
-      onLoad={() => projectInputRef.current?.click()}
       onOpenLeftPanel={() => {
         setLeftCollapsed(false)
         setLeftOpen(true)
@@ -308,15 +309,6 @@ export function WseDifferenceWorkspace() {
         updateSetting('zoom', Math.min(4, settings.zoom + 0.1))
       }
       onFitFrame={figureElements.resetView}
-      loadInput={
-        <input
-          ref={projectInputRef}
-          className="visually-hidden"
-          type="file"
-          accept=".hydfig,.json"
-          onChange={lifecycle.persistence.loadProject}
-        />
-      }
       projectPanel={
         <HydraulicProjectPanel
           inputCapabilities={wseDifferenceFigure.editor.inputs}
@@ -341,7 +333,9 @@ export function WseDifferenceWorkspace() {
             updateSetting('showOverlays', visible)
           }
           onStationingChanged={lifecycle.resetStationingLabels}
-          onReset={lifecycle.resetProject}
+          onReset={() =>
+            projectCommands.confirmWorkspaceReset(lifecycle.resetProject)
+          }
         />
       }
       mapContent={

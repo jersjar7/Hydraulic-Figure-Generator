@@ -81,10 +81,19 @@ for (const file of await sourceFiles(sourceRoot)) {
 
   if (
     file.endsWith('Workspace.tsx') &&
-    /from\s+['"][^'"]*(?:FigurePicker|ExportCollectionButton)['"]/.test(source)
+    /from\s+['"][^'"]*(?:FigurePicker|ExportCollectionButton|ProjectCommandBar)['"]/.test(source)
   ) {
     violations.push(
       `${relativeFile}: global header navigation belongs to App.tsx, not a figure workspace`,
+    )
+  }
+
+  if (
+    file.endsWith('Workspace.tsx') &&
+    /\bon(?:Save|Load|New)=|ProjectSaveStatus|use(?:CrossSection|PlanViewResult)ProjectFiles/.test(source)
+  ) {
+    violations.push(
+      `${relativeFile}: project New, Save, and Open commands belong to the global project command bar`,
     )
   }
 

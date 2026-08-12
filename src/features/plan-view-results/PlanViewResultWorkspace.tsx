@@ -54,7 +54,11 @@ type WorkspaceSettingsSectionKey =
   | PlanViewFigureDocumentSettingsSectionKey
 
 export function PlanViewResultWorkspace() {
-  const { projectSession, projectDocument } = useHydraulicProjectWorkspace()
+  const {
+    projectSession,
+    projectDocument,
+    projectCommands,
+  } = useHydraulicProjectWorkspace()
   const { engine, scenarios, baselineId, runByScenario } = projectSession
   const { overlays, setOverlays, resetDocument } = projectDocument
   const runIndex = runByScenario[baselineId] ?? 0
@@ -82,7 +86,6 @@ export function PlanViewResultWorkspace() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const canvasFrameRef = useRef<HTMLDivElement>(null)
   const elementBoundsRef = useRef<MapElementBounds[]>([])
-  const projectInputRef = useRef<HTMLInputElement>(null)
   const stationingSource = useCenterlineStationingSource()
   const displaySize = useFittedCanvasAspect(
     canvasFrameRef,
@@ -220,12 +223,12 @@ export function PlanViewResultWorkspace() {
     interacting: mapInteractions.dragging,
   })
 
-  const { draftRetention, projectFiles, loadProject } =
+  const { draftRetention } =
     usePlanViewWorkspacePersistence({
       settings, setSettings, scenarios, projectSession, projectDocument,
       figureSet, figureDocument, stationingSource, stationing, annotations,
       elements,
-      setScene, appendNotices,
+      setScene,
     })
 
   const resetProject = () => {
@@ -292,8 +295,6 @@ export function PlanViewResultWorkspace() {
       activeSettingsSection={productionMode === 'figure'
         ? activeSection
         : productionMode === 'set' ? 'figure-set' : 'figure-document'}
-      onSave={projectFiles.saveProject}
-      onLoad={() => projectInputRef.current?.click()}
       onOpenLeftPanel={() => { setLeftCollapsed(false); setLeftOpen(true) }}
       onOpenRightPanel={() => setRightOpen(true)}
       onCloseMobilePanels={() => { setLeftOpen(false); setRightOpen(false) }}
@@ -306,15 +307,6 @@ export function PlanViewResultWorkspace() {
       onZoomOut={() => singleFigure.updateSetting('zoom', Math.max(0.35, settings.zoom - 0.1))}
       onZoomIn={() => singleFigure.updateSetting('zoom', Math.min(4, settings.zoom + 0.1))}
       onFitFrame={elements.resetView}
-      loadInput={
-        <input
-          ref={projectInputRef}
-          className="visually-hidden"
-          type="file"
-          accept=".hydfig,.json"
-          onChange={loadProject}
-        />
-      }
       mapToolbarContent={
         <FigureProductionModeSwitcher
           value={productionMode}
@@ -344,7 +336,7 @@ export function PlanViewResultWorkspace() {
           onExpand={() => setLeftCollapsed(false)}
           onMobileClose={() => setLeftOpen(false)}
           onShowOverlaysChange={(visible) => singleFigure.updateSetting('showOverlays', visible)}
-          onReset={resetProject}
+          onReset={() => projectCommands.confirmWorkspaceReset(resetProject)}
         />
       }
       mapContent={

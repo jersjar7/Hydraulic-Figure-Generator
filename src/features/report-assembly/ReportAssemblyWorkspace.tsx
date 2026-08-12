@@ -4,7 +4,6 @@ import '../../App.css'
 import { flattenReportFigures } from '../../application/report-assembly/reportAssembly'
 import { FigureEditorShell } from '../../components/editor/FigureEditorShell'
 import type { ReportFigureArtifact } from '../../core/types'
-import { ProjectSaveStatus } from '../project-lifecycle/ProjectSaveStatus'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { exportReportAssembly } from './exportReportAssembly'
 import { ReportFigurePreview } from './ReportFigurePreview'
@@ -13,7 +12,6 @@ import { ReportWorkspaceRow } from './ReportWorkspaceRow'
 export function ReportAssemblyWorkspace() {
   const {
     reportAssembly,
-    projectLifecycle,
     openReportFigureDraft,
   } = useHydraulicProjectWorkspace()
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -27,13 +25,6 @@ export function ReportAssemblyWorkspace() {
     [reportAssembly.document],
   )
   const selected = figures.find((figure) => figure.id === selectedId) ?? null
-  const saveProject = async () => {
-    try {
-      if (await projectLifecycle.saveProject()) setStatus('Project folder saved.')
-    } catch (error) {
-      setStatus(`Project save failed: ${error instanceof Error ? error.message : String(error)}`)
-    }
-  }
   const exportWord = async () => {
     if (exporting || figures.length === 0) return
     setExporting(true)
@@ -75,21 +66,9 @@ export function ReportAssemblyWorkspace() {
         rightPanelOpen={false}
         workspaceClassName="report-assembly-shell"
         showPanelButtons={false}
-        onSave={() => void saveProject()}
-        onLoad={() => void projectLifecycle.openProject()}
-        onNew={projectLifecycle.requestNewProject}
         onOpenLeftPanel={() => undefined}
         onOpenRightPanel={() => undefined}
         onCloseMobilePanels={() => undefined}
-        projectStatus={
-          <ProjectSaveStatus
-            projectName={projectLifecycle.projectName}
-            dirty={projectLifecycle.isDirty}
-            error={projectLifecycle.error}
-          />
-        }
-        saveLabel="Save project"
-        loadLabel="Open project"
       >
         <div className="report-assembly-page">
           <header className="report-assembly-toolbar">

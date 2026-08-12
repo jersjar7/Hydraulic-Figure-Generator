@@ -273,6 +273,18 @@ test('folder project saves and restores profiles with the Export Collection', as
   await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
     'fra-wse-difference',
   )
+
+  await page.getByLabel('Dry-depth threshold').fill('0.12')
+  await page.getByRole('button', { name: 'Save project' }).click()
+  await page.getByLabel('Dry-depth threshold').fill('0.34')
+  page.once('dialog', (dialog) => dialog.accept())
+  await page.getByRole('button', { name: 'Open project' }).click()
+  await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
+    'fra-wse-difference',
+  )
+  await expect(page.getByLabel('Dry-depth threshold')).toHaveValue('0.12')
+  await expect(page.getByLabel('Site 6 FRA: Saved')).toBeVisible()
+
   await page.getByLabel('Workspace', { exact: true }).selectOption(
     'hydraulic-profiles-sections',
   )

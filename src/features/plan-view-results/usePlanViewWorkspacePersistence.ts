@@ -1,10 +1,5 @@
+import type { Dispatch, SetStateAction } from 'react'
 import type {
-  ChangeEvent,
-  Dispatch,
-  SetStateAction,
-} from 'react'
-import type {
-  IngestNotice,
   PlanViewResultScene,
   PlanViewResultSettings,
 } from '../../core/types'
@@ -16,7 +11,6 @@ import type { useHydraulicProjectWorkspace } from '../project-workspace/useHydra
 import { useWorkspaceDraftRetention } from '../project-workspace/useWorkspaceDraftRetention'
 import type { useCenterlineStationingSource } from '../stationing/useCenterlineStationingSource'
 import type { useMapElementController } from '../figures/useMapElementController'
-import { usePlanViewResultProjectFiles } from './usePlanViewResultProjectFiles'
 import { planViewResultWorkspaceDraft } from './planViewResultWorkspaceDraft'
 
 type Options = {
@@ -32,7 +26,6 @@ type Options = {
   annotations: ReturnType<typeof usePlanViewAnnotations>
   elements: ReturnType<typeof useMapElementController<PlanViewResultSettings>>
   setScene: Dispatch<SetStateAction<PlanViewResultScene | null>>
-  appendNotices(notices: IngestNotice[]): void
 }
 
 export function usePlanViewWorkspacePersistence(options: Options) {
@@ -73,22 +66,5 @@ export function usePlanViewWorkspacePersistence(options: Options) {
     snapshot,
     hydrate: hydrateDraft,
   })
-  const projectFiles = usePlanViewResultProjectFiles({
-    snapshot,
-    appendNotices: options.appendNotices,
-  })
-  const loadProject = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0]
-    event.currentTarget.value = ''
-    if (!file) return
-    const loaded = await projectFiles.loadProjectFile(file)
-    if (!loaded) return
-    hydrateDraft(loaded)
-    options.appendNotices([{
-      level: 'success',
-      text: 'Plan-view project loaded. Re-add the referenced local H5 files.',
-    }])
-  }
-
-  return { draftRetention, projectFiles, loadProject }
+  return { draftRetention }
 }

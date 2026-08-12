@@ -46,8 +46,6 @@ function Harness() {
       projectPanel={<aside>Project panel</aside>}
       mapContent={<canvas aria-label="Test map" />}
       settingsContent={<div>{active} controls</div>}
-      onSave={() => undefined}
-      onLoad={() => undefined}
       onOpenLeftPanel={() => undefined}
       onOpenRightPanel={() => undefined}
       onCloseMobilePanels={() => undefined}

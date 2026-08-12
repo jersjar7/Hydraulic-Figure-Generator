@@ -17,7 +17,6 @@ import type { useWseEditorUi } from './useWseEditorUi'
 import type { useWseFigureDocument } from './useWseFigureDocument'
 import type { useWseFigureElementController } from './useWseFigureElementController'
 import { useWseDraftRetention } from './useWseDraftRetention'
-import { createWseProjectPersistenceController } from './wseProjectPersistenceController'
 import { createWseStationingSourceActions } from './wseStationingSourceActions'
 
 type Options = {
@@ -82,19 +81,6 @@ export function useWseWorkspaceLifecycle({
     setBusy: editorUi.setBusy,
     appendNotices,
   })
-  const persistence = createWseProjectPersistenceController({
-    projectSession,
-    projectDocument,
-    figureDocument,
-    assessmentWorkflow,
-    stationingSource,
-    editorUi,
-    clearElementHistory: figureElements.clearHistory,
-    snapshot: workspaceDraft.snapshot,
-    setScene,
-    appendNotices,
-  })
-
   const changeAssessmentInterval = (interval: number) => {
     figureDocument.updateSetting('assessmentLineInterval', interval)
     assessmentWorkflow.clear(interval)
@@ -125,7 +111,6 @@ export function useWseWorkspaceLifecycle({
     workspaceDraft,
     stationingSourceActions,
     projectInputs,
-    persistence,
     changeAssessmentInterval,
     resetStationingLabels,
     changeDryDepth,

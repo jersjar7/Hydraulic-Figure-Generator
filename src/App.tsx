@@ -10,6 +10,7 @@ import { ProjectLifecycleGate } from './features/project-workspace/ProjectLifecy
 import { useHydraulicProjectWorkspace } from './features/project-workspace/useHydraulicProjectWorkspace'
 import { REPORT_ASSEMBLY_WORKSPACE_ID } from './features/report-assembly/reportAssemblyWorkspaceId'
 import { ExportCollectionButton } from './features/report-assembly/ExportCollectionButton'
+import { ProjectCommandBar } from './features/project-lifecycle/ProjectCommandBar'
 
 const ReportAssemblyWorkspace = lazy(() =>
   import('./features/report-assembly/ReportAssemblyWorkspace').then((module) => ({
@@ -48,11 +49,11 @@ function ProjectApplication() {
   return (
     <EditorHeaderNavigationProvider
       workspacePicker={<FigurePicker />}
-      actions={<ExportCollectionButton />}
+      actions={<><ProjectCommandBar /><ExportCollectionButton /></>}
     >
       {projectLifecycle.dialog
         ? <div className="project-start-surface" aria-hidden="true" />
-        : <ActiveWorkspace />}
+        : <ActiveWorkspace key={projectLifecycle.hydrationRevision} />}
       <ProjectLifecycleGate />
     </EditorHeaderNavigationProvider>
   )

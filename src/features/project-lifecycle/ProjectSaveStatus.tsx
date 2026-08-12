@@ -4,18 +4,24 @@ type Props = {
   projectName: string
   dirty: boolean
   error?: string
+  notice?: string
 }
 
-export function ProjectSaveStatus({ projectName, dirty, error = '' }: Props) {
+export function ProjectSaveStatus({
+  projectName,
+  dirty,
+  error = '',
+  notice = '',
+}: Props) {
   const label = error
-    ? 'Save failed'
+    ? 'Project error'
     : dirty
       ? projectName ? 'Unsaved changes' : 'Unsaved work'
       : projectName ? 'Saved' : 'No project'
   return (
     <div
       className={`project-save-status${dirty ? ' is-dirty' : ''}${error ? ' has-error' : ''}`}
-      title={error || `${projectName || 'No project'} · ${label}`}
+      title={error || notice || `${projectName || 'No project'} · ${label}`}
       aria-label={`${projectName || 'No project'}: ${label}`}
     >
       {dirty || error

@@ -65,6 +65,7 @@ export function useHydraulicProjectLifecycle({
   const [dialog, setDialog] = useState<ProjectLifecycleDialog>('welcome')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [hydrationRevision, setHydrationRevision] = useState(0)
   const isDirty = fingerprint !== savedFingerprint
 
   useEffect(() => {
@@ -133,6 +134,7 @@ export function useHydraulicProjectLifecycle({
       if (!directory) return false
       const opened = await openHydraulicProjectFolder({ storage, directory, workspaces })
       opened.hydrations.forEach((hydration) => hydration.apply())
+      setHydrationRevision((revision) => revision + 1)
       setProject({ directory: opened.directory, manifest: opened.manifest })
       const workspaceId = persistedActiveWorkspace(
         availableWorkspaceIds,
@@ -189,6 +191,7 @@ export function useHydraulicProjectLifecycle({
     dialog,
     busy,
     error,
+    hydrationRevision,
     requestNewProject,
     openProject,
     createProject,

@@ -1,11 +1,4 @@
-import {
-  FilePlus2,
-  FolderOpen,
-  Map,
-  PanelLeft,
-  PanelRight,
-  Save,
-} from 'lucide-react'
+import { Map, PanelLeft, PanelRight } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useEditorHeaderNavigation } from './useEditorHeaderNavigation'
 
@@ -13,16 +6,9 @@ type Props = {
   inputsCollapsed: boolean
   leftPanelOpen: boolean
   rightPanelOpen: boolean
-  onSave(): void
-  onLoad(): void
-  onNew?(): void
   onOpenLeftPanel(): void
   onOpenRightPanel(): void
   onCloseMobilePanels(): void
-  loadInput?: ReactNode
-  projectStatus?: ReactNode
-  saveLabel?: string
-  loadLabel?: string
   workspaceClassName?: string
   showPanelButtons?: boolean
   children: ReactNode
@@ -32,16 +18,9 @@ export function FigureEditorShell({
   inputsCollapsed,
   leftPanelOpen,
   rightPanelOpen,
-  onSave,
-  onLoad,
-  onNew,
   onOpenLeftPanel,
   onOpenRightPanel,
   onCloseMobilePanels,
-  loadInput,
-  projectStatus,
-  saveLabel = 'Save',
-  loadLabel = 'Load',
   workspaceClassName = '',
   showPanelButtons = true,
   children,
@@ -61,33 +40,6 @@ export function FigureEditorShell({
           </div>
         </div>
         <div className="topbar-actions">
-          {projectStatus}
-          {onNew ? (
-            <button
-              className="button secondary compact"
-              type="button"
-              onClick={onNew}
-            >
-              <FilePlus2 size={16} aria-hidden="true" />
-              <span>New</span>
-            </button>
-          ) : null}
-          <button
-            className="button secondary compact"
-            type="button"
-            onClick={onSave}
-          >
-            <Save size={16} aria-hidden="true" />
-            <span>{saveLabel}</span>
-          </button>
-          <button
-            className="button secondary compact"
-            type="button"
-            onClick={onLoad}
-          >
-            <FolderOpen size={16} aria-hidden="true" />
-            <span>{loadLabel}</span>
-          </button>
           {headerNavigation?.actions}
           {showPanelButtons ? <button
             className="icon-button mobile-panel-button"
@@ -107,7 +59,6 @@ export function FigureEditorShell({
           >
             <PanelRight size={19} />
           </button> : null}
-          {loadInput}
         </div>
       </header>
 

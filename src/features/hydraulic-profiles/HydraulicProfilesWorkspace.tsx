@@ -6,7 +6,6 @@ import { WorkspaceActionBar } from '../../components/settings/WorkspaceActionBar
 import type { HydraulicProfileView } from '../../core/types'
 import { useHydraulicProjectWorkspace } from '../project-workspace/useHydraulicProjectWorkspace'
 import { useWorkspaceDraftRetention } from '../project-workspace/useWorkspaceDraftRetention'
-import { ProjectSaveStatus } from '../project-lifecycle/ProjectSaveStatus'
 import { HydraulicProfileCanvas } from './HydraulicProfileCanvas'
 import type { HydraulicProfileSettingsSectionKey } from './hydraulicProfileDefinition'
 import { hydraulicProfileFigure } from './hydraulicProfileFigure'
@@ -25,7 +24,7 @@ export function HydraulicProfilesWorkspace() {
   const {
     reportAssembly,
     hydraulicProfiles,
-    projectLifecycle,
+    projectCommands,
   } = useHydraulicProjectWorkspace()
   const {
     snapshot: {
@@ -136,24 +135,12 @@ export function HydraulicProfilesWorkspace() {
     appendNotices,
   })
 
-  const saveProject = async () => {
-    try {
-      if (await projectLifecycle.saveProject()) {
-        appendNotices([{ level: 'success', text: 'Project folder saved.' }])
-      }
-    } catch (error) {
-      appendNotices([{
-        level: 'error',
-        text: `Project save failed: ${error instanceof Error ? error.message : String(error)}`,
-      }])
-    }
-  }
-
   const reset = () => {
-    if (!projectLifecycle.confirmDiscard()) return
-    resetDocument()
-    resetGenerated()
-    resetForProject()
+    projectCommands.confirmWorkspaceReset(() => {
+      resetDocument()
+      resetGenerated()
+      resetForProject()
+    })
   }
 
   const changeView = (nextView: HydraulicProfileView) => {
@@ -189,9 +176,6 @@ export function HydraulicProfilesWorkspace() {
       settingsSections={HYDRAULIC_PROFILE_WORKSPACE_SETTINGS}
       activeSettingsSection={activeSection}
       showMapActions={false}
-      onSave={() => void saveProject()}
-      onLoad={() => void projectLifecycle.openProject()}
-      onNew={projectLifecycle.requestNewProject}
       onOpenLeftPanel={() => { setLeftCollapsed(false); setLeftOpen(true) }}
       onOpenRightPanel={() => setRightOpen(true)}
       onCloseMobilePanels={() => { setLeftOpen(false); setRightOpen(false) }}
@@ -200,15 +184,6 @@ export function HydraulicProfilesWorkspace() {
       onZoomOut={() => undefined}
       onZoomIn={() => undefined}
       onFitFrame={() => undefined}
-      projectStatus={
-        <ProjectSaveStatus
-          projectName={projectLifecycle.projectName}
-          dirty={projectLifecycle.isDirty}
-          error={projectLifecycle.error}
-        />
-      }
-      saveLabel="Save project"
-      loadLabel="Open project"
       projectPanel={
         <HydraulicProfileInputPanel
           mobileOpen={leftOpen}

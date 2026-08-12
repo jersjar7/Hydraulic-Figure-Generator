@@ -4,7 +4,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ChangeEvent,
 } from 'react'
 import '../../App.css'
 import { HydraulicProjectPanel } from '../../components/project-data/HydraulicProjectPanel'
@@ -23,7 +22,6 @@ import { createCrossSectionReportFigure } from './crossSectionReportAdapter'
 import { CrossSectionCanvas } from './CrossSectionCanvas'
 import { CrossSectionSettingsPanel } from './CrossSectionSettingsPanel'
 import { createDefaultCrossSectionSettings } from './crossSectionSettings'
-import { useCrossSectionProjectFiles } from './useCrossSectionProjectFiles'
 import { useCrossSectionGeneration } from './useCrossSectionGeneration'
 import { useCrossSectionRendering } from './useCrossSectionRendering'
 import { useCrossSectionSelection } from './useCrossSectionSelection'
@@ -33,7 +31,11 @@ import { useCrossSectionDraftRetention } from './useCrossSectionDraftRetention'
 import { ReportFigureExportActions } from '../project-workspace/ReportFigureExportActions'
 
 export function CrossSectionWorkspace() {
-  const { projectSession, projectDocument } = useHydraulicProjectWorkspace()
+  const {
+    projectSession,
+    projectDocument,
+    projectCommands,
+  } = useHydraulicProjectWorkspace()
   const {
     engine,
     baselineId,
@@ -63,7 +65,6 @@ export function CrossSectionWorkspace() {
   const [activeSection, setActiveSection] =
     useState<CrossSectionSettingsSectionKey>('section')
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const projectInputRef = useRef<HTMLInputElement>(null)
 
   const baselineRun = runByScenario[baselineId] ?? 0
   const comparisonRun = runByScenario[comparisonId] ?? 0
@@ -194,26 +195,6 @@ export function CrossSectionWorkspace() {
     loadSelection: selection.loadSelection,
     invalidateFigures: generation.invalidateFigures,
   })
-  const projectFiles = useCrossSectionProjectFiles({
-    snapshot: workspaceDraft.snapshot,
-    appendNotices,
-  })
-
-  const loadProject = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0]
-    event.currentTarget.value = ''
-    if (!file) return
-    const payload = await projectFiles.loadProjectFile(file)
-    if (!payload) return
-    workspaceDraft.hydrate(payload)
-    appendNotices([
-      {
-        level: 'success',
-        text: 'Cross-section settings loaded. Re-add the H5 files to regenerate.',
-      },
-    ])
-  }
-
   const downloadChart = () => {
     if (!chartScene) return
     downloadCrossSectionPng(chartScene, settings)
@@ -262,8 +243,6 @@ export function CrossSectionWorkspace() {
       notices={notices}
       settingsSections={CROSS_SECTION_WORKSPACE_SETTINGS}
       activeSettingsSection={activeSection}
-      onSave={projectFiles.saveProject}
-      onLoad={() => projectInputRef.current?.click()}
       onOpenLeftPanel={() => {
         setLeftCollapsed(false)
         setLeftOpen(true)
@@ -296,15 +275,6 @@ export function CrossSectionWorkspace() {
           rotation: 0,
         }))
       }
-      loadInput={
-        <input
-          ref={projectInputRef}
-          className="visually-hidden"
-          type="file"
-          accept=".hydfig,.json"
-          onChange={loadProject}
-        />
-      }
       projectPanel={
         <HydraulicProjectPanel
           inputCapabilities={crossSectionFigure.editor.inputs}
@@ -330,7 +300,7 @@ export function CrossSectionWorkspace() {
           onShowOverlaysChange={(showOverlays) =>
             setMapSettings((current) => ({ ...current, showOverlays }))
           }
-          onReset={resetProject}
+          onReset={() => projectCommands.confirmWorkspaceReset(resetProject)}
         />
       }
       mapContent={

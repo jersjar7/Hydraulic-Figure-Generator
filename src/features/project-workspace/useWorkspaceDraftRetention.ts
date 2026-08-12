@@ -40,6 +40,7 @@ export function useWorkspaceDraftRetention<
 
   useLayoutEffect(() => {
     const setupRevision = setupRevisionRef.current + 1
+    const replacementGeneration = workspaceDrafts.replacementGeneration()
     setupRevisionRef.current = setupRevision
     try {
       if (!restoredRef.current) {
@@ -63,7 +64,10 @@ export function useWorkspaceDraftRetention<
       // capture lets the next setup cancel that simulated unmount while real
       // workspace navigation still records the latest committed snapshot.
       queueMicrotask(() => {
-        if (setupRevisionRef.current === setupRevision) capture()
+        if (
+          setupRevisionRef.current === setupRevision &&
+          workspaceDrafts.replacementGeneration() === replacementGeneration
+        ) capture()
       })
     }
   }, [capture, module, workspaceDrafts])
