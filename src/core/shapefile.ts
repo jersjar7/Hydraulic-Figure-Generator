@@ -4,6 +4,7 @@ import type {
   IngestNotice,
   MapOverlay,
 } from './types'
+import { createOverlayId } from './map/overlayIdentity'
 
 const COLORS = [
   '#111827',
@@ -49,12 +50,12 @@ export async function readShapefileOverlays(
       if (collections.length === 0) {
         throw new Error('No readable shapefile layers were found in the ZIP.')
       }
-      collections.forEach((geojson, index) => {
+      collections.forEach((geojson) => {
         const paletteIndex = startingIndex + overlays.length
         const rawName =
           geojson.fileName || file.name.replace(/\.zip$/i, '') || 'Overlay'
         overlays.push({
-          id: `${Date.now()}-${startingIndex}-${index}`,
+          id: createOverlayId(),
           name: rawName.split(/[\\/]/).pop() || rawName,
           geojson,
           color: COLORS[paletteIndex % COLORS.length],

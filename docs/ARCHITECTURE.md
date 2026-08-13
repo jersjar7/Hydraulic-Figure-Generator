@@ -25,7 +25,10 @@ application may use core; core imports only core. Core and application modules
 must not import React. `npm run check:architecture` enforces these rules and a
 600-line source-file ceiling in local and deployment builds. Workspace
 composition roots have a stricter 500-line ceiling and may not import browser
-infrastructure directly.
+infrastructure directly. Every feature workspace must also declare a reviewed,
+ratcheted composition ceiling in `scripts/architecturePolicy.ts`; the current
+ceilings range from 200 to 400 lines. The policy evaluator is a pure module with
+unit tests, while `scripts/check-architecture.ts` is only its filesystem adapter.
 
 ## Stable Core Boundaries
 
@@ -189,6 +192,11 @@ infrastructure directly.
 - `components/project-data/projectWorkflowRegistry.ts` maps declared workspace
   input capabilities to independent Models, Layers, Assess, and Review workflow
   modules with their own status and view adapters.
+- Workspace composition roots coordinate panels and feature controllers. They
+  must not regain direct ownership of hydraulic parsing, scene construction,
+  browser output, project command wiring, or feature lifecycle policy. Focused
+  ownership rules currently protect Cross-Section Comparison, Hydraulic
+  Profiles & Sections, Plan-View Hydraulic Results, and WSE Difference.
 
 New figure modules should consume these contracts rather than read H5 files or
 draw shared map elements independently.

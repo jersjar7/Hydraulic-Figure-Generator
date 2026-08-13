@@ -57,8 +57,9 @@ project data. They cover:
   hydration.
 - Persisted WSE document and transient editor reducers.
 - Modular map-tool ownership and WSE extrema callout reconciliation.
-- Architecture dependency direction, React isolation, and the source-file
-  composition ceiling.
+- Architecture dependency direction, React isolation, explicit per-workspace
+  composition ceilings, global-header ownership, and feature-controller
+  ownership for every figure workspace.
 - Appendix H-compatible hydraulic-profile grouping and station-order pairing,
   including the Site 2 regression where Dataset 2 is ground and all 11 sections
   must retain three WSE surfaces.
