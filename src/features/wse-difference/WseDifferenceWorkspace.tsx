@@ -24,7 +24,12 @@ import { useWseWorkspaceLifecycle } from './useWseWorkspaceLifecycle'
 import { createWseWorkspaceOutputController } from './wseWorkspaceOutputController'
 import { useWseAssessmentComposition } from './useWseAssessmentComposition'
 import { useWseWorkspaceMapInteractions } from './useWseWorkspaceMapInteractions'
+import type { ScenarioRoleOption } from '../../components/project-data/projectWorkflowTypes'
 const ACTIVE_FIGURE = wseDifferenceFigure
+const SCENARIO_ROLES: readonly ScenarioRoleOption[] = [
+  { role: 'baseline', label: 'Baseline', required: true },
+  { role: 'comparison', label: 'Comparison', required: true },
+]
 export function WseDifferenceWorkspace() {
   const {
     projectSession,
@@ -269,19 +274,13 @@ export function WseDifferenceWorkspace() {
           collapsed={leftCollapsed}
           busy={busy}
           projectSession={projectSession}
-          assessmentWorkflow={assessment.workflow}
-          assessmentInterval={settings.assessmentLineInterval}
-          centerlineCandidates={centerlineCandidates}
-          stationedAssessmentLines={stationedAssessmentLines}
+          scenarioRoles={SCENARIO_ROLES}
           overlays={overlays}
           showOverlays={settings.showOverlays}
           projectInputs={lifecycle.projectInputs}
-          toggleReviewSelection
           onCollapse={() => setLeftCollapsed(true)}
           onExpand={() => setLeftCollapsed(false)}
           onMobileClose={() => setLeftOpen(false)}
-          onAssessmentIntervalChange={lifecycle.changeAssessmentInterval}
-          onGenerateAssessmentLines={generation.generateAssessmentLines}
           onShowOverlaysChange={(visible) =>
             updateSetting('showOverlays', visible)
           }
@@ -317,7 +316,13 @@ export function WseDifferenceWorkspace() {
         <WseSettingsContent
           activeSection={activeSettingsSection}
           settings={settings}
-          assessmentLabel={assessmentLabel}
+          assessmentBusy={busy}
+          assessmentScenarios={projectSession.scenarios}
+          assessmentSourceId={assessmentScenarioId}
+          assessmentRun={assessmentRun}
+          assessmentRuns={engine.runOptions(assessmentScenarioId)}
+          assessmentWorkflow={assessment.workflow}
+          stationedAssessmentLines={stationedAssessmentLines}
           activeElement={activeElement}
           selectedStationLabelId={selectedStationLabelId}
           centerlineStationTicks={centerlineStationTicks}
@@ -349,6 +354,16 @@ export function WseDifferenceWorkspace() {
             lifecycle.stationingSourceActions.changeStartStation
           }
           onDryDepthChange={lifecycle.changeDryDepth}
+          onAssessmentSourceChange={lifecycle.changeAssessmentSource}
+          onAssessmentRunChange={lifecycle.changeAssessmentRun}
+          onAssessmentIntervalChange={lifecycle.changeAssessmentInterval}
+          onGenerateAssessmentLines={generation.generateAssessmentLines}
+          onClearAssessmentLines={() =>
+            assessment.workflow.clear(settings.assessmentLineInterval)
+          }
+          onAssessmentCenterlineChange={
+            lifecycle.stationingSourceActions.selectCenterline
+          }
           exportActions={
             <ReportFigureExportActions
               workspaceId={ACTIVE_FIGURE.id}

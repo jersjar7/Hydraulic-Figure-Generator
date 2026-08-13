@@ -20,7 +20,7 @@ export function ProjectCommandBar() {
         onClick={projectCommands.requestNewProject}
       >
         <FilePlus2 size={16} aria-hidden="true" />
-        <span>New</span>
+        <span>New project</span>
       </button>
       <button
         className="button secondary compact"

@@ -77,8 +77,8 @@ export function useWseWorkspaceMapInteractions(options: Options) {
       options.editorUi.setAssessmentCalloutDragging,
     openAssessmentReview: () => {
       assessmentWorkflow.openReview()
-      options.editorUi.setLeftCollapsed(false)
-      options.editorUi.setLeftOpen(true)
+      options.editorUi.setActiveSettingsSection('assessmentLines')
+      options.editorUi.setRightOpen(true)
     },
   })
 }

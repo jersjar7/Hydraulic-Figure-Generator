@@ -91,7 +91,6 @@ describe('figure module registry', () => {
     assert.deepEqual(wseDifferenceFigure.editor.inputs, [
       'hydraulic-models',
       'map-overlays',
-      'assessment-lines',
     ])
     assert.equal(wseDifferenceFigure.editor.shapefileOverlays, true)
     assert.equal(wseDifferenceFigure.editor.assessmentLines, true)
@@ -104,6 +103,7 @@ describe('figure module registry', () => {
       ),
       [
         'calculation',
+        'assessmentLines',
         'cartography',
         'frame',
         'elements',

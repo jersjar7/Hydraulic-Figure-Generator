@@ -97,17 +97,10 @@ export function useWseGenerationController({
         dryDepth: settings.dryDepth,
       })
       setScene(nextScene)
-      const assessment = generateWseAssessmentLines(engine, {
-        scenarioId: assessmentId,
-        run: assessmentRun,
-        dryDepth: settings.dryDepth,
-        interval: settings.assessmentLineInterval,
-      })
-      setAssessmentCollection(assessment)
       appendNotices([
         {
           level: 'success',
-          text: `WSE difference ready from ${nextScene.validDifferenceNodes.toLocaleString()} comparable ${baselineLabel} nodes with ${assessment.lines.length.toLocaleString()} ${assessmentLabel} WSE assessment lines.`,
+          text: `WSE difference ready from ${nextScene.validDifferenceNodes.toLocaleString()} comparable ${baselineLabel} nodes.`,
         },
       ])
       closePanels()

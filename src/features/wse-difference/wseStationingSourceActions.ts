@@ -19,6 +19,10 @@ export function createWseStationingSourceActions({
     setSelectedLabelId(null)
   }
   return {
+    selectCenterline: (id: string) => {
+      sourceController.toggleCenterline(id, true)
+      resetLabelOverrides()
+    },
     changeActiveCenterline: (id: string) => {
       sourceController.setActiveCenterline(id)
       setSelectedLabelId(null)

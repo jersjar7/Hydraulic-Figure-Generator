@@ -6,10 +6,12 @@ import {
   Palette,
   Settings2,
   SlidersHorizontal,
+  Spline,
 } from 'lucide-react'
 import type { ComponentProps, ReactNode } from 'react'
 import { FigureElementsPanel } from '../../components/FigureElementsPanel'
 import { CenterlineStationingToolPanel } from '../stationing/CenterlineStationingToolPanel'
+import { AssessmentLinesToolPanel } from '../assessment-lines/AssessmentLinesToolPanel'
 import {
   defineSettingsSections,
   settingsSectionByKey,
@@ -21,6 +23,7 @@ import { FrameSettingsPanel } from './components/FrameSettingsPanel'
 import { CartographySettingsPanel } from './components/CartographySettingsPanel'
 import {
   AnnotationsSection,
+  AssessmentLinesSection,
   CalculationSection,
   ElementsSection,
   ExportSection,
@@ -35,6 +38,7 @@ import {
 
 export type WseSettingsSectionContext = {
   calculation: ComponentProps<typeof CalculationSettingsPanel>
+  assessmentLines: ComponentProps<typeof AssessmentLinesToolPanel>
   cartography: ComponentProps<typeof CartographySettingsPanel>
   frame: ComponentProps<typeof FrameSettingsPanel>
   elements: ComponentProps<typeof FigureElementsPanel>
@@ -49,6 +53,7 @@ export type WseSettingsSectionContext = {
 
 const COMPONENTS = {
   calculation: CalculationSection,
+  assessmentLines: AssessmentLinesSection,
   cartography: CartographySection,
   frame: FrameSection,
   elements: ElementsSection,
@@ -59,6 +64,7 @@ const COMPONENTS = {
 
 const ICONS = {
   calculation: Settings2,
+  assessmentLines: Spline,
   cartography: Palette,
   frame: SlidersHorizontal,
   elements: MapPin,

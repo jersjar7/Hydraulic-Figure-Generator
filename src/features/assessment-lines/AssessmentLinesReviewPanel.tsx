@@ -29,7 +29,7 @@ export type AssessmentLinesReviewPanelProps = {
 
 const TABS = [
   { key: 'included', label: 'Included', icon: Check },
-  { key: 'review', label: 'Review', icon: TriangleAlert },
+  { key: 'review', label: 'Needs review', icon: TriangleAlert },
   { key: 'excluded', label: 'Excluded', icon: CircleOff },
 ] as const
 
@@ -95,7 +95,7 @@ export function AssessmentLinesReviewPanel({
           <div className="assessment-review-empty">
             <Route size={24} aria-hidden="true" />
             <strong>Stationing is not ready</strong>
-            <span>Select a hydraulic centerline in Assess.</span>
+            <span>Choose a centerline in WSE Lines.</span>
           </div>
         ) : visibleItems.length === 0 ? (
           <div className="assessment-review-empty">

@@ -60,8 +60,7 @@ export const FIGURE_TOOL_CAPABILITIES = defineFigureToolCapabilities([
   },
   {
     id: 'assessment-lines',
-    label: 'Assessment lines',
-    input: 'assessment-lines',
+    label: 'WSE assessment lines',
     requiredBindings: ['state', 'render', 'persistence', 'interaction'],
     minimumInteraction: 'panel',
   },

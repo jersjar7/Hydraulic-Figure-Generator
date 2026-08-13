@@ -106,7 +106,7 @@ export function AssessmentWorkspace({
             <span
               className={stationed.reviewCount > 0 ? 'warning' : 'ready'}
             >
-              {stationed.reviewCount} review
+              {stationed.reviewCount} needs review
             </span>
             <span>{stationed.excludedCount} excluded</span>
           </div>

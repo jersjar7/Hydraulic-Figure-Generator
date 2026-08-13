@@ -5,6 +5,7 @@ import {
 import { ControlSection } from '../../../components/ControlSection'
 import { FigureElementsPanel } from '../../../components/FigureElementsPanel'
 import { CenterlineStationingToolPanel } from '../../stationing/CenterlineStationingToolPanel'
+import { AssessmentLinesToolPanel } from '../../assessment-lines/AssessmentLinesToolPanel'
 import type { WseSettingsSectionContext } from '../wseSettingsSections'
 import { AnnotationSettingsPanel } from './AnnotationSettingsPanel'
 import { CalculationSettingsPanel } from './CalculationSettingsPanel'
@@ -17,6 +18,10 @@ type Props = {
 
 export function CalculationSection({ context }: Props) {
   return <CalculationSettingsPanel {...context.calculation} />
+}
+
+export function AssessmentLinesSection({ context }: Props) {
+  return <AssessmentLinesToolPanel {...context.assessmentLines} />
 }
 
 export function CartographySection({ context }: Props) {

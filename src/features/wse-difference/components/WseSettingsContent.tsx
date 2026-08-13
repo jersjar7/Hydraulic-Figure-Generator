@@ -2,14 +2,19 @@ import type {
   CenterlineStationTick,
   CenterlineCandidate,
   CenterlineDirection,
+  ConditionData,
+  ConditionKey,
   CartographySettings,
   FigureElementPanelKey,
   FigureSettings,
+  RunSelection,
+  StationedAssessmentLineCollection,
 } from '../../../core/types'
 import type { ReactNode } from 'react'
 import type { SettingsSectionKey } from '../workspaceConfiguration'
 import type { useWseAnnotationController } from '../useWseAnnotationController'
 import type { useWseFigureElementController } from '../useWseFigureElementController'
+import type { useAssessmentWorkflow } from '../../assessment-lines/useAssessmentWorkflow'
 import {
   wseSettingsSectionByKey,
   type WseSettingsSectionContext,
@@ -23,7 +28,13 @@ type UpdateSettings = <Key extends keyof FigureSettings>(
 type Props = {
   activeSection: SettingsSectionKey
   settings: FigureSettings
-  assessmentLabel: string
+  assessmentBusy: boolean
+  assessmentScenarios: ConditionData[]
+  assessmentSourceId: ConditionKey
+  assessmentRun: number
+  assessmentRuns: RunSelection[]
+  assessmentWorkflow: ReturnType<typeof useAssessmentWorkflow>
+  stationedAssessmentLines: StationedAssessmentLineCollection | null
   activeElement: FigureElementPanelKey
   selectedStationLabelId: string | null
   centerlineStationTicks: CenterlineStationTick[]
@@ -45,6 +56,12 @@ type Props = {
   onCenterlineDirectionChange(direction: CenterlineDirection): void
   onStartStationChange(station: number): void
   onDryDepthChange(dryDepth: number): void
+  onAssessmentSourceChange(id: ConditionKey): void
+  onAssessmentRunChange(index: number): void
+  onAssessmentIntervalChange(interval: number): void
+  onGenerateAssessmentLines(): void
+  onClearAssessmentLines(): void
+  onAssessmentCenterlineChange(id: string): void
   exportActions: ReactNode
   onDownload(): void | Promise<void>
 }
@@ -52,7 +69,13 @@ type Props = {
 export function WseSettingsContent({
   activeSection,
   settings,
-  assessmentLabel,
+  assessmentBusy,
+  assessmentScenarios,
+  assessmentSourceId,
+  assessmentRun,
+  assessmentRuns,
+  assessmentWorkflow,
+  stationedAssessmentLines,
   activeElement,
   selectedStationLabelId,
   centerlineStationTicks,
@@ -74,15 +97,44 @@ export function WseSettingsContent({
   onCenterlineDirectionChange,
   onStartStationChange,
   onDryDepthChange,
+  onAssessmentSourceChange,
+  onAssessmentRunChange,
+  onAssessmentIntervalChange,
+  onGenerateAssessmentLines,
+  onClearAssessmentLines,
+  onAssessmentCenterlineChange,
   exportActions,
   onDownload,
 }: Props) {
   const context: WseSettingsSectionContext = {
     calculation: {
       settings,
-      assessmentLabel,
       onSettingsChange: updateSettings,
       onDryDepthChange,
+    },
+    assessmentLines: {
+      busy: assessmentBusy,
+      scenarios: assessmentScenarios,
+      sourceId: assessmentSourceId,
+      sourceRun: assessmentRun,
+      sourceRuns: assessmentRuns,
+      collection: assessmentWorkflow.state.collection,
+      stationed: stationedAssessmentLines,
+      workflow: assessmentWorkflow,
+      settings,
+      centerlineCandidates,
+      centerlineId,
+      centerlineDirection,
+      startStation,
+      onSourceChange: onAssessmentSourceChange,
+      onSourceRunChange: onAssessmentRunChange,
+      onIntervalChange: onAssessmentIntervalChange,
+      onGenerate: onGenerateAssessmentLines,
+      onClear: onClearAssessmentLines,
+      onSettingsChange: updateSettings,
+      onCenterlineChange: onAssessmentCenterlineChange,
+      onCenterlineDirectionChange,
+      onStartStationChange,
     },
     cartography: {
       settings,

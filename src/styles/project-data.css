@@ -352,6 +352,21 @@ input[type="color"] {
   background: #ffffff;
 }
 
+.assessment-tool-review-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  color: #64778b;
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.assessment-tool-review-heading .button {
+  flex: 0 0 auto;
+}
+
 .assessment-status-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

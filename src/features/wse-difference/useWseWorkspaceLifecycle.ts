@@ -85,6 +85,14 @@ export function useWseWorkspaceLifecycle({
     figureDocument.updateSetting('assessmentLineInterval', interval)
     assessmentWorkflow.clear(interval)
   }
+  const changeAssessmentSource = (id: string) => {
+    projectSession.changeRole('assessment', id)
+    assessmentWorkflow.clear(settings.assessmentLineInterval)
+  }
+  const changeAssessmentRun = (index: number) => {
+    projectSession.changeRun(projectSession.assessmentId, index)
+    assessmentWorkflow.clear(settings.assessmentLineInterval)
+  }
   const resetStationingLabels = () => {
     figureElements.updateCenterlineStationing({ overrides: {} })
     editorUi.setSelectedStationLabelId(null)
@@ -112,6 +120,8 @@ export function useWseWorkspaceLifecycle({
     stationingSourceActions,
     projectInputs,
     changeAssessmentInterval,
+    changeAssessmentSource,
+    changeAssessmentRun,
     resetStationingLabels,
     changeDryDepth,
     resetProject,

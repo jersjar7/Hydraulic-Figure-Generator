@@ -52,7 +52,6 @@ export const wseDifferenceFigure = {
     inputs: [
       'hydraulic-models',
       'map-overlays',
-      'assessment-lines',
     ],
     requiredScenarioRoles: ['baseline', 'comparison'],
     optionalScenarioRoles: ['assessment'],
@@ -79,6 +78,7 @@ export const wseDifferenceFigure = {
       {
         id: 'assessment-lines',
         bindings: {
+          settingsSection: 'assessmentLines',
           state: 'workspace-state',
           render: ['figure'],
           persistence: 'workspace-draft',

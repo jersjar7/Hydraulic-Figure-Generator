@@ -5,6 +5,11 @@ export const WSE_DIFFERENCE_SETTINGS_SECTIONS = [
     title: 'Map calculation',
   },
   {
+    key: 'assessmentLines',
+    label: 'WSE Lines',
+    title: 'WSE assessment lines',
+  },
+  {
     key: 'cartography',
     label: 'Cartography',
     title: 'Cartography',
