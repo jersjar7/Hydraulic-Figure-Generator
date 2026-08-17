@@ -178,10 +178,6 @@ export function PlanViewResultWorkspace() {
     changeRole: projectSession.changeRole,
     changeRun: projectSession.changeRun,
     clearElementHistory: elements.clearHistory,
-    collapseInputs: () => {
-      setLeftCollapsed(true)
-      setLeftOpen(false)
-    },
     showFigure: () => {
       setProductionMode('figure')
       setActiveSection('result')

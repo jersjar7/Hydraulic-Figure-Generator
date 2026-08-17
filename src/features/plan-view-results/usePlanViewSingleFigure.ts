@@ -34,7 +34,6 @@ type Options = {
   changeRole(role: ScenarioRole, scenarioId: string): void
   changeRun(scenarioId: string, runIndex: number): void
   clearElementHistory(): void
-  collapseInputs(): void
   showFigure(): void
   appendNotices(notices: IngestNotice[]): void
 }
@@ -53,7 +52,6 @@ export function usePlanViewSingleFigure({
   changeRole,
   changeRun,
   clearElementHistory,
-  collapseInputs,
   showFigure,
   appendNotices,
 }: Options) {
@@ -75,7 +73,6 @@ export function usePlanViewSingleFigure({
         resultParameter: settings.resultParameter,
       })
       setScene(next)
-      collapseInputs()
       appendNotices([{
         level: 'success',
         text: `Generated ${next.result.label} from ${scenarioLabel}; ${next.validNodes.toLocaleString()} valid nodes.`,
@@ -88,7 +85,6 @@ export function usePlanViewSingleFigure({
     }
   }, [
     appendNotices,
-    collapseInputs,
     engine,
     ready,
     runIndex,

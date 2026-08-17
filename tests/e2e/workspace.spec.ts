@@ -949,9 +949,12 @@ test('one SMS scenario renders a fitted plan-view scalar result map', async ({
     expect(settled.centerDeltaY).toBeLessThan(2)
   }
   await expectViewportFit()
-  await page.getByRole('button', { name: 'Expand project workflow' }).click()
-  await expectViewportFit()
+  await expect(
+    page.getByRole('button', { name: 'Collapse project workflow' }),
+  ).toBeVisible()
   await page.getByRole('button', { name: 'Collapse project workflow' }).click()
+  await expectViewportFit()
+  await page.getByRole('button', { name: 'Expand project workflow' }).click()
   await expectViewportFit()
   await expect
     .poll(() =>
