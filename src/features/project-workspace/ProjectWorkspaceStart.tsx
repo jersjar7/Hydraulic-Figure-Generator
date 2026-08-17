@@ -38,7 +38,7 @@ export function ProjectWorkspaceStart() {
                 onClick={() => setActiveFigureId(workspace.id)}
               >
                 <span className="workspace-start-icon" aria-hidden="true">
-                  <Icon size={22} />
+                  <Icon size={24} />
                 </span>
                 <span>
                   <strong>{workspace.figure.label}</strong>
