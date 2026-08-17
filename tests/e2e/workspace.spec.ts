@@ -41,15 +41,18 @@ const TWO_SECTION_PROFILE_VALUES = [
   [3, 20, 30, 20, 21, 20, 22, 20, 23, 20, 24, 20, 40, 20, 31, 20, 32, 20, 33, 20, 34].join('\t'),
 ].join('\n')
 
-async function continueWithoutProject(page: Page) {
+async function continueWithoutProject(
+  page: Page,
+  workspaceId: string | null = 'fra-wse-difference',
+) {
   await page.getByRole('button', { name: 'Continue without a project' }).click()
+  if (workspaceId) {
+    await page.getByLabel('Workspace', { exact: true }).selectOption(workspaceId)
+  }
 }
 
 async function openHydraulicProfiles(page: Page) {
-  await continueWithoutProject(page)
-  await page.getByLabel('Workspace', { exact: true }).selectOption(
-    'hydraulic-profiles-sections',
-  )
+  await continueWithoutProject(page, 'hydraulic-profiles-sections')
 }
 
 test('shared figure workspace exposes scalable project and settings navigation', async ({
@@ -59,8 +62,9 @@ test('shared figure workspace exposes scalable project and settings navigation',
   await page.goto('.')
   await expect(page.getByRole('heading', { name: 'Start a project' })).toBeVisible()
   await expect(page.getByLabel('Workspace', { exact: true })).toHaveCount(0)
-  await continueWithoutProject(page)
+  await page.getByRole('button', { name: 'Continue without a project' }).click()
   await expect(page.getByLabel('Workspace', { exact: true }).locator('option')).toHaveText([
+    'Choose a workspace…',
     'Cross-Section Comparison',
     'Hydraulic Profiles & Sections',
     'Plan-View Hydraulic Results',
@@ -71,6 +75,12 @@ test('shared figure workspace exposes scalable project and settings navigation',
   await expect(
     page.getByRole('heading', { name: 'Hydraulic Figure Generator' }),
   ).toBeVisible()
+  await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue('')
+  await expect(
+    page.getByRole('heading', { name: 'Choose a workspace' }),
+  ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Open WSE Difference' })).toBeVisible()
+  await page.getByRole('button', { name: 'Open WSE Difference' }).click()
   await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
     'fra-wse-difference',
   )
@@ -270,9 +280,9 @@ test('folder project saves and restores profiles with the Export Collection', as
   await page.getByRole('button', { name: 'New project' }).click()
   await page.getByLabel('Project name').fill('Site 6 FRA')
   await page.getByRole('button', { name: 'Choose location' }).click()
-  await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue(
-    'fra-wse-difference',
-  )
+  await expect(page.getByLabel('Workspace', { exact: true })).toHaveValue('')
+  await expect(page.getByRole('heading', { name: 'Choose a workspace' })).toBeVisible()
+  await page.getByRole('button', { name: 'Open WSE Difference' }).click()
 
   await page.getByLabel('Dry-depth threshold').fill('0.12')
   await page.getByRole('button', { name: 'Save project' }).click()

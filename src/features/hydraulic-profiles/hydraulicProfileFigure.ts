@@ -34,7 +34,7 @@ export const hydraulicProfileFigure = {
   id: HYDRAULIC_PROFILES_FIGURE_ID,
   label: 'Hydraulic Profiles & Sections',
   workspaceLabel: 'Profile workspace',
-  description: 'Single-station hydraulic cross sections from SMS clipboard exports',
+  description: 'Build cross sections and longitudinal profiles from SMS summary and profile values',
   editor: defineFigureEditor({
     inputs: ['sms-summary-table', 'sms-profile-values'],
     requiredScenarioRoles: [],

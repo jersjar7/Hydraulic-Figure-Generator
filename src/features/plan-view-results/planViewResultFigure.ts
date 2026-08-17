@@ -40,7 +40,7 @@ export const planViewResultFigure = {
   id: PLAN_VIEW_RESULTS_FIGURE_ID,
   label: 'Plan-View Hydraulic Results',
   workspaceLabel: 'Hydraulic results workspace',
-  description: 'Classified plan-view maps from scalar SMS results',
+  description: 'Create classified maps of SMS topography, mesh, and hydraulic results',
   editor: defineFigureEditor({
     inputs: ['hydraulic-models', 'map-overlays'],
     requiredScenarioRoles: ['baseline'],

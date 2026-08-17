@@ -1,6 +1,7 @@
 import { createContext } from 'react'
 import type { FigureId } from '../figures/workspaceRegistry'
 import { REPORT_ASSEMBLY_WORKSPACE_ID } from '../report-assembly/reportAssemblyWorkspaceId'
+import { PROJECT_START_WORKSPACE_ID } from './projectStartWorkspaceId'
 import type { useHydraulicProjectDocument } from '../project-document/useHydraulicProjectDocument'
 import type { useProjectSession } from '../project-session/useProjectSession'
 import type { useReportAssembly } from '../report-assembly/useReportAssembly'
@@ -11,7 +12,10 @@ import type { WorkspaceDraftRepository } from '../figures/workspaceDraftReposito
 import type { ReportFigureArtifact } from '../../core/types'
 import type { ReportFigureEditTargets } from '../../application/report-assembly/reportFigureEditSession'
 
-export type AppWorkspaceId = FigureId | typeof REPORT_ASSEMBLY_WORKSPACE_ID
+export type AppWorkspaceId =
+  | FigureId
+  | typeof REPORT_ASSEMBLY_WORKSPACE_ID
+  | typeof PROJECT_START_WORKSPACE_ID
 
 export type HydraulicProjectWorkspaceValue = {
   activeFigureId: AppWorkspaceId

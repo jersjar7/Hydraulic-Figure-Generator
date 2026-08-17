@@ -8,6 +8,10 @@ type WorkspaceComponentModule = {
   default: ComponentType
 }
 
+type WorkspaceIcon = ComponentType<{
+  size?: number
+}>
+
 export type WorkspaceExtensionCapabilities = Readonly<{
   folderDraft: true
   editableExport: true
@@ -25,11 +29,13 @@ export function defineFigureWorkspace<
   Draft,
 >({
   figure,
+  icon,
   capabilities,
   loadDraft,
   loadWorkspace,
 }: {
   figure: Figure
+  icon: WorkspaceIcon
   capabilities: WorkspaceExtensionCapabilities
   loadDraft: () => Promise<WorkspaceDraftModule<Figure['id'], Draft>>
   loadWorkspace: () => Promise<WorkspaceComponentModule>
@@ -37,6 +43,7 @@ export function defineFigureWorkspace<
   return {
     id: figure.id,
     figure,
+    icon,
     supportedTools: figure.editor.supportedTools,
     capabilities,
     draft: {

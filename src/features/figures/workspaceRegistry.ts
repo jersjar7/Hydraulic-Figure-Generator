@@ -1,3 +1,9 @@
+import {
+  ChartNoAxesCombined,
+  ChartSpline,
+  GitCompareArrows,
+  Map,
+} from 'lucide-react'
 import { wseDifferenceFigure } from '../wse-difference/wseDifferenceFigure'
 import { crossSectionFigure } from '../cross-section/crossSectionFigure'
 import { defineFigureWorkspace } from './workspaceModule'
@@ -7,6 +13,7 @@ import { hydraulicProfileFigure } from '../hydraulic-profiles/hydraulicProfileFi
 export const FIGURE_WORKSPACES = [
   defineFigureWorkspace({
     figure: wseDifferenceFigure,
+    icon: GitCompareArrows,
     capabilities: {
       folderDraft: true,
       editableExport: true,
@@ -24,6 +31,7 @@ export const FIGURE_WORKSPACES = [
   }),
   defineFigureWorkspace({
     figure: crossSectionFigure,
+    icon: ChartNoAxesCombined,
     capabilities: {
       folderDraft: true,
       editableExport: true,
@@ -41,6 +49,7 @@ export const FIGURE_WORKSPACES = [
   }),
   defineFigureWorkspace({
     figure: planViewResultFigure,
+    icon: Map,
     capabilities: {
       folderDraft: true,
       editableExport: true,
@@ -58,6 +67,7 @@ export const FIGURE_WORKSPACES = [
   }),
   defineFigureWorkspace({
     figure: hydraulicProfileFigure,
+    icon: ChartSpline,
     capabilities: {
       folderDraft: true,
       editableExport: true,

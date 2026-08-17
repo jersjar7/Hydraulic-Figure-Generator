@@ -47,7 +47,7 @@ export const wseDifferenceFigure = {
   id: WSE_DIFFERENCE_FIGURE_ID,
   label: 'WSE Difference',
   workspaceLabel: 'FRA workspace',
-  description: 'Comparison minus baseline water-surface elevation',
+  description: 'Map water-surface elevation changes between two hydraulic scenarios',
   editor: defineFigureEditor({
     inputs: [
       'hydraulic-models',

@@ -13,12 +13,12 @@ import { reportAssemblyFolderAdapter } from '../project-lifecycle/reportAssembly
 import { useHydraulicProjectLifecycle } from '../project-lifecycle/useHydraulicProjectLifecycle'
 import { useHydraulicProjectCommands } from '../project-lifecycle/useHydraulicProjectCommands'
 import {
-  DEFAULT_FIGURE_WORKSPACE,
   FIGURE_WORKSPACES,
 } from '../figures/workspaceRegistry'
 import type { AppWorkspaceId } from './hydraulicProjectWorkspaceContext'
 import { HydraulicProjectWorkspaceContext } from './hydraulicProjectWorkspaceContext'
 import { useWorkspaceEditingSession } from './useWorkspaceEditingSession'
+import { PROJECT_START_WORKSPACE_ID } from './projectStartWorkspaceId'
 
 export function HydraulicProjectWorkspaceProvider({
   children,
@@ -26,7 +26,7 @@ export function HydraulicProjectWorkspaceProvider({
   children: ReactNode
 }) {
   const [activeFigureId, setActiveFigureId] = useState<AppWorkspaceId>(
-    DEFAULT_FIGURE_WORKSPACE.id,
+    PROJECT_START_WORKSPACE_ID,
   )
   const projectSession = useProjectSession()
   const projectDocument = useHydraulicProjectDocument()
@@ -61,9 +61,11 @@ export function HydraulicProjectWorkspaceProvider({
   const projectLifecycle = useHydraulicProjectLifecycle({
     workspaces: persistedWorkspaces,
     availableWorkspaceIds: [
+      PROJECT_START_WORKSPACE_ID,
       ...FIGURE_WORKSPACES.map((workspace) => workspace.id),
       'report-assembly',
     ],
+    newProjectWorkspaceId: PROJECT_START_WORKSPACE_ID,
     activeWorkspaceId: activeFigureId,
     setActiveWorkspace: setActiveFigureId,
   })

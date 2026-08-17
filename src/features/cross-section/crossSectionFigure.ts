@@ -46,7 +46,7 @@ export const crossSectionFigure = {
   id: CROSS_SECTION_FIGURE_ID,
   label: 'Cross-Section Comparison',
   workspaceLabel: 'FRA workspace',
-  description: 'Ground and discharge-weighted WSE comparison at a selected section',
+  description: 'Compare ground and discharge-weighted WSE along a selected cross section',
   editor: defineFigureEditor({
     inputs: [
       'hydraulic-models',

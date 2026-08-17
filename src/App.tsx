@@ -11,6 +11,8 @@ import { useHydraulicProjectWorkspace } from './features/project-workspace/useHy
 import { REPORT_ASSEMBLY_WORKSPACE_ID } from './features/report-assembly/reportAssemblyWorkspaceId'
 import { ExportCollectionButton } from './features/report-assembly/ExportCollectionButton'
 import { ProjectCommandBar } from './features/project-lifecycle/ProjectCommandBar'
+import { ProjectWorkspaceStart } from './features/project-workspace/ProjectWorkspaceStart'
+import { PROJECT_START_WORKSPACE_ID } from './features/project-workspace/projectStartWorkspaceId'
 
 const ReportAssemblyWorkspace = lazy(() =>
   import('./features/report-assembly/ReportAssemblyWorkspace').then((module) => ({
@@ -20,6 +22,9 @@ const ReportAssemblyWorkspace = lazy(() =>
 
 function ActiveWorkspace() {
   const { activeFigureId } = useHydraulicProjectWorkspace()
+  if (activeFigureId === PROJECT_START_WORKSPACE_ID) {
+    return <ProjectWorkspaceStart />
+  }
   if (activeFigureId === REPORT_ASSEMBLY_WORKSPACE_ID) {
     return (
       <Suspense fallback={<div className="workspace-loading" role="status">Loading Export Collection…</div>}>
@@ -28,8 +33,8 @@ function ActiveWorkspace() {
     )
   }
   const definition =
-    FIGURE_WORKSPACES.find((workspace) => workspace.id === activeFigureId) ??
-    FIGURE_WORKSPACES[0]
+    FIGURE_WORKSPACES.find((workspace) => workspace.id === activeFigureId)
+  if (!definition) return <ProjectWorkspaceStart />
   const Workspace = definition.Workspace
   return (
     <Suspense

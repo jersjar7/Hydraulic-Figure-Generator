@@ -18,6 +18,7 @@ export type ProjectLifecycleDialog = 'welcome' | 'new' | null
 type Options = {
   workspaces: ProjectWorkspaceFolderBinding[]
   availableWorkspaceIds: readonly AppWorkspaceId[]
+  newProjectWorkspaceId: AppWorkspaceId
   activeWorkspaceId: AppWorkspaceId
   setActiveWorkspace(workspaceId: AppWorkspaceId): void
   storage?: ProjectFolderStoragePort
@@ -50,6 +51,7 @@ function projectFingerprint(
 export function useHydraulicProjectLifecycle({
   workspaces,
   availableWorkspaceIds,
+  newProjectWorkspaceId,
   activeWorkspaceId,
   setActiveWorkspace,
   storage = browserProjectFolderStoragePort,
@@ -97,21 +99,21 @@ export function useHydraulicProjectLifecycle({
         mode: 'readwrite',
       })
       if (!parent) return false
-      const persistedWorkspaceId = persistedActiveWorkspace(
+      const initialWorkspaceId = persistedActiveWorkspace(
         availableWorkspaceIds,
-        activeWorkspaceId,
+        newProjectWorkspaceId,
       )
       const opened = await createHydraulicProjectFolder({
         storage,
         parent,
         projectName,
         workspaces,
-        activeWorkspaceId: persistedWorkspaceId,
+        activeWorkspaceId: initialWorkspaceId,
         timestamp: now(),
       })
       setProject(opened)
-      setSavedFingerprint(fingerprint)
-      setActiveWorkspace(persistedWorkspaceId as AppWorkspaceId)
+      setSavedFingerprint(projectFingerprint(workspaces, initialWorkspaceId))
+      setActiveWorkspace(initialWorkspaceId as AppWorkspaceId)
       setDialog(null)
       return true
     } catch (caught) {
@@ -120,7 +122,7 @@ export function useHydraulicProjectLifecycle({
     } finally {
       setBusy(false)
     }
-  }, [activeWorkspaceId, availableWorkspaceIds, fingerprint, now, setActiveWorkspace, storage, workspaces])
+  }, [availableWorkspaceIds, newProjectWorkspaceId, now, setActiveWorkspace, storage, workspaces])
 
   const openProject = useCallback(async () => {
     if (!confirmDiscard()) return false
