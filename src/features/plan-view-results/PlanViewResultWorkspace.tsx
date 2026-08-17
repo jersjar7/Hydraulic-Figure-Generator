@@ -42,7 +42,6 @@ import { usePlanViewSingleFigure } from './usePlanViewSingleFigure'
 import { usePlanViewWorkspaceLifecycle } from './usePlanViewWorkspaceLifecycle'
 import { createPlanViewWorkspaceOutputController } from './planViewWorkspaceOutputController'
 import { usePlanViewBatchProduction } from './usePlanViewBatchProduction'
-
 const SCENARIO_ROLES: readonly ScenarioRoleOption[] = [
   { role: 'baseline', label: 'Scenario', required: true },
 ]
@@ -90,6 +89,8 @@ export function PlanViewResultWorkspace() {
   const displaySize = useFittedCanvasAspect(
     canvasFrameRef,
     settings.orientation === 'landscape' ? 1650 / 1275 : 1275 / 1650,
+    16,
+    productionMode === 'figure',
   )
   const { resultOptions, selectedResult, ready } = usePlanViewResultSelection({
     engine,
@@ -198,6 +199,7 @@ export function PlanViewResultWorkspace() {
     selectedAnnotationId: annotations.selectedId,
     selectedElementKey:
       activeSection === 'elements' ? activeElement : null,
+    enabled: productionMode === 'figure',
     setBusy,
     appendNotices,
     interacting: mapInteractions.dragging,
@@ -365,12 +367,6 @@ export function PlanViewResultWorkspace() {
             engine={engine}
             scenarios={scenarios}
             controller={figureSet}
-            includedCount={batchReportExport.includedCount}
-            addingToExport={batchReportExport.adding}
-            exportProgress={batchReportExport.progress}
-            onAddToExport={() => void batchReportExport.addIncluded()}
-            onCancelAddToExport={batchReportExport.cancel}
-            onQuickWordExport={() => setProductionMode('document')}
           />
         ) : (
           <PlanViewFigureDocumentPanel
@@ -388,6 +384,14 @@ export function PlanViewResultWorkspace() {
           figureSet={figureSet}
           figureDocument={figureDocument}
           onGenerateFigure={singleFigure.generate}
+          batchExport={{
+            includedCount: batchReportExport.includedCount,
+            adding: batchReportExport.adding,
+            progress: batchReportExport.progress,
+            onAdd: () => void batchReportExport.addIncluded(),
+            onCancel: batchReportExport.cancel,
+            onQuickWord: () => setProductionMode('document'),
+          }}
         />
       }
     />

@@ -185,17 +185,27 @@
   line-height: 1.35;
 }
 
-.batch-export-actions {
+.batch-action-footer {
   display: grid;
   gap: 6px;
-  padding-top: 10px;
-  border-top: 1px solid #e1e7ee;
 }
 
-.batch-export-actions small {
-  color: #687b8e;
-  font-size: 9px;
-  line-height: 1.4;
+.batch-action-footer-exports {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+}
+
+.batch-action-footer-exports .button {
+  min-width: 0;
+  padding-inline: 7px;
+  overflow: hidden;
+}
+
+.batch-action-footer-exports .button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .figure-set-empty {

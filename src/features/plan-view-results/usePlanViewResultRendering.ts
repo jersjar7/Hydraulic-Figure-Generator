@@ -24,6 +24,7 @@ type Options = {
   selectedAnnotationId?: string | null
   selectedElementKey?: MapElementKey | null
   elementBoundsRef: RefObject<MapElementBounds[]>
+  enabled?: boolean
   setBusy(busy: boolean): void
   appendNotices(notices: IngestNotice[]): void
   interacting?: boolean
@@ -40,6 +41,7 @@ export function usePlanViewResultRendering({
   selectedAnnotationId,
   selectedElementKey,
   elementBoundsRef,
+  enabled = true,
   setBusy,
   appendNotices,
   interacting = false,
@@ -47,7 +49,7 @@ export function usePlanViewResultRendering({
   const renderSequence = useRef(0)
 
   useEffect(() => {
-    if (!scene || !canvasRef.current) return
+    if (!enabled || !scene || !canvasRef.current) return
     const sequence = ++renderSequence.current
     const output = document.createElement('canvas')
     const controller = new AbortController()
@@ -95,6 +97,7 @@ export function usePlanViewResultRendering({
     centerlineStationing,
     elementBoundsRef,
     engine,
+    enabled,
     interacting,
     overlays,
     scene,

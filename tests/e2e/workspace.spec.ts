@@ -1197,7 +1197,14 @@ test('Plan-View builds, collects, and quickly exports batch figures', async ({ p
   })
   await expect(page.getByText('3 ready · 3 included · 3 total')).toBeVisible()
 
-  await page.getByRole('button', {
+  const batchFooter = page.locator('.batch-action-footer')
+  await expect(batchFooter.getByRole('button', {
+    name: 'Add included to Export Collection (3)',
+  })).toBeVisible()
+  await expect(batchFooter.getByRole('button', {
+    name: 'Quick Word Export',
+  })).toBeVisible()
+  await batchFooter.getByRole('button', {
     name: 'Add included to Export Collection (3)',
   }).click()
   await expect(page.getByRole('button', {
@@ -1227,7 +1234,22 @@ test('Plan-View builds, collects, and quickly exports batch figures', async ({ p
     'aria-selected',
     'true',
   )
-  await expect(
-    page.getByLabel('Generated plan-view hydraulic result figure'),
-  ).toHaveClass(/is-visible/)
+  const reopenedCanvas = page.getByLabel(
+    'Generated plan-view hydraulic result figure',
+  )
+  await expect(reopenedCanvas).toHaveClass(/is-visible/)
+  await expect.poll(() => reopenedCanvas.evaluate((node) => (
+    (node as HTMLCanvasElement).width
+  ))).toBeGreaterThan(300)
+  await expect.poll(() => reopenedCanvas.evaluate((node) => {
+    const canvas = node as HTMLCanvasElement
+    const context = canvas.getContext('2d')
+    if (!context || canvas.width <= 0 || canvas.height <= 0) return false
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+    const stride = Math.max(4, Math.floor(pixels.length / 2000 / 4) * 4)
+    for (let index = 3; index < pixels.length; index += stride) {
+      if (pixels[index] > 0) return true
+    }
+    return false
+  })).toBe(true)
 })

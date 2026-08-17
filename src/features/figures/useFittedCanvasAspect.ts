@@ -27,6 +27,7 @@ export function useFittedCanvasAspect(
   frameRef: RefObject<HTMLDivElement | null>,
   aspect: number,
   safeMargin = DEFAULT_SAFE_MARGIN,
+  active = true,
 ) {
   const [displaySize, setDisplaySize] = useState<CanvasDisplaySize>({
     width: 0,
@@ -34,6 +35,7 @@ export function useFittedCanvasAspect(
   })
 
   useLayoutEffect(() => {
+    if (!active) return
     const frame = frameRef.current
     if (!frame) return
 
@@ -87,7 +89,7 @@ export function useFittedCanvasAspect(
       cancelAnimationFrame(animationFrame)
       cancelAnimationFrame(settlingFrame)
     }
-  }, [aspect, frameRef, safeMargin])
+  }, [active, aspect, frameRef, safeMargin])
 
   return displaySize
 }
