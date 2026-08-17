@@ -5,7 +5,10 @@ import type {
   HydraulicProfileScene,
   HydraulicProfileView,
 } from '../../core/types'
-import { useFittedCanvasAspect } from '../figures/useFittedCanvasAspect'
+import {
+  fittedCanvasStyle,
+  useFittedCanvasAspect,
+} from '../figures/useFittedCanvasAspect'
 import { HYDRAULIC_PROFILE_FRAMES } from './hydraulicProfileRenderer'
 import { HydraulicProfileStationNavigator } from './HydraulicProfileStationNavigator'
 
@@ -37,7 +40,6 @@ export function HydraulicProfileCanvas({
   const displaySize = useFittedCanvasAspect(
     frameRef,
     frame.width / frame.height,
-    10,
   )
   return (
     <>
@@ -65,10 +67,7 @@ export function HydraulicProfileCanvas({
           ref={canvasRef}
           className={view === 'cross-sections' ? (scene ? 'map-canvas is-visible' : 'map-canvas') : (longitudinalScene ? 'map-canvas is-visible' : 'map-canvas')}
           aria-label="Generated SMS hydraulic profile"
-          style={{
-            width: displaySize.width || undefined,
-            height: displaySize.height || undefined,
-          }}
+          style={fittedCanvasStyle(displaySize)}
         />
       </div>
     </>

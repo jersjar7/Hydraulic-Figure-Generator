@@ -9,7 +9,10 @@ import type {
   HydraulicCrossSectionScene,
   WseDifferenceScene,
 } from '../../core/types'
-import { useFittedCanvasAspect } from '../figures/useFittedCanvasAspect'
+import {
+  fittedCanvasStyle,
+  useFittedCanvasAspect,
+} from '../figures/useFittedCanvasAspect'
 import { CROSS_SECTION_FRAMES } from './crossSectionRenderer'
 
 type Props = {
@@ -57,7 +60,6 @@ export function CrossSectionCanvas({
   const displaySize = useFittedCanvasAspect(
     canvasFrameRef,
     aspect,
-    10,
   )
   return (
     <>
@@ -125,10 +127,7 @@ export function CrossSectionCanvas({
           onPointerMove={view === 'map' ? onPointerMove : undefined}
           onPointerUp={view === 'map' ? onPointerUp : undefined}
           onPointerCancel={view === 'map' ? onPointerCancel : undefined}
-          style={{
-            width: displaySize.width || undefined,
-            height: displaySize.height || undefined,
-          }}
+          style={fittedCanvasStyle(displaySize)}
         />
       </div>
       {view === 'map' && drawing ? (

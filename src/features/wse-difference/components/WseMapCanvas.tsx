@@ -4,6 +4,7 @@ import type {
   RefObject,
 } from 'react'
 import type { WseDifferenceScene } from '../../../core/types'
+import { fittedCanvasStyle } from '../../figures/useFittedCanvasAspect'
 
 type WseMapCanvasProps = {
   scene: WseDifferenceScene | null
@@ -78,10 +79,7 @@ export function WseMapCanvas({
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerCancel}
           onPointerLeave={onPointerLeave}
-          style={{
-            width: displaySize.width || undefined,
-            height: displaySize.height || undefined,
-          }}
+          style={fittedCanvasStyle(displaySize)}
         />
       </div>
     </>

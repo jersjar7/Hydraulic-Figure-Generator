@@ -860,7 +860,7 @@ test('loaded scenarios carry into the cross-section map-to-chart workflow', asyn
 test('one SMS scenario renders a fitted plan-view scalar result map', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.setViewportSize({ width: 1920, height: 912 })
   await page.goto('.')
   await continueWithoutProject(page)
   await page.getByLabel('Workspace', { exact: true }).selectOption(
@@ -918,6 +918,41 @@ test('one SMS scenario renders a fitted plan-view scalar result map', async ({
   expect(Math.abs(fit.ratio - 1650 / 1275)).toBeLessThan(0.02)
   expect(fit.centerDeltaX).toBeLessThan(2)
   expect(fit.centerDeltaY).toBeLessThan(2)
+  const expectViewportFit = async () => {
+    await expect.poll(() => canvas.evaluate((element) => {
+      const map = element.getBoundingClientRect()
+      const frame = element.parentElement!.getBoundingClientRect()
+      return (
+          map.left >= frame.left + 15 &&
+          map.top >= frame.top + 15 &&
+          map.right <= frame.right - 15 &&
+          map.bottom <= frame.bottom - 15 &&
+          map.right <= window.innerWidth &&
+          map.bottom <= window.innerHeight
+      )
+    })).toBe(true)
+    const settled = await canvas.evaluate((element) => {
+      const map = element.getBoundingClientRect()
+      const frame = element.parentElement!.getBoundingClientRect()
+      return {
+        ratio: map.width / map.height,
+        centerDeltaX: Math.abs(
+          map.left + map.width / 2 - (frame.left + frame.width / 2),
+        ),
+        centerDeltaY: Math.abs(
+          map.top + map.height / 2 - (frame.top + frame.height / 2),
+        ),
+      }
+    })
+    expect(Math.abs(settled.ratio - 1650 / 1275)).toBeLessThan(0.02)
+    expect(settled.centerDeltaX).toBeLessThan(2)
+    expect(settled.centerDeltaY).toBeLessThan(2)
+  }
+  await expectViewportFit()
+  await page.getByRole('button', { name: 'Expand project workflow' }).click()
+  await expectViewportFit()
+  await page.getByRole('button', { name: 'Collapse project workflow' }).click()
+  await expectViewportFit()
   await expect
     .poll(() =>
       canvas.evaluate((element) => {

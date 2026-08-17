@@ -6,6 +6,7 @@ import type {
   MapElementKey,
   PlanViewResultScene,
 } from '../../core/types'
+import { fittedCanvasStyle } from '../figures/useFittedCanvasAspect'
 
 type Props = {
   scene: PlanViewResultScene | null
@@ -67,10 +68,7 @@ export function PlanViewResultCanvas({
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerCancel}
           onPointerLeave={onPointerLeave}
-          style={{
-            width: displaySize.width || undefined,
-            height: displaySize.height || undefined,
-          }}
+          style={fittedCanvasStyle(displaySize)}
         />
       </div>
     </>

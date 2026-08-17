@@ -1,6 +1,7 @@
 import {
-  useEffect,
+  useLayoutEffect,
   useState,
+  type CSSProperties,
   type RefObject,
 } from 'react'
 
@@ -9,29 +10,47 @@ export type CanvasDisplaySize = {
   height: number
 }
 
+const DEFAULT_SAFE_MARGIN = 16
+
+export function fittedCanvasStyle(
+  displaySize: CanvasDisplaySize,
+): CSSProperties {
+  const ready = displaySize.width > 0 && displaySize.height > 0
+  return {
+    width: ready ? displaySize.width : 0,
+    height: ready ? displaySize.height : 0,
+    visibility: ready ? 'visible' : 'hidden',
+  }
+}
+
 export function useFittedCanvasAspect(
   frameRef: RefObject<HTMLDivElement | null>,
   aspect: number,
-  safeMargin = 0,
+  safeMargin = DEFAULT_SAFE_MARGIN,
 ) {
   const [displaySize, setDisplaySize] = useState<CanvasDisplaySize>({
     width: 0,
     height: 0,
   })
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const frame = frameRef.current
     if (!frame) return
+
+    let animationFrame = 0
+    let settlingFrame = 0
 
     const fitCanvas = () => {
       const bounds = frame.getBoundingClientRect()
       const availableWidth = Math.max(0, bounds.width - safeMargin * 2)
       const availableHeight = Math.max(0, bounds.height - safeMargin * 2)
-      const fittedWidth = Math.min(
-        availableWidth,
-        availableHeight * aspect,
-      )
-      const fittedHeight = fittedWidth / aspect
+      const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1
+      let fittedWidth = availableWidth
+      let fittedHeight = fittedWidth / safeAspect
+      if (fittedHeight > availableHeight) {
+        fittedHeight = availableHeight
+        fittedWidth = fittedHeight * safeAspect
+      }
 
       setDisplaySize((current) =>
         Math.abs(current.width - fittedWidth) < 0.5 &&
@@ -41,11 +60,33 @@ export function useFittedCanvasAspect(
       )
     }
 
-    const observer = new ResizeObserver(fitCanvas)
-    observer.observe(frame)
-    fitCanvas()
+    const scheduleFit = () => {
+      cancelAnimationFrame(animationFrame)
+      cancelAnimationFrame(settlingFrame)
+      animationFrame = requestAnimationFrame(() => {
+        fitCanvas()
+        settlingFrame = requestAnimationFrame(fitCanvas)
+      })
+    }
 
-    return () => observer.disconnect()
+    const observer = new ResizeObserver(scheduleFit)
+    observer.observe(frame)
+    const workspace = frame.closest('.workspace')
+    workspace?.addEventListener('transitionrun', scheduleFit)
+    workspace?.addEventListener('transitionend', scheduleFit)
+    window.addEventListener('resize', scheduleFit)
+    window.visualViewport?.addEventListener('resize', scheduleFit)
+    scheduleFit()
+
+    return () => {
+      observer.disconnect()
+      workspace?.removeEventListener('transitionrun', scheduleFit)
+      workspace?.removeEventListener('transitionend', scheduleFit)
+      window.removeEventListener('resize', scheduleFit)
+      window.visualViewport?.removeEventListener('resize', scheduleFit)
+      cancelAnimationFrame(animationFrame)
+      cancelAnimationFrame(settlingFrame)
+    }
   }, [aspect, frameRef, safeMargin])
 
   return displaySize
