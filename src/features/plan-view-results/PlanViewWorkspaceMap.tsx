@@ -21,6 +21,7 @@ type Props = {
   displaySize: CanvasDisplaySize
   figureSet: ReturnType<typeof usePlanViewFigureSet>
   figureDocument: ReturnType<typeof usePlanViewFigureDocument>
+  hasScenarios: boolean
   onOpenFigure(
     item: ReturnType<typeof usePlanViewFigureSet>['figureSet']['items'][number],
   ): void
@@ -43,6 +44,7 @@ export function PlanViewWorkspaceMap({
   displaySize,
   figureSet,
   figureDocument,
+  hasScenarios,
   onOpenFigure,
   stationLabelDragging,
   elementDragging,
@@ -71,6 +73,7 @@ export function PlanViewWorkspaceMap({
         figureSet={figureSet.figureSet}
         runtime={figureSet.runtime}
         draftCount={figureSet.draftCount}
+        hasScenarios={hasScenarios}
         onOpen={onOpenFigure}
         onToggleIncluded={figureSet.toggleIncluded}
       />

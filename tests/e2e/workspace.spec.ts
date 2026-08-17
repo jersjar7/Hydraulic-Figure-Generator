@@ -1158,7 +1158,7 @@ test('Plan-View renders topography, mesh, and combined geometry outputs', async 
   }
 })
 
-test('Plan-View builds and reviews a multi-result figure set', async ({ page }) => {
+test('Plan-View builds, collects, and quickly exports batch figures', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.goto('.')
   await continueWithoutProject(page)
@@ -1180,7 +1180,7 @@ test('Plan-View builds and reviews a multi-result figure set', async ({ page }) 
     .filter({ hasText: 'Aerial opacity' })
     .locator('input')
     .fill('0')
-  await page.getByRole('tab', { name: 'Figure Set', exact: true }).click()
+  await page.getByRole('tab', { name: 'Batch Figures', exact: true }).click()
 
   const figureSetPanel = page.locator('.right-sidebar')
   await expect(figureSetPanel.getByText('1 figure selected')).toBeVisible()
@@ -1197,7 +1197,15 @@ test('Plan-View builds and reviews a multi-result figure set', async ({ page }) 
   })
   await expect(page.getByText('3 ready · 3 included · 3 total')).toBeVisible()
 
-  await page.getByRole('tab', { name: 'Document', exact: true }).click()
+  await page.getByRole('button', {
+    name: 'Add included to Export Collection (3)',
+  }).click()
+  await expect(page.getByRole('button', {
+    name: 'Export Collection (3)',
+    exact: true,
+  })).toBeVisible({ timeout: 15_000 })
+
+  await page.getByRole('button', { name: 'Quick Word Export' }).click()
   await expect(page.getByText('3 pages · one figure per page')).toBeVisible()
   await page.getByRole('spinbutton', { name: 'Start number' }).fill('10')
   await expect(page.getByText(/^Figure 10\./)).toBeVisible()
@@ -1213,9 +1221,9 @@ test('Plan-View builds and reviews a multi-result figure set', async ({ page }) 
   const bytes = await readFile(downloadPath)
   expect(bytes.subarray(0, 2).toString()).toBe('PK')
 
-  await page.getByRole('tab', { name: 'Figure Set', exact: true }).click()
+  await page.getByRole('tab', { name: 'Batch Figures', exact: true }).click()
   await page.getByRole('button', { name: /Open figure 1:/ }).click()
-  await expect(page.getByRole('tab', { name: 'Figure', exact: true })).toHaveAttribute(
+  await expect(page.getByRole('tab', { name: 'Single Figure', exact: true })).toHaveAttribute(
     'aria-selected',
     'true',
   )

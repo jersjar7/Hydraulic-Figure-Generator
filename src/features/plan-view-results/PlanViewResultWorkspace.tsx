@@ -41,6 +41,7 @@ import { usePlanViewWorkspaceUi } from './usePlanViewWorkspaceUi'
 import { usePlanViewSingleFigure } from './usePlanViewSingleFigure'
 import { usePlanViewWorkspaceLifecycle } from './usePlanViewWorkspaceLifecycle'
 import { createPlanViewWorkspaceOutputController } from './planViewWorkspaceOutputController'
+import { usePlanViewBatchProduction } from './usePlanViewBatchProduction'
 
 const SCENARIO_ROLES: readonly ScenarioRoleOption[] = [
   { role: 'baseline', label: 'Scenario', required: true },
@@ -55,6 +56,7 @@ export function PlanViewResultWorkspace() {
   const {
     projectSession,
     projectDocument,
+    reportAssembly,
     projectCommands,
   } = useHydraulicProjectWorkspace()
   const { engine, scenarios, baselineId, runByScenario } = projectSession
@@ -219,6 +221,17 @@ export function PlanViewResultWorkspace() {
     resetMapInteractions: mapInteractions.resetInteractions,
     appendNotices,
   })
+  const batchReportExport = usePlanViewBatchProduction({
+    projectSession,
+    projectDocument,
+    reportAssembly,
+    figureSet,
+    figureDocument,
+    stationingSource,
+    renderStationingSource: stationing.source,
+    annotations,
+    appendNotices,
+  })
   const output = createPlanViewWorkspaceOutputController({
     canvasRef,
     scene,
@@ -235,7 +248,7 @@ export function PlanViewResultWorkspace() {
     <FigureWorkspaceScaffold<WorkspaceSettingsSectionKey>
       figureLabel={productionMode === 'figure'
         ? planViewResultFigure.label
-        : productionMode === 'set' ? 'Figure Set' : 'Word Document'}
+        : productionMode === 'set' ? 'Batch Figures' : 'Quick Word Export'}
       comparisonDescription={productionMode === 'figure'
             ? `${scenarioLabel} · ${selectedResult?.label ?? 'Select map content'}`
         : productionMode === 'set'
@@ -279,7 +292,7 @@ export function PlanViewResultWorkspace() {
       showMapActions={productionMode === 'figure'}
       settingsHeading={productionMode === 'figure'
         ? 'Figure settings'
-        : productionMode === 'set' ? 'Figure set' : 'Document'}
+        : productionMode === 'set' ? 'Batch figures' : 'Quick Word Export'}
       projectPanel={
         <HydraulicProjectPanel
           inputCapabilities={planViewResultFigure.editor.inputs}
@@ -309,6 +322,7 @@ export function PlanViewResultWorkspace() {
           displaySize={displaySize}
           figureSet={figureSet}
           figureDocument={figureDocument}
+          hasScenarios={scenarios.length > 0}
           onOpenFigure={singleFigure.openFigureSetItem}
           stationLabelDragging={mapInteractions.stationLabelDragging}
           elementDragging={mapInteractions.elementDragging}
@@ -351,6 +365,12 @@ export function PlanViewResultWorkspace() {
             engine={engine}
             scenarios={scenarios}
             controller={figureSet}
+            includedCount={batchReportExport.includedCount}
+            addingToExport={batchReportExport.adding}
+            exportProgress={batchReportExport.progress}
+            onAddToExport={() => void batchReportExport.addIncluded()}
+            onCancelAddToExport={batchReportExport.cancel}
+            onQuickWordExport={() => setProductionMode('document')}
           />
         ) : (
           <PlanViewFigureDocumentPanel

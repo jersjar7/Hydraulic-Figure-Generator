@@ -33,7 +33,7 @@ export function PlanViewWorkspaceFooter({
           : <Download size={17} aria-hidden="true" />}
         label={figureDocument.exporting
           ? `Cancel export (${completed}/${total})`
-          : 'Export Word document'}
+          : 'Export quick Word document'}
         tone={figureDocument.exporting ? 'secondary' : 'primary'}
         disabled={!figureDocument.exporting && figureDocument.pages.length === 0}
         testId="export-figure-document"
@@ -50,7 +50,7 @@ export function PlanViewWorkspaceFooter({
         icon={figureSet.generating
           ? <X size={17} aria-hidden="true" />
           : <LayoutGrid size={17} aria-hidden="true" />}
-        label={figureSet.generating ? 'Cancel generation' : 'Generate figure set'}
+        label={figureSet.generating ? 'Cancel generation' : 'Generate batch figures'}
         tone={figureSet.generating ? 'secondary' : 'primary'}
         disabled={!figureSet.generating && figureSet.draftCount === 0}
         testId="generate-figure-set"

@@ -22,7 +22,7 @@ export function PlanViewFigureDocumentPreview({
       <div className="figure-set-empty">
         <div className="empty-symbol"><Images size={26} /></div>
         <h2>No document pages</h2>
-        <p>Generate a figure set and include at least one figure.</p>
+        <p>Generate batch figures and include at least one figure.</p>
       </div>
     )
   }

@@ -13,6 +13,7 @@ type Props = {
   figureSet: PlanViewFigureSetDocument
   runtime: Record<string, FigureSetItemRuntime>
   draftCount: number
+  hasScenarios: boolean
   onOpen(item: PlanViewFigureSetItem): void
   onToggleIncluded(id: string): void
 }
@@ -40,6 +41,7 @@ export function PlanViewFigureSetGallery({
   figureSet,
   runtime,
   draftCount,
+  hasScenarios,
   onOpen,
   onToggleIncluded,
 }: Props) {
@@ -52,8 +54,12 @@ export function PlanViewFigureSetGallery({
     return (
       <div className="figure-set-empty">
         <div className="empty-symbol"><Image size={26} /></div>
-        <h2>No figure previews</h2>
-        <p>{draftCount} figure{draftCount === 1 ? '' : 's'} selected</p>
+        <h2>{hasScenarios ? 'Ready to build batch figures' : 'Load models to begin'}</h2>
+        <p>
+          {hasScenarios
+            ? `${draftCount} figure${draftCount === 1 ? '' : 's'} selected. Choose Generate batch figures to create the preview gallery.`
+            : 'Add SMS geometry and datasets in Models. You can then select scenarios, runs, and results for the batch.'}
+        </p>
       </div>
     )
   }
@@ -103,7 +109,7 @@ export function PlanViewFigureSetGallery({
                     checked={item.included}
                     onChange={() => onToggleIncluded(item.id)}
                   />
-                  Include in document
+                  Include in exports
                 </label>
               </div>
             </article>

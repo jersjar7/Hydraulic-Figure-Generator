@@ -1,4 +1,4 @@
-import { CheckCheck, Layers3, X } from 'lucide-react'
+import { CheckCheck, FileOutput, Images, Layers3, X } from 'lucide-react'
 import { ControlSection } from '../../components/ControlSection'
 import type { HydraulicEngine } from '../../core/hydraulicEngine'
 import { runDisplayName } from '../../core/hydraulicEngine'
@@ -10,12 +10,24 @@ type Props = {
   engine: HydraulicEngine
   scenarios: ConditionData[]
   controller: ReturnType<typeof usePlanViewFigureSet>
+  includedCount: number
+  addingToExport: boolean
+  exportProgress: { completed: number; total: number }
+  onAddToExport(): void
+  onCancelAddToExport(): void
+  onQuickWordExport(): void
 }
 
 export function PlanViewFigureSetPanel({
   engine,
   scenarios,
   controller,
+  includedCount,
+  addingToExport,
+  exportProgress,
+  onAddToExport,
+  onCancelAddToExport,
+  onQuickWordExport,
 }: Props) {
   const activeId = controller.activeScenarioId
   const activeScenario = scenarios.find((scenario) => scenario.key === activeId)
@@ -50,7 +62,10 @@ export function PlanViewFigureSetPanel({
         <div className="compact-section-heading">Scenarios</div>
         <div className="selection-checklist">
           {scenarios.length === 0 ? (
-            <p className="empty-control-copy">Add SMS scenarios on the left.</p>
+            <p className="empty-control-copy">
+              Load SMS geometry and datasets in Models first. Batch Figures will
+              then create every selected scenario, run, and result combination.
+            </p>
           ) : scenarios.map((scenario) => {
             const selected = controller.scope.scenarioIds.includes(scenario.key)
             return (
@@ -176,6 +191,33 @@ export function PlanViewFigureSetPanel({
           </strong>
           <span>Valid run and result combinations</span>
         </div>
+      </div>
+
+      <div className="batch-export-actions">
+        <button
+          className={`button ${addingToExport ? 'secondary' : 'primary'} full`}
+          type="button"
+          disabled={includedCount === 0 && !addingToExport}
+          onClick={addingToExport ? onCancelAddToExport : onAddToExport}
+        >
+          {addingToExport ? <X size={16} /> : <Images size={16} />}
+          {addingToExport
+            ? `Cancel (${exportProgress.completed}/${exportProgress.total})`
+            : `Add included to Export Collection (${includedCount})`}
+        </button>
+        <button
+          className="button secondary full"
+          type="button"
+          disabled={includedCount === 0 || addingToExport}
+          onClick={onQuickWordExport}
+        >
+          <FileOutput size={16} aria-hidden="true" />
+          Quick Word Export
+        </button>
+        <small>
+          Export Collection assembles figures from every workspace. Quick Word
+          Export creates a Plan-View-only document.
+        </small>
       </div>
     </ControlSection>
   )

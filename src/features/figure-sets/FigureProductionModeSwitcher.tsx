@@ -22,7 +22,7 @@ export function FigureProductionModeSwitcher({ value, onChange }: Props) {
         onClick={() => onChange('figure')}
       >
         <Image size={15} aria-hidden="true" />
-        Figure
+        Single Figure
       </button>
       <button
         type="button"
@@ -32,18 +32,14 @@ export function FigureProductionModeSwitcher({ value, onChange }: Props) {
         onClick={() => onChange('set')}
       >
         <LayoutGrid size={15} aria-hidden="true" />
-        Figure Set
+        Batch Figures
       </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={value === 'document'}
-        className={value === 'document' ? 'active' : ''}
-        onClick={() => onChange('document')}
-      >
-        <FileText size={15} aria-hidden="true" />
-        Document
-      </button>
+      {value === 'document' ? (
+        <span className="production-mode-context" aria-label="Quick Word Export">
+          <FileText size={14} aria-hidden="true" />
+          Quick Word Export
+        </span>
+      ) : null}
     </div>
   )
 }

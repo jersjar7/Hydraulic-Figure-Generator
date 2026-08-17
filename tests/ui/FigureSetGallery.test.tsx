@@ -23,11 +23,15 @@ const item = {
 describe('figure-set review UI', () => {
   it('switches between figure and set production views', () => {
     const onChange = vi.fn()
-    render(<FigureProductionModeSwitcher value="figure" onChange={onChange} />)
-    fireEvent.click(screen.getByRole('tab', { name: 'Figure Set' }))
+    const { rerender } = render(
+      <FigureProductionModeSwitcher value="figure" onChange={onChange} />,
+    )
+    fireEvent.click(screen.getByRole('tab', { name: 'Batch Figures' }))
     expect(onChange).toHaveBeenCalledWith('set')
-    fireEvent.click(screen.getByRole('tab', { name: 'Document' }))
-    expect(onChange).toHaveBeenCalledWith('document')
+    rerender(<FigureProductionModeSwitcher value="document" onChange={onChange} />)
+    expect(screen.getByLabelText('Quick Word Export')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: 'Single Figure' }))
+    expect(onChange).toHaveBeenCalledWith('figure')
   })
 
   it('opens and includes individual generated figures', () => {
@@ -40,6 +44,7 @@ describe('figure-set review UI', () => {
           'figure-1': { status: 'ready', thumbnailUrl: 'preview.png' },
         }}
         draftCount={1}
+        hasScenarios
         onOpen={onOpen}
         onToggleIncluded={onToggleIncluded}
       />,
@@ -48,7 +53,7 @@ describe('figure-set review UI', () => {
     expect(screen.getByText('1 ready · 1 included · 1 total')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Open figure 1/ }))
     expect(onOpen).toHaveBeenCalledWith(item)
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Include in document' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include in exports' }))
     expect(onToggleIncluded).toHaveBeenCalledWith('figure-1')
   })
 })
