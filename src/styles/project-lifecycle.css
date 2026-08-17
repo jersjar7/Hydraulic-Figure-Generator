@@ -140,7 +140,7 @@
 
 .project-create-form label {
   display: grid;
-  gap: 6px;
+  gap: var(--field-label-control-gap);
   font-size: 12px;
   font-weight: 700;
 }

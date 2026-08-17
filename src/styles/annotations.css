@@ -486,7 +486,7 @@
 }
 
 .annotation-panel .field {
-  gap: 3px;
+  gap: var(--field-label-control-gap);
   margin-top: 6px;
 }
 

@@ -22,6 +22,7 @@
   --amber-soft: #fff4db;
   --red: #b73737;
   --red-soft: #fcecec;
+  --field-label-control-gap: 2px;
   color-scheme: light;
 }
 

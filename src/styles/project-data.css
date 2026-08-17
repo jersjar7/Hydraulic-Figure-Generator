@@ -202,7 +202,7 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--field-label-control-gap);
   margin-top: 10px;
 }
 
@@ -415,7 +415,7 @@ input[type="color"] {
 }
 
 .assessment-stationing-controls .field {
-  gap: 3px;
+  gap: var(--field-label-control-gap);
 }
 
 .assessment-stationing-controls .field > span {

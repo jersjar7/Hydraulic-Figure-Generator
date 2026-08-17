@@ -55,7 +55,7 @@
 .chart-series-fields label {
   min-width: 0;
   display: grid;
-  gap: 3px;
+  gap: var(--field-label-control-gap);
   color: #68798c;
   font-size: 9px;
 }

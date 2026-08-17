@@ -170,7 +170,7 @@
 .range-field {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: var(--field-label-control-gap);
   margin-top: 12px;
 }
 
