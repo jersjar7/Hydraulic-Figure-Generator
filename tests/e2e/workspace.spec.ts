@@ -490,7 +490,7 @@ test('longitudinal SMS values render with culvert and grid controls', async ({ p
   await openHydraulicProfiles(page)
 
   await page.getByRole('tab', { name: 'Summary', exact: true }).click()
-  await page.getByLabel('SMS Summary Table').fill(PROFILE_SUMMARY)
+  await page.getByLabel('SMS Summary Table').fill(PROFILE_SUMMARY.replace('1047.09', '20'))
   await page.getByRole('tab', { name: 'Longitudinal', exact: true }).click()
   await page.getByLabel('Longitudinal SMS Profile Values').fill(PROFILE_VALUES)
   await page.getByRole('tab', { name: 'Longitudinal profile', exact: true }).click()
@@ -514,6 +514,29 @@ test('longitudinal SMS values render with culvert and grid controls', async ({ p
   await page.getByLabel('Vertical grid spacing').fill('1')
   await expect(page.getByLabel('Horizontal grid spacing')).toHaveValue('20')
   await expect(page.getByLabel('Vertical grid spacing')).toHaveValue('1')
+  const beforeStationing = await canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL())
+  await page.getByLabel('Initial station (ft)').fill('900')
+  await expect(page.getByLabel('Initial station (ft)')).toHaveValue('900')
+  await expect(page.getByLabel('Station-label placement')).toHaveValue('auto')
+  await expect(page.getByLabel('Prevent station-label overlap')).toBeChecked()
+  await expect(page.getByLabel('Stagger labels left/right')).toBeChecked()
+  await expect.poll(() => canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL()))
+    .not.toBe(beforeStationing)
+
+  const beforeDrag = await canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL())
+  const canvasBox = await canvas.boundingBox()
+  if (!canvasBox) throw new Error('Longitudinal canvas bounds are unavailable.')
+  const labelCenter = {
+    x: canvasBox.x + (760 / 1500) * canvasBox.width,
+    y: canvasBox.y + (155 / 900) * canvasBox.height,
+  }
+  await page.mouse.move(labelCenter.x, labelCenter.y)
+  await page.mouse.down()
+  await page.mouse.move(labelCenter.x + 70, labelCenter.y + 45, { steps: 3 })
+  await page.mouse.up()
+  await expect(page.getByRole('button', { name: 'Reset moved labels' })).toBeVisible()
+  await expect.poll(() => canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL()))
+    .not.toBe(beforeDrag)
 
   await page.getByRole('tab', { name: 'Structures', exact: true }).click()
   await page.getByRole('button', { name: 'Add box culvert' }).click()

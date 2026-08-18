@@ -21,6 +21,7 @@ type Options = {
   selectedSectionId: string
   crossSectionCulverts: HydraulicCrossSectionCulvert[]
   longitudinalCulverts: HydraulicLongitudinalCulvert[]
+  longitudinalInitialStation: number | null
 }
 
 export function useHydraulicProfileAnalysis({
@@ -32,6 +33,7 @@ export function useHydraulicProfileAnalysis({
   selectedSectionId,
   crossSectionCulverts,
   longitudinalCulverts,
+  longitudinalInitialStation,
 }: Options) {
   const parsedSummary = useMemo(
     () => parseSmsSummaryTable(summaryText),
@@ -69,11 +71,13 @@ export function useHydraulicProfileAnalysis({
       configuration: datasetConfiguration,
       summaryRows: parsedSummary.value,
       culverts: longitudinalCulverts,
+      initialStation: longitudinalInitialStation,
     }),
     [
       conditionLabel,
       datasetConfiguration,
       longitudinalCulverts,
+      longitudinalInitialStation,
       parsedLongitudinal.value,
       parsedSummary.value,
     ],

@@ -1,4 +1,3 @@
-import { formatStation } from '../centerlineStationing'
 import type {
   HydraulicLongitudinalCulvert,
   HydraulicLongitudinalScene,
@@ -7,12 +6,14 @@ import type {
   SmsProfileSeries,
   SmsSummaryRow,
 } from '../types'
+import { resolveLongitudinalStationing } from './longitudinalStationing'
 
 type Options = {
   conditionLabel: string
   configuration: HydraulicProfileDatasetConfiguration | null
   summaryRows: SmsSummaryRow[]
   culverts: HydraulicLongitudinalCulvert[]
+  initialStation?: number | null
 }
 
 export function buildHydraulicLongitudinalScene(
@@ -28,6 +29,7 @@ export function buildHydraulicLongitudinalScene(
     )
     return {
       conditionLabel: options.conditionLabel,
+      stationStart: options.initialStation ?? 0,
       lines: [],
       grounds: [],
       surfaces: [],
@@ -43,22 +45,18 @@ export function buildHydraulicLongitudinalScene(
   const finiteDistances = lines.flatMap(({ distances }) => distances.filter(Number.isFinite))
   const minimumDistance = finiteDistances.length > 0 ? Math.min(...finiteDistances) : 0
   const maximumDistance = finiteDistances.length > 0 ? Math.max(...finiteDistances) : 0
-  const minimumStation = options.summaryRows.length > 0
-    ? Math.min(...options.summaryRows.map(({ station }) => station))
-    : 0
-  const stationOffset = Math.floor(minimumStation / 100) * 100
-  const markers = options.summaryRows
-    .filter(({ station }) => station >= stationOffset + minimumDistance && station <= stationOffset + maximumDistance)
-    .map(({ station }) => ({
-      station: station - stationOffset,
-      label: formatStation(station),
-    }))
+  const stationing = resolveLongitudinalStationing({
+    rows: options.summaryRows,
+    range: { minimum: minimumDistance, maximum: maximumDistance },
+    initialStation: options.initialStation ?? null,
+  })
   return {
     conditionLabel: options.conditionLabel,
+    stationStart: stationing.stationStart,
     lines,
     grounds: lines.filter(({ kind }) => kind === 'ground'),
     surfaces: lines.filter(({ kind }) => kind === 'wse'),
-    markers,
+    markers: stationing.markers,
     culverts: options.culverts,
     warnings,
   }

@@ -6,6 +6,10 @@ import type {
   ChartLegendPosition,
   ChartLineStyle,
 } from '../../core/contracts/chartStyle'
+import {
+  createDefaultLongitudinalStationingSettings,
+  type LongitudinalStationingSettings,
+} from '../../core/types'
 
 export type HydraulicProfileLineStyle = ChartLineStyle
 
@@ -42,6 +46,7 @@ export type HydraulicProfileFigureSettings = {
   plotBackgroundColor: string
   frameColor: string
   frameWidth: number
+  longitudinalStationing: LongitudinalStationingSettings
 }
 
 const LINE_COLORS = [
@@ -111,5 +116,6 @@ export function createDefaultHydraulicProfileSettings(): HydraulicProfileFigureS
     plotBackgroundColor: axes.plotBackgroundColor,
     frameColor: axes.frameColor,
     frameWidth: axes.frameWidth,
+    longitudinalStationing: createDefaultLongitudinalStationingSettings(),
   }
 }

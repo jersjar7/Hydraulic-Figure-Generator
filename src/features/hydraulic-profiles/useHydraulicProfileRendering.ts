@@ -7,9 +7,11 @@ import type {
 import { hydraulicProfileFigure } from './hydraulicProfileFigure'
 import { renderHydraulicLongitudinalDocument } from './hydraulicLongitudinalRenderer'
 import type { HydraulicProfileFigureSettings } from './hydraulicProfileSettings'
+import type { LongitudinalStationLabelBounds } from '../chart-tools/longitudinalStationLabels'
 
 type Options = {
   canvasRef: RefObject<HTMLCanvasElement | null>
+  longitudinalLabelBoundsRef: RefObject<LongitudinalStationLabelBounds[]>
   view: HydraulicProfileView
   scene: HydraulicProfileScene | null
   longitudinalScene: HydraulicLongitudinalScene | null
@@ -18,6 +20,7 @@ type Options = {
 
 export function useHydraulicProfileRendering({
   canvasRef,
+  longitudinalLabelBoundsRef,
   view,
   scene,
   longitudinalScene,
@@ -26,15 +29,16 @@ export function useHydraulicProfileRendering({
   useEffect(() => {
     if (!canvasRef.current) return
     if (view === 'longitudinal' && longitudinalScene) {
-      renderHydraulicLongitudinalDocument(canvasRef.current, {
+      longitudinalLabelBoundsRef.current = renderHydraulicLongitudinalDocument(canvasRef.current, {
         scene: longitudinalScene,
         settings,
       })
     } else if (view === 'cross-sections' && scene) {
+      longitudinalLabelBoundsRef.current = []
       void hydraulicProfileFigure.render({
         canvas: canvasRef.current,
         document: { scene, settings },
       })
     }
-  }, [canvasRef, longitudinalScene, scene, settings, view])
+  }, [canvasRef, longitudinalLabelBoundsRef, longitudinalScene, scene, settings, view])
 }

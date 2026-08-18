@@ -71,10 +71,35 @@ describe('hydraulic profile project files', () => {
     project.settings.legendPosition = 'bottom-right'
     project.settings.lineVisibility[2] = false
     project.settings.lineOrder = [1, 2, 0]
+    project.settings.longitudinalStationing = {
+      initialStation: 1000,
+      labelPlacement: 'bottom',
+      avoidLabelOverlap: false,
+      staggerLabels: true,
+      labelPositions: {
+        'summary-station-0': { offsetX: 18, offsetY: -24 },
+      },
+    }
     assert.deepEqual(
       parseHydraulicProfileProject(serializeHydraulicProfileProject(project)),
       project,
     )
+  })
+
+  it('defaults older project files to automatic non-overlapping station labels', () => {
+    const older = JSON.parse(serializeHydraulicProfileProject(state()))
+    older.version = 6
+    delete older.settings.longitudinalStationing
+
+    const parsed = parseHydraulicProfileProject(JSON.stringify(older))
+
+    assert.deepEqual(parsed.settings.longitudinalStationing, {
+      initialStation: null,
+      labelPlacement: 'auto',
+      avoidLabelOverlap: true,
+      staggerLabels: true,
+      labelPositions: {},
+    })
   })
 
   it('migrates version 4 files to shared chart-style defaults', () => {

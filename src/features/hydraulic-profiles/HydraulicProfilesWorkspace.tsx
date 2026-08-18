@@ -19,6 +19,8 @@ import { useHydraulicProfileAnalysis } from './useHydraulicProfileAnalysis'
 import { useHydraulicProfileGeneration } from './useHydraulicProfileGeneration'
 import { useHydraulicProfileRendering } from './useHydraulicProfileRendering'
 import { useHydraulicProfilesWorkspaceUi } from './useHydraulicProfilesWorkspaceUi'
+import type { LongitudinalStationLabelBounds } from '../chart-tools/longitudinalStationLabels'
+import { useLongitudinalStationLabelInteractions } from '../chart-tools/useLongitudinalStationLabelInteractions'
 
 export function HydraulicProfilesWorkspace() {
   const {
@@ -72,6 +74,7 @@ export function HydraulicProfilesWorkspace() {
     resetForProject,
   } = ui
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const longitudinalLabelBoundsRef = useRef<LongitudinalStationLabelBounds[]>([])
 
   const analysis = useHydraulicProfileAnalysis({
     conditionLabel,
@@ -82,6 +85,7 @@ export function HydraulicProfilesWorkspace() {
     selectedSectionId,
     crossSectionCulverts,
     longitudinalCulverts,
+    longitudinalInitialStation: settings.longitudinalStationing.initialStation,
   })
   const {
     parsedSummary,
@@ -116,10 +120,23 @@ export function HydraulicProfilesWorkspace() {
   } = generation
   useHydraulicProfileRendering({
     canvasRef,
+    longitudinalLabelBoundsRef,
     view,
     scene,
     longitudinalScene,
     settings,
+  })
+  const longitudinalLabelInteractions = useLongitudinalStationLabelInteractions({
+    enabled: view === 'longitudinal' && Boolean(longitudinalScene),
+    boundsRef: longitudinalLabelBoundsRef,
+    positions: settings.longitudinalStationing.labelPositions,
+    onChange: (labelPositions) => setSettings((current) => ({
+      ...current,
+      longitudinalStationing: {
+        ...current.longitudinalStationing,
+        labelPositions,
+      },
+    })),
   })
   const notices = useMemo(
     () => [...analysis.notices, ...runtimeNotices],
@@ -208,7 +225,7 @@ export function HydraulicProfilesWorkspace() {
           onReset={reset}
         />
       }
-      mapContent={<HydraulicProfileCanvas scene={scene} longitudinalScene={longitudinalScene} view={view} scenes={scenes} selectedSectionId={scene?.section.id ?? selectedSectionId} orientation={settings.orientation} canvasRef={canvasRef} onStationSelect={setSelectedSectionId} onViewChange={changeView} />}
+      mapContent={<HydraulicProfileCanvas scene={scene} longitudinalScene={longitudinalScene} view={view} scenes={scenes} selectedSectionId={scene?.section.id ?? selectedSectionId} orientation={settings.orientation} canvasRef={canvasRef} onStationSelect={setSelectedSectionId} onViewChange={changeView} {...longitudinalLabelInteractions} />}
       settingsContent={
         <HydraulicProfileSettingsPanel
           section={activeSection}

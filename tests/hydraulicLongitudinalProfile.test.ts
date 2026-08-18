@@ -54,6 +54,7 @@ describe('hydraulic longitudinal profiles', () => {
     assert.equal(scene.surfaces[0].name, '100-year WSE')
     assert.equal(scene.surfaces[0].elevations[1], null)
     assert.deepEqual(scene.markers.map(({ label }) => label), ['10+00', '10+50', '11+00'])
+    assert.equal(scene.stationStart, 1000)
   })
 
   it('renders lines, markers, and a longitudinal culvert in both frames', () => {
@@ -84,18 +85,24 @@ describe('hydraulic longitudinal profiles', () => {
 
     for (const orientation of ['landscape', 'portrait'] as const) {
       const canvas = createCanvas(1, 1)
-      renderHydraulicLongitudinalDocument(
+      const settings = {
+        ...createDefaultHydraulicProfileSettings(),
+        orientation,
+        xGridSpacing: 25,
+        yGridSpacing: 2,
+      }
+      settings.longitudinalStationing.labelPositions = {
+        'summary-station-0': { offsetX: 100, offsetY: 80 },
+      }
+      const labels = renderHydraulicLongitudinalDocument(
         canvas as unknown as HTMLCanvasElement,
         {
           scene,
-          settings: {
-            ...createDefaultHydraulicProfileSettings(),
-            orientation,
-            xGridSpacing: 25,
-            yGridSpacing: 2,
-          },
+          settings,
         },
       )
+      assert.equal(labels.length, 1)
+      assert.ok(labels[0].x > labels[0].anchorX)
       const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
       let nonWhite = 0
       for (let index = 0; index < pixels.length; index += 64) {

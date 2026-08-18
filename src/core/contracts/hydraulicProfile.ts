@@ -108,12 +108,14 @@ export type HydraulicLongitudinalCulvert = {
 }
 
 export type HydraulicLongitudinalMarker = {
+  id: string
   station: number
   label: string
 }
 
 export type HydraulicLongitudinalScene = {
   conditionLabel: string
+  stationStart: number
   lines: HydraulicProfileLine[]
   grounds: HydraulicProfileLine[]
   surfaces: HydraulicProfileLine[]

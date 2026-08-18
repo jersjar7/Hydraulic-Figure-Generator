@@ -59,6 +59,10 @@ export function drawChartAxes(
   yDomain: ChartNumericDomain,
   axes: ChartAxesSettings,
   targetXTicks: number,
+  formatters: {
+    xTick?(value: number): string
+    yTick?(value: number): string
+  } = {},
 ) {
   const x = (value: number) => plot.left
     + ((value - xDomain.minimum) / (xDomain.maximum - xDomain.minimum)) * plot.width
@@ -85,7 +89,11 @@ export function drawChartAxes(
       context.stroke()
     }
     context.fillStyle = axes.textColor
-    context.fillText(value.toFixed(xStep < 1 ? 1 : 0), location, plot.top + plot.height + 12)
+    context.fillText(
+      formatters.xTick?.(value) ?? value.toFixed(xStep < 1 ? 1 : 0),
+      location,
+      plot.top + plot.height + 12,
+    )
   }
   context.textAlign = 'right'
   context.textBaseline = 'middle'
@@ -100,7 +108,11 @@ export function drawChartAxes(
       context.stroke()
     }
     context.fillStyle = axes.textColor
-    context.fillText(value.toFixed(yStep < 1 ? 1 : 0), plot.left - 12, location)
+    context.fillText(
+      formatters.yTick?.(value) ?? value.toFixed(yStep < 1 ? 1 : 0),
+      plot.left - 12,
+      location,
+    )
   }
   context.strokeStyle = axes.frameColor
   context.lineWidth = axes.frameWidth

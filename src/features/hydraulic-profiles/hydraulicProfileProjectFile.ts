@@ -19,8 +19,12 @@ import {
   hydraulicProfileChartLayout,
   hydraulicProfileChartLegend,
 } from './hydraulicProfileChartStyle'
+import {
+  createDefaultLongitudinalStationingSettings,
+  LONGITUDINAL_STATION_LABEL_PLACEMENTS,
+} from '../../core/types'
 
-export const HYDRAULIC_PROFILE_PROJECT_VERSION = 6
+export const HYDRAULIC_PROFILE_PROJECT_VERSION = 8
 
 export type HydraulicProfileProjectState = {
   conditionLabel: string
@@ -79,6 +83,20 @@ function isConfiguration(value: unknown): value is HydraulicProfileDatasetConfig
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
+}
+
+function isLongitudinalLabelPositions(
+  value: unknown,
+): value is HydraulicProfileFigureSettings['longitudinalStationing']['labelPositions'] {
+  return Boolean(value)
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && Object.values(value as Record<string, unknown>).every((position) => (
+      Boolean(position)
+      && typeof position === 'object'
+      && isFiniteNumber((position as { offsetX?: unknown }).offsetX)
+      && isFiniteNumber((position as { offsetY?: unknown }).offsetY)
+    ))
 }
 
 function isDash(value: unknown): value is number[] {
@@ -198,6 +216,7 @@ function hydrateSettings(
     surfaceStyles?: HydraulicProfileLineStyle[]
   }
   const defaults = createDefaultHydraulicProfileSettings()
+  const incomingStationing = incoming.longitudinalStationing
   let lineStyles = Array.isArray(incoming.lineStyles)
     ? incoming.lineStyles.map((style, slot) => ({
         ...defaultHydraulicProfileLineStyle(slot),
@@ -247,12 +266,28 @@ function hydrateSettings(
       && new Set(incoming.lineOrder).size === incoming.lineOrder.length
       ? incoming.lineOrder.map(Number)
       : [...defaults.lineOrder],
+    longitudinalStationing: {
+      ...createDefaultLongitudinalStationingSettings(),
+      ...(incomingStationing ?? {}),
+      labelPositions: incomingStationing?.labelPositions == null
+        ? {}
+        : isLongitudinalLabelPositions(incomingStationing.labelPositions)
+          ? incomingStationing.labelPositions
+          : (() => { throw new Error('Profile station-label positions are malformed.') })(),
+    },
   }
   if (
     !Number.isFinite(settings.fontSize)
     || settings.fontSize < 8
     || settings.lineStyles.length === 0
     || settings.lineStyles.some((style) => !isLineStyle(style))
+    || (settings.longitudinalStationing.initialStation != null
+      && !Number.isFinite(settings.longitudinalStationing.initialStation))
+    || !LONGITUDINAL_STATION_LABEL_PLACEMENTS.includes(
+      settings.longitudinalStationing.labelPlacement,
+    )
+    || typeof settings.longitudinalStationing.avoidLabelOverlap !== 'boolean'
+    || typeof settings.longitudinalStationing.staggerLabels !== 'boolean'
   ) throw new Error('Profile settings contain invalid numeric values.')
   assertValidChartStyle({
     layout: hydraulicProfileChartLayout(settings),
@@ -275,7 +310,7 @@ export function serializeHydraulicProfileProject(state: HydraulicProfileProjectS
 export function parseHydraulicProfileProject(text: string): HydraulicProfileProjectState {
   const parsed = JSON.parse(text) as Partial<Envelope> & Record<string, unknown>
   if (parsed.figureId !== HYDRAULIC_PROFILES_FIGURE_ID) throw new Error('This is not a Hydraulic Profiles & Sections project file.')
-  if (![1, 2, 3, 4, 5, HYDRAULIC_PROFILE_PROJECT_VERSION].includes(Number(parsed.version))) {
+  if (![1, 2, 3, 4, 5, 6, 7, HYDRAULIC_PROFILE_PROJECT_VERSION].includes(Number(parsed.version))) {
     throw new Error(`Hydraulic profile project version ${String(parsed.version)} is not supported.`)
   }
   if (

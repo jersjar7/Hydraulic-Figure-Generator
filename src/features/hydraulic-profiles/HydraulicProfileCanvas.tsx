@@ -1,5 +1,9 @@
 import { LineChart } from 'lucide-react'
-import { useRef, type RefObject } from 'react'
+import {
+  useRef,
+  type PointerEventHandler,
+  type RefObject,
+} from 'react'
 import type {
   HydraulicLongitudinalScene,
   HydraulicProfileScene,
@@ -22,6 +26,11 @@ type Props = {
   canvasRef: RefObject<HTMLCanvasElement | null>
   onStationSelect(sectionId: string): void
   onViewChange(view: HydraulicProfileView): void
+  onPointerDown?: PointerEventHandler<HTMLCanvasElement>
+  onPointerMove?: PointerEventHandler<HTMLCanvasElement>
+  onPointerUp?: PointerEventHandler<HTMLCanvasElement>
+  onPointerCancel?: PointerEventHandler<HTMLCanvasElement>
+  onPointerLeave?: PointerEventHandler<HTMLCanvasElement>
 }
 
 export function HydraulicProfileCanvas({
@@ -34,6 +43,11 @@ export function HydraulicProfileCanvas({
   canvasRef,
   onStationSelect,
   onViewChange,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  onPointerLeave,
 }: Props) {
   const frameRef = useRef<HTMLDivElement>(null)
   const frame = HYDRAULIC_PROFILE_FRAMES[orientation]
@@ -68,6 +82,11 @@ export function HydraulicProfileCanvas({
           className={view === 'cross-sections' ? (scene ? 'map-canvas is-visible' : 'map-canvas') : (longitudinalScene ? 'map-canvas is-visible' : 'map-canvas')}
           aria-label="Generated SMS hydraulic profile"
           style={fittedCanvasStyle(displaySize)}
+          onPointerDown={view === 'longitudinal' ? onPointerDown : undefined}
+          onPointerMove={view === 'longitudinal' ? onPointerMove : undefined}
+          onPointerUp={view === 'longitudinal' ? onPointerUp : undefined}
+          onPointerCancel={view === 'longitudinal' ? onPointerCancel : undefined}
+          onPointerLeave={view === 'longitudinal' ? onPointerLeave : undefined}
         />
       </div>
     </>

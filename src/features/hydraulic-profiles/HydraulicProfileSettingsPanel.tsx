@@ -12,6 +12,7 @@ import type {
 } from '../../core/types'
 import { ChartAxesControls } from '../chart-tools/ChartAxesControls'
 import { ChartLayoutControls } from '../chart-tools/ChartLayoutControls'
+import { LongitudinalStationingControls } from '../chart-tools/LongitudinalStationingControls'
 import { ChartSeriesControls } from '../chart-tools/ChartSeriesControls'
 import type { HydraulicProfileSettingsSectionKey } from './hydraulicProfileDefinition'
 import type { HydraulicProfileFigureSettings } from './hydraulicProfileSettings'
@@ -128,6 +129,12 @@ export function HydraulicProfileSettingsPanel({
             axes={hydraulicProfileChartAxes(settings)}
             onChange={(value) => onSettingsChange((current) => applyHydraulicProfileChartAxes(current, value))}
           />
+          {view === 'longitudinal' ? (
+            <LongitudinalStationingControls
+              settings={settings.longitudinalStationing}
+              onChange={(value) => update('longitudinalStationing', value)}
+            />
+          ) : null}
         </> : null}
         {section === 'structures' ? (
           <HydraulicProfileStructuresPanel

@@ -36,6 +36,7 @@ const section: HydraulicProfileSection = {
 
 const longitudinalScene: HydraulicLongitudinalScene = {
   conditionLabel: 'Proposed Conditions',
+  stationStart: 0,
   lines: [ground],
   grounds: [ground],
   surfaces: [],

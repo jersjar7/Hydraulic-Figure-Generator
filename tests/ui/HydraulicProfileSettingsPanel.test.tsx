@@ -94,6 +94,31 @@ function AxesPanel() {
   />
 }
 
+function LongitudinalAxesPanel() {
+  const [settings, setSettings] = useState<HydraulicProfileFigureSettings>(
+    createDefaultHydraulicProfileSettings,
+  )
+  return <HydraulicProfileSettingsPanel
+    section="axes"
+    settings={settings}
+    profileSection={null}
+    canDownload={false}
+    datasetConfiguration={null}
+    view="longitudinal"
+    longitudinalScene={null}
+    crossSectionCulvert={null}
+    longitudinalCulverts={[]}
+    exportActions={null}
+    onSettingsChange={setSettings}
+    onDatasetConfigurationChange={vi.fn()}
+    onCrossSectionCulvertChange={vi.fn()}
+    onLongitudinalCulvertsChange={vi.fn()}
+    generatedCount={0}
+    onAddAllToExport={vi.fn()}
+    onDownload={vi.fn()}
+  />
+}
+
 describe('HydraulicProfileSettingsPanel', () => {
   it('defaults to clipping WSEs and exposes raw SMS extents as a reversible mode', async () => {
     const user = userEvent.setup()
@@ -119,5 +144,21 @@ describe('HydraulicProfileSettingsPanel', () => {
 
     expect(screen.getByLabelText('Horizontal grid spacing')).toHaveValue(25)
     expect(screen.getByLabelText('Vertical grid spacing')).toHaveValue(2)
+  })
+
+  it('configures longitudinal station origin and collision-aware labels', async () => {
+    const user = userEvent.setup()
+    render(<LongitudinalAxesPanel />)
+
+    const station = screen.getByLabelText('Initial station (ft)')
+    await user.type(station, '1000')
+    await user.selectOptions(screen.getByLabelText('Station-label placement'), 'top')
+    await user.click(screen.getByLabelText('Prevent station-label overlap'))
+    await user.click(screen.getByLabelText('Stagger labels left/right'))
+
+    expect(station).toHaveValue(1000)
+    expect(screen.getByLabelText('Station-label placement')).toHaveValue('top')
+    expect(screen.getByLabelText('Prevent station-label overlap')).not.toBeChecked()
+    expect(screen.getByLabelText('Stagger labels left/right')).not.toBeChecked()
   })
 })
