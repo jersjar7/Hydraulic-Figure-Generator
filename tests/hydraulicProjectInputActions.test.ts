@@ -29,6 +29,10 @@ describe('shared hydraulic project input actions', () => {
       ingest: async () => [],
       removeCondition: (key) => removed.push(key),
       renameCondition: () => undefined,
+      applyProjectionOverride: () => ({
+        level: 'success',
+        text: 'Projection applied.',
+      }),
       changeRole: (role, key) => roles.push(`${role}:${key}`),
       changeRun: (key, index) => runs.push(`${key}:${index}`),
       setOverlays: (value) => {
@@ -46,6 +50,7 @@ describe('shared hydraulic project input actions', () => {
     })
 
     actions.removeHydraulicCondition('EX')
+    actions.overrideHydraulicProjection('EX', 'EPSG:2927')
     actions.changeScenarioRole('assessment', 'PR')
     actions.changeScenarioRun('EX', 2)
     actions.updateOverlay('one', { visible: false })

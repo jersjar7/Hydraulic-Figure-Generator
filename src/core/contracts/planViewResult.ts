@@ -35,6 +35,24 @@ export type ScalarResultOption = ScalarResultMetadata & {
   shape: number[]
 }
 
+export type VelocityVectorData = {
+  vx: Float32Array
+  vy: Float32Array
+  depth?: Float32Array
+  maxMagnitude: number
+}
+
+export type VelocityVectorSettings = {
+  visible: boolean
+  lengthMode: 'uniform' | 'scaled'
+  spacing: number
+  length: number
+  color: string
+  lineWidth: number
+  headSize: number
+  minimumMagnitude: number
+}
+
 export type PlanViewOutputOption = ScalarResultOption & {
   kind: PlanViewOutputKind
   runDependent: boolean
@@ -53,6 +71,7 @@ export type PlanViewResultScene = {
   autoMax: number
   autoInterval: number
   validNodes: number
+  velocityVectors?: VelocityVectorData
 }
 
 export type PlanViewResultSettings = FigureSettings & {
@@ -70,4 +89,5 @@ export type PlanViewResultSettings = FigureSettings & {
   meshLineWidth: number
   meshLineOpacity: number
   meshLinePattern: StrokePattern
+  velocityVectors: VelocityVectorSettings
 }

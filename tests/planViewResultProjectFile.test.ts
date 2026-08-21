@@ -20,6 +20,12 @@ describe('plan-view result project files', () => {
         legendMax: 2,
         contourPattern: 'dotted' as const,
         meshLinePattern: 'dashed' as const,
+        velocityVectors: {
+          ...createDefaultPlanViewResultSettings().velocityVectors,
+          visible: true,
+          spacing: 55,
+          lengthMode: 'scaled' as const,
+        },
         elementPositions: {
           ...createDefaultPlanViewResultSettings().elementPositions,
           title: {
@@ -47,6 +53,7 @@ describe('plan-view result project files', () => {
         comparisonId: 'PR',
         assessmentId: 'NA',
         runByScenario: { NA: 1 },
+        crsOverrides: { NA: 'EPSG:2927' },
       },
       project: { overlays: [] },
       figureSet: createPlanViewFigureSetDocument(),

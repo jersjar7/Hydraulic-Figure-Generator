@@ -72,6 +72,7 @@ export type ScenarioSelectionProject = {
   assessmentId?: string
   runByScenario?: Record<string, number>
   labels?: Record<string, string>
+  crsOverrides?: Record<string, string>
 }
 
 export type AssessmentWorkflowProject = {

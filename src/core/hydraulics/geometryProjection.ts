@@ -34,13 +34,21 @@ function boundsFromXy(xy: Float64Array): Bounds {
 }
 
 export function projectGeometry(geometry: Geometry): ProjectedGeometry {
-  if (!geometry.wkt) {
+  if (!geometry.wkt?.trim() || /^\*+$/.test(geometry.wkt.trim())) {
     throw new Error(
-      `${geometry.meshName} does not include a coordinate-system WKT definition.`,
+      `${geometry.meshName} contains valid mesh geometry, but its coordinate system is missing. SMS exported the WKT as "*" or left it blank. Assign the projection in SMS and re-export, or provide a CRS override.`,
     )
   }
 
-  const transform = proj4(geometry.wkt, 'WGS84')
+  const transform = (() => {
+    try {
+      return proj4(geometry.wkt, 'WGS84')
+    } catch (error) {
+      throw new Error(
+        `${geometry.meshName} contains valid mesh geometry, but its coordinate system could not be read. Assign the projection in SMS and re-export, or provide a valid CRS override. ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  })()
   const lon = new Float64Array(geometry.N)
   const lat = new Float64Array(geometry.N)
   const mx = new Float64Array(geometry.N)
@@ -48,10 +56,22 @@ export function projectGeometry(geometry: Geometry): ProjectedGeometry {
   const earthRadius = 6_378_137
 
   for (let index = 0; index < geometry.N; index += 1) {
-    const result = transform.forward([
-      geometry.xy[index * 2],
-      geometry.xy[index * 2 + 1],
-    ])
+    let result: number[]
+    try {
+      result = transform.forward([
+        geometry.xy[index * 2],
+        geometry.xy[index * 2 + 1],
+      ])
+    } catch (error) {
+      throw new Error(
+        `${geometry.meshName} geometry could not be transformed with the selected coordinate system. Verify the CRS override. ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+    if (!Number.isFinite(result[0]) || !Number.isFinite(result[1])) {
+      throw new Error(
+        `${geometry.meshName} geometry produced invalid map coordinates. Verify that the selected CRS matches the SMS model.`,
+      )
+    }
     lon[index] = result[0]
     lat[index] = result[1]
     mx[index] = (result[0] * Math.PI * earthRadius) / 180

@@ -50,6 +50,8 @@ export { runDisplayName } from './hydraulics/runDisplayName'
 
 type ValueCacheEntry = Float32Array | { vx: Float32Array; vy: Float32Array }
 
+const VELOCITY_VECTOR_PATTERN = /^Velocity(?:_ft_p_s)?$/i
+
 export class HydraulicEngine {
   private readonly conditions = new Map<ConditionKey, ConditionData>()
 
@@ -82,7 +84,10 @@ export class HydraulicEngine {
     condition.datasets = undefined
   }
 
-  async ingest(files: File[]) {
+  async ingest(
+    files: File[],
+    projectionOverrides: Readonly<Record<ConditionKey, string>> = {},
+  ) {
     const wasm = await getH5Runtime()
     this.h5Runtime = wasm
     const notices: IngestNotice[] = []
@@ -117,11 +122,27 @@ export class HydraulicEngine {
           const condition = this.getCondition(descriptor.key, descriptor)
           condition.geometryFileName = file.name
           condition.geometry = geometry
-          condition.projected = projectGeometry(geometry)
-          notices.push({
-            level: 'success',
-            text: `${condition.label} geometry: ${geometry.N.toLocaleString()} nodes`,
-          })
+          const override = projectionOverrides[descriptor.key]?.trim()
+          condition.crsOverride = override || undefined
+          try {
+            condition.projected = projectGeometry({
+              ...geometry,
+              wkt: override || geometry.wkt,
+            })
+            condition.projectionError = undefined
+            notices.push({
+              level: 'success',
+              text: `${condition.label} geometry: ${geometry.N.toLocaleString()} nodes${override ? ' using the saved CRS override' : ''}`,
+            })
+          } catch (error) {
+            condition.projected = undefined
+            condition.projectionError =
+              error instanceof Error ? error.message : String(error)
+            notices.push({
+              level: 'error',
+              text: `${file.name}: ${condition.projectionError}`,
+            })
+          }
         } else if (isDatasetsFile(h5File)) {
           const datasets = readDatasets(h5File)
           const descriptor = inferScenarioDescriptor(
@@ -229,6 +250,21 @@ export class HydraulicEngine {
     if (condition && nextLabel) condition.label = nextLabel
   }
 
+  applyProjectionOverride(key: ConditionKey, crs: string) {
+    const condition = this.conditions.get(key)
+    if (!condition?.geometry) {
+      throw new Error('Load the scenario geometry before applying a CRS override.')
+    }
+    const override = crs.trim()
+    if (!override) throw new Error('Enter a CRS WKT or PROJ definition.')
+    const projected = projectGeometry({ ...condition.geometry, wkt: override })
+    condition.projected = projected
+    condition.crsOverride = override
+    condition.projectionError = undefined
+    this.valueCache.clear()
+    return projected
+  }
+
   condition(key: ConditionKey) {
     return this.conditions.get(key)
   }
@@ -282,11 +318,43 @@ export class HydraulicEngine {
     if (!selection) {
       throw new Error('Select one complete hydraulic scenario and run.')
     }
-    return buildScalarResultScene(
+    const scene = buildScalarResultScene(
       selection,
       paramName,
       this.scalarValues(selection, paramName),
     )
+    const velocityParam = findResultParam(selection.run, VELOCITY_VECTOR_PATTERN)
+    if (velocityParam && selection.run.params[velocityParam]?.vector) {
+      try {
+        const velocity = this.vectorValues(selection, velocityParam)
+        if (
+          velocity.vx.length === scene.projected.N &&
+          velocity.vy.length === scene.projected.N
+        ) {
+          const depthParam = findResultParam(selection.run, /Water_?Depth/i)
+          let maxMagnitude = 0
+          for (let index = 0; index < velocity.vx.length; index += 1) {
+            const magnitude = Math.hypot(
+              velocity.vx[index],
+              velocity.vy[index],
+            )
+            if (Number.isFinite(magnitude)) {
+              maxMagnitude = Math.max(maxMagnitude, magnitude)
+            }
+          }
+          scene.velocityVectors = {
+            ...velocity,
+            depth: depthParam
+              ? this.scalarValues(selection, depthParam)
+              : undefined,
+            maxMagnitude,
+          }
+        }
+      } catch {
+        // A malformed optional vector dataset must not block the scalar map.
+      }
+    }
+    return scene
   }
 
   isReady(baselineKey: ConditionKey, comparisonKey: ConditionKey) {

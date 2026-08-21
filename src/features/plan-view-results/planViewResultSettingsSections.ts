@@ -6,12 +6,14 @@ import {
   MessageSquareText,
   Milestone,
   Palette,
+  Navigation2,
 } from 'lucide-react'
 import { PLAN_VIEW_RESULT_SETTINGS_SECTIONS } from './planViewResultDefinition'
 
 const ICONS = {
   result: Layers3,
   cartography: Palette,
+  vectors: Navigation2,
   frame: Frame,
   elements: MapPin,
   stationing: Milestone,

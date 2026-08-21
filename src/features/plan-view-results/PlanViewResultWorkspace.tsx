@@ -3,10 +3,7 @@ import '../../App.css'
 import { FigureWorkspaceScaffold } from '../../components/editor/FigureWorkspaceScaffold'
 import { HydraulicProjectPanel } from '../../components/project-data/HydraulicProjectPanel'
 import type { ScenarioRoleOption } from '../../components/project-data/projectWorkflowTypes'
-import type {
-  MapElementBounds,
-  PlanViewResultScene,
-} from '../../core/types'
+import type { MapElementBounds, PlanViewResultScene } from '../../core/types'
 import { FigureProductionModeSwitcher } from '../figure-sets/FigureProductionModeSwitcher'
 import { useFittedCanvasAspect } from '../figures/useFittedCanvasAspect'
 import { useMapElementController } from '../figures/useMapElementController'
@@ -343,6 +340,7 @@ export function PlanViewResultWorkspace() {
             section={activeSection}
             settings={settings}
             resultOptions={resultOptions}
+            velocityAvailable={Boolean(scene?.velocityVectors)}
             activeElement={activeElement}
             elements={elements}
             stationing={stationing.panelProps}

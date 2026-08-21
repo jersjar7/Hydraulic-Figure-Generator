@@ -76,6 +76,16 @@ export const planViewResultFigure = {
         },
       },
       {
+        id: 'velocity-vectors',
+        bindings: {
+          settingsSection: 'vectors',
+          state: 'figure-settings',
+          render: ['figure'],
+          persistence: 'workspace-draft',
+          interaction: 'panel',
+        },
+      },
+      {
         id: 'frame-view',
         bindings: {
           settingsSection: 'frame',

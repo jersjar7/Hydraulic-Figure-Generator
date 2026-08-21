@@ -49,6 +49,7 @@ export function useCrossSectionWorkspaceLifecycle(options: Options) {
     ingest: options.projectSession.ingest,
     removeCondition: options.projectSession.removeCondition,
     renameCondition: options.projectSession.renameCondition,
+    applyProjectionOverride: options.projectSession.applyProjectionOverride,
     changeRole: options.projectSession.changeRole,
     changeRun: options.projectSession.changeRun,
     setOverlays: options.projectDocument.setOverlays,

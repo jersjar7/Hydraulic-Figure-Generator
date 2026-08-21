@@ -27,7 +27,7 @@ import { parseStationLabelOverrides } from '../../core/projectFiles/settingsVali
 import { assertValidCartographySettings } from '../../core/cartography'
 import { planViewCartographySettings } from './planViewCartography'
 
-export const PLAN_VIEW_RESULT_PROJECT_VERSION = 9
+export const PLAN_VIEW_RESULT_PROJECT_VERSION = 10
 
 export type PlanViewResultProjectState = {
   settings: PlanViewResultSettings
@@ -174,6 +174,10 @@ function hydrateSettings(value: unknown): PlanViewResultSettings {
   const settings: PlanViewResultSettings = {
     ...defaults,
     ...incoming,
+    velocityVectors: {
+      ...defaults.velocityVectors,
+      ...incoming.velocityVectors,
+    },
     centerlineStationing: {
       ...defaults.centerlineStationing,
       ...incoming.centerlineStationing,
@@ -202,6 +206,18 @@ function hydrateSettings(value: unknown): PlanViewResultSettings {
     !Number.isFinite(settings.meshLineOpacity) ||
     settings.meshLineOpacity < 0 ||
     settings.meshLineOpacity > 1
+    || !Number.isFinite(settings.velocityVectors.spacing)
+    || settings.velocityVectors.spacing < 8
+    || !Number.isFinite(settings.velocityVectors.length)
+    || settings.velocityVectors.length < 4
+    || !Number.isFinite(settings.velocityVectors.lineWidth)
+    || settings.velocityVectors.lineWidth <= 0
+    || !Number.isFinite(settings.velocityVectors.headSize)
+    || settings.velocityVectors.headSize < 2
+    || !Number.isFinite(settings.velocityVectors.minimumMagnitude)
+    || settings.velocityVectors.minimumMagnitude < 0
+    || (settings.velocityVectors.lengthMode !== 'uniform'
+      && settings.velocityVectors.lengthMode !== 'scaled')
   ) {
     throw new Error('Plan-view result settings contain invalid values.')
   }
@@ -294,6 +310,7 @@ export function parsePlanViewResultProject(
     parsed.version !== 6 &&
     parsed.version !== 7 &&
     parsed.version !== 8 &&
+    parsed.version !== 9 &&
     parsed.version !== PLAN_VIEW_RESULT_PROJECT_VERSION
   ) {
     throw new Error(

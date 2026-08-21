@@ -68,6 +68,7 @@ export function useWseWorkspaceLifecycle({
     ingest: projectSession.ingest,
     removeCondition: projectSession.removeCondition,
     renameCondition: projectSession.renameCondition,
+    applyProjectionOverride: projectSession.applyProjectionOverride,
     changeRole: projectSession.changeRole,
     changeRun: projectSession.changeRun,
     setOverlays: projectDocument.setOverlays,

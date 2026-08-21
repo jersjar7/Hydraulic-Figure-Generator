@@ -116,6 +116,7 @@ export function HydraulicProjectPanel({
       onOverlayFiles={projectInputs.handleOverlayFiles}
       onRemoveCondition={projectInputs.removeHydraulicCondition}
       onRenameCondition={projectInputs.renameHydraulicCondition}
+      onProjectionOverride={projectInputs.overrideHydraulicProjection}
       onRoleChange={projectInputs.changeScenarioRole}
       onRunChange={projectInputs.changeScenarioRun}
       runsFor={(key) => projectSession.engine.runOptions(key)}

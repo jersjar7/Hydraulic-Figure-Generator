@@ -44,6 +44,7 @@ export function usePlanViewBatchProduction({
           labels: Object.fromEntries(
             projectSession.scenarios.map((scenario) => [scenario.key, scenario.label]),
           ),
+          crsOverrides: projectSession.crsOverrides,
         },
         project: projectDocument.document,
         figureSet: figureSet.figureSet,

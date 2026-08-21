@@ -18,6 +18,7 @@ type Options = {
   ingest: (files: File[]) => Promise<IngestNotice[]>
   removeCondition: (key: ConditionKey) => void
   renameCondition: (key: ConditionKey, label: string) => void
+  applyProjectionOverride: (key: ConditionKey, crs: string) => IngestNotice
   changeRole: (role: ScenarioRole, key: ConditionKey) => void
   changeRun: (key: ConditionKey, index: number) => void
   setOverlays: Dispatch<SetStateAction<MapOverlay[]>>
@@ -34,6 +35,7 @@ export function createHydraulicProjectInputActions({
   ingest,
   removeCondition,
   renameCondition,
+  applyProjectionOverride,
   changeRole,
   changeRun,
   setOverlays,
@@ -74,6 +76,11 @@ export function createHydraulicProjectInputActions({
     if (key === assessmentId) onAssessmentSourceChanged()
   }
 
+  const overrideHydraulicProjection = (key: ConditionKey, crs: string) => {
+    appendNotices([applyProjectionOverride(key, crs)])
+    onFilesChanged()
+  }
+
   const changeScenarioRole = (role: ScenarioRole, key: ConditionKey) => {
     changeRole(role, key)
     onSelectionChanged()
@@ -105,6 +112,7 @@ export function createHydraulicProjectInputActions({
     handleOverlayFiles,
     removeHydraulicCondition,
     renameHydraulicCondition: renameCondition,
+    overrideHydraulicProjection,
     changeScenarioRole,
     changeScenarioRun,
     updateOverlay,

@@ -77,6 +77,18 @@ export const FIGURE_TOOL_CAPABILITIES = defineFigureToolCapabilities([
     minimumInteraction: 'panel',
   },
   {
+    id: 'velocity-vectors',
+    label: 'Velocity vectors',
+    requiredBindings: [
+      'settings',
+      'state',
+      'render',
+      'persistence',
+      'interaction',
+    ],
+    minimumInteraction: 'panel',
+  },
+  {
     id: 'frame-view',
     label: 'Frame and view',
     requiredBindings: [

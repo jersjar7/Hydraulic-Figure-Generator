@@ -45,6 +45,7 @@ export function useCrossSectionDraftRetention({
           scenario.label,
         ]),
       ),
+      crsOverrides: projectSession.crsOverrides,
     },
     project: projectDocument.document,
   }

@@ -146,6 +146,16 @@ describe('Plan-View Hydraulic Results production baseline', () => {
     assert.equal(settings.contourColor, '#111827')
     assert.equal(settings.contourPattern, 'solid')
     assert.equal(settings.meshLinePattern, 'solid')
+    assert.deepEqual(settings.velocityVectors, {
+      visible: false,
+      lengthMode: 'uniform',
+      spacing: 70,
+      length: 20,
+      color: '#111827',
+      lineWidth: 1.5,
+      headSize: 5,
+      minimumMagnitude: 0,
+    })
   })
 
   it('renders classified values, contours, and report elements in both frames', async () => {

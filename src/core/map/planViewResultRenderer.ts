@@ -33,6 +33,7 @@ import {
 import { drawTitle } from './titleElement'
 import { drawMapElementSelection } from './mapElementLayout'
 import { FRAMES, makeMapView } from './view'
+import { drawVelocityVectors } from './velocityVectorLayer'
 
 export type PlanViewResultRenderDocument = FigureRenderDocument<
   PlanViewResultScene,
@@ -149,6 +150,16 @@ export async function renderPlanViewResultDocument(
         opacity: settings.meshLineOpacity,
         pattern: settings.meshLinePattern,
       },
+    )
+  }
+  if (scene.velocityVectors) {
+    drawVelocityVectors(
+      context,
+      localX,
+      localY,
+      scene.velocityVectors,
+      settings.velocityVectors,
+      settings.dryDepth,
     )
   }
   if (settings.showOverlays) {

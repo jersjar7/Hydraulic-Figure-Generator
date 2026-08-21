@@ -39,6 +39,7 @@ export function usePlanViewWorkspacePersistence(options: Options) {
       labels: Object.fromEntries(
         options.scenarios.map((scenario) => [scenario.key, scenario.label]),
       ),
+      crsOverrides: options.projectSession.crsOverrides,
     },
     project: options.projectDocument.document,
     figureSet: options.figureSet.figureSet,

@@ -45,6 +45,7 @@ export function useWseDraftRetention({
           scenario.label,
         ]),
       ),
+      crsOverrides: projectSession.crsOverrides,
     },
     assessment: {
       centerlineId: assessment.centerlineId,

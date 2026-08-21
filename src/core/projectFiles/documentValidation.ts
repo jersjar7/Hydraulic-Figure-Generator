@@ -243,5 +243,7 @@ export function scenarioSelection(
       keyedRecord(item, itemPath, integer(0)),
     labels: (item, itemPath) =>
       keyedRecord(item, itemPath, nonemptyText),
+    crsOverrides: (item, itemPath) =>
+      keyedRecord(item, itemPath, nonemptyText),
   }) as ScenarioSelectionProject
 }

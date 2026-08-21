@@ -53,6 +53,10 @@ describe('synthetic SMS H5 contract', () => {
     assert.equal(planView.validNodes, 4)
     assert.equal(planView.result.label, 'Water Depth')
     assert.ok(planView.autoMax > planView.autoMin)
+    assert.ok(planView.velocityVectors)
+    assert.equal(planView.velocityVectors.vx.length, 4)
+    assert.equal(planView.velocityVectors.vy.length, 4)
+    assert.ok(planView.velocityVectors.maxMagnitude > 0)
     const crossSection = engine.buildCrossSection(
       'EX',
       0,

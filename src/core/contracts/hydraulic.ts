@@ -60,6 +60,8 @@ export type ConditionData = {
   datasetFileName?: string
   geometry?: Geometry
   projected?: ProjectedGeometry
+  projectionError?: string
+  crsOverride?: string
   datasetFile?: unknown
   datasetFilePath?: string
   datasets?: DatasetCatalog
@@ -93,4 +95,3 @@ export type WseDifferenceScene = {
   maxAbs: number
   validDifferenceNodes: number
 }
-

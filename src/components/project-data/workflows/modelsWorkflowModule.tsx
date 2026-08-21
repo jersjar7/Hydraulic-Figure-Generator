@@ -41,6 +41,7 @@ export const modelsWorkflowModule: ProjectWorkflowModule<ProjectWorkflowContext>
         onH5Files={context.onH5Files}
         onRemoveCondition={context.onRemoveCondition}
         onRenameCondition={context.onRenameCondition}
+        onProjectionOverride={context.onProjectionOverride}
         onRoleChange={context.onRoleChange}
         onRunChange={context.onRunChange}
         runsFor={context.runsFor}

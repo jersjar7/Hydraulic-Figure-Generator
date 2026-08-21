@@ -5,6 +5,13 @@ import type {
 } from '../types'
 import type { H5File } from './h5Runtime'
 
+export function normalizeSmsWkt(value: unknown) {
+  if (value == null) return null
+  const wkt = String(value).trim()
+  if (!wkt || /^\*+$/.test(wkt)) return null
+  return wkt
+}
+
 function hasMeshGeometry(file: H5File, base: string) {
   try {
     const nodes = file.get(`${base}/Nodes/NodeLocs`)
@@ -60,7 +67,7 @@ export function readGeometry(file: H5File): Geometry {
   let wkt: string | null = null
   try {
     const raw = file.get(`${base}/Coordinates`).attrs?.WKT?.value
-    wkt = raw == null ? null : String(raw)
+    wkt = normalizeSmsWkt(raw)
   } catch {
     wkt = null
   }

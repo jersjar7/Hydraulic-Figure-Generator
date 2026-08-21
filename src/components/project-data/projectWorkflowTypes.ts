@@ -55,6 +55,7 @@ export type ProjectDataPanelProps = {
   onOverlayFiles(files: File[]): void
   onRemoveCondition(key: ConditionKey): void
   onRenameCondition(key: ConditionKey, label: string): void
+  onProjectionOverride(key: ConditionKey, crs: string): void
   onRoleChange(role: ScenarioRole, key: ConditionKey): void
   onRunChange(key: ConditionKey, index: number): void
   runsFor(key: ConditionKey): RunSelection[]

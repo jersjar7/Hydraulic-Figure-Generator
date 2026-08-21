@@ -60,6 +60,7 @@ export function useProjectSession() {
     Record<ConditionKey, number>
   >({})
   const savedLabelsRef = useRef<Record<ConditionKey, string>>({})
+  const savedCrsOverridesRef = useRef<Record<ConditionKey, string>>({})
   const [expectedInputs, setExpectedInputs] = useState<
     readonly HydraulicInputReference[]
   >([])
@@ -130,7 +131,7 @@ export function useProjectSession() {
 
   const ingest = useCallback(
     async (files: File[]) => {
-      const notices = await engine.ingest(files)
+      const notices = await engine.ingest(files, savedCrsOverridesRef.current)
       for (const [key, label] of Object.entries(savedLabelsRef.current)) {
         engine.renameCondition(key, label)
       }
@@ -143,6 +144,7 @@ export function useProjectSession() {
   const removeCondition = useCallback(
     (key: ConditionKey) => {
       engine.removeCondition(key)
+      delete savedCrsOverridesRef.current[key]
       setRunByScenario((current) => {
         const next = { ...current }
         delete next[key]
@@ -158,6 +160,26 @@ export function useProjectSession() {
       engine.renameCondition(key, label)
       savedLabelsRef.current[key] = label
       setDataVersion((value) => value + 1)
+    },
+    [engine],
+  )
+
+  const applyProjectionOverride = useCallback(
+    (key: ConditionKey, crs: string) => {
+      try {
+        const projected = engine.applyProjectionOverride(key, crs)
+        savedCrsOverridesRef.current[key] = crs.trim()
+        setDataVersion((value) => value + 1)
+        return {
+          level: 'success' as const,
+          text: `${engine.condition(key)?.label ?? key} geometry projected successfully: ${projected.N.toLocaleString()} nodes.`,
+        }
+      } catch (error) {
+        return {
+          level: 'error' as const,
+          text: error instanceof Error ? error.message : String(error),
+        }
+      }
     },
     [engine],
   )
@@ -190,6 +212,7 @@ export function useProjectSession() {
       setAssessmentId(selection.assessmentId ?? 'EX')
       setRunByScenario(selection.runByScenario ?? {})
       savedLabelsRef.current = selection.labels ?? {}
+      savedCrsOverridesRef.current = selection.crsOverrides ?? {}
       for (const [key, label] of Object.entries(savedLabelsRef.current)) {
         engine.renameCondition(key, label)
       }
@@ -208,6 +231,7 @@ export function useProjectSession() {
   const reset = useCallback(() => {
     engine.reset()
     savedLabelsRef.current = {}
+    savedCrsOverridesRef.current = {}
     setExpectedInputs([])
     setBaselineId('EX')
     setComparisonId('PR')
@@ -223,11 +247,13 @@ export function useProjectSession() {
     comparisonId,
     assessmentId,
     runByScenario,
+    crsOverrides: { ...savedCrsOverridesRef.current },
     inputReferences,
     missingInputReferences,
     ingest,
     removeCondition,
     renameCondition,
+    applyProjectionOverride,
     changeRole,
     changeRun,
     loadSelection,

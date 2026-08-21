@@ -66,6 +66,7 @@ describe('figure tool capability registry', () => {
             'hydraulic-models',
             'map-overlays',
             'map-cartography',
+            'velocity-vectors',
             'frame-view',
             'figure-elements',
             'centerline-stationing',

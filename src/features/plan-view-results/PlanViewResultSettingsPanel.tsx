@@ -19,11 +19,13 @@ import { CartographyPanel } from '../cartography/CartographyPanel'
 import type { FigureSettingsChange } from '../wse-difference/settingsPanelTypes'
 import type { PlanViewResultSettingsSectionKey } from './planViewResultDefinition'
 import { planViewCartographySettings } from './planViewCartography'
+import { VelocityVectorSettingsPanel } from '../velocity-vectors/VelocityVectorSettingsPanel'
 
 type Props = {
   section: PlanViewResultSettingsSectionKey
   settings: PlanViewResultSettings
   resultOptions: PlanViewOutputOption[]
+  velocityAvailable: boolean
   activeElement: FigureElementPanelKey
   elements: ReturnType<typeof useMapElementController<PlanViewResultSettings>>
   stationing: ComponentProps<typeof CenterlineStationingToolPanel>
@@ -45,6 +47,7 @@ export function PlanViewResultSettingsPanel(props: Props) {
     section,
     settings,
     resultOptions,
+    velocityAvailable,
     activeElement,
     elements,
     stationing,
@@ -133,6 +136,15 @@ export function PlanViewResultSettingsPanel(props: Props) {
         settings={settings}
         onSettingsChange={onSettingsChange as FigureSettingsChange}
         onResetView={elements.resetView}
+      />
+    )
+  }
+  if (section === 'vectors') {
+    return (
+      <VelocityVectorSettingsPanel
+        value={settings.velocityVectors}
+        available={velocityAvailable}
+        onChange={(value) => onSettingsChange('velocityVectors', value)}
       />
     )
   }

@@ -19,6 +19,7 @@ export type WseProjectState = {
     >
   > & {
     labels?: Record<string, string>
+    crsOverrides?: Record<string, string>
   }
   assessment: AssessmentWorkflowProject
 }
@@ -133,6 +134,7 @@ export function hydrateWseProject(
         PR: project.selectedRuns?.proposedRun ?? 0,
       },
       labels: scenarioSelection?.labels,
+      crsOverrides: scenarioSelection?.crsOverrides,
     },
     assessment: project.assessment ?? {},
   }
